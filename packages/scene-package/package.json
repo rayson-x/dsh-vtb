@@ -1,0 +1,19 @@
+{
+  "name": "scene-package",
+  "version": "0.0.0",
+  "private": true,
+  "description": "P4 组件生产链脚手架。不是认证完成。没有私有 reelmorph-agent SDK，pick/scaffold 只返回 blocked。",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "6.0.3",
+    "vitest": "3.2.4"
+  }
+}

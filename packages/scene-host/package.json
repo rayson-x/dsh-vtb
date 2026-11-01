@@ -1,0 +1,19 @@
+{
+  "name": "scene-host",
+  "version": "0.0.0",
+  "private": true,
+  "description": "P2 场景宿主脚手架。不是运行验收。未安装 Remotion Player / HyperFrames Player，也不包含私有 reelmorph-agent 源码。",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "6.0.3",
+    "vitest": "3.2.4"
+  }
+}

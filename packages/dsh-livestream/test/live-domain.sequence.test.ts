@@ -555,7 +555,7 @@ describe('§9.3 Live patch', () => {
   });
 
   it.skip('TODO(P2) Remotion 与 HTML/GSAP 连续 100 次输入更新不重载 iframe、不归零、不重播入场', () => {
-    // 需要真实 @remotion/player 4.0.535 与 HTML/GSAP adapter。禁止用空 shim 把这行涂绿。
+    // 阻塞未解除。脚手架在 packages/scene-host，adapter 仍是 skip。禁止用空 shim 把这行涂绿。
   });
 });
 
