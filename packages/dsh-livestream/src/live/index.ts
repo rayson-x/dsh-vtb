@@ -4,6 +4,7 @@
  * P6 是编导与制作骨架：内容池、兴趣、运行单、候选入库。不是上播。
  * P7 是主播与导播的决策骨架：口播、现场命令、cue 与冷切。不是真实播放完成。
  * P8 是迁移薄适配骨架：legacy/v2 互斥、显式 flag、旧入口映射。默认仍是 legacy。
+ * P9 是验收证据骨架：行为矩阵、负控和 scaffold 报告。不是试播完成。
  * 这里不导出播放器，也不导出私有 SDK，也不接现有主持人主路径。
  */
 
@@ -79,3 +80,6 @@ export type {
   MigrationInventory,
   SwitchResult,
 } from './migration/index';
+
+export { P9_ACCEPTANCE, buildScaffoldReport, promoteRow } from './acceptance/index';
+export type { AcceptanceRow, ScaffoldReport } from './acceptance/index';
