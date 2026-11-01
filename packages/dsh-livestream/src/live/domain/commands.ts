@@ -1,6 +1,10 @@
 /**
- * 命令信封。最小形态见计划 §3.5：
+ * 意图命令信封。最小形态见计划 §3.5：
  * {commandId, idempotencyKey, actorId, directionEpoch, expectedRevision, target, payload}
+ * CommandEnvelope 不是 PlaybackEvent，也不是 receipt。它只表示「谁请求做什么」。
+ * 绘制、发声、结束、失败是事实回执，记在 PlaybackEvent。
+ * receiptSpeech / recordPlayback 只是请求 Runtime 记下回执；acceptSequence 不是绘制或发声。
+ * directionEpoch 过期时返回 STALE_DIRECTION，不执行上播。
  * Runtime 用已认证角色映射核对 actorId，不信调用方自报角色。
  */
 
@@ -31,6 +35,7 @@ export type CommandTarget =
   | { kind: 'sceneInstance'; id: string }
   | { kind: 'cue'; id: string };
 
+/** 意图命令。与 PlaybackEvent（事实回执）不是同一类。 */
 export interface CommandEnvelope<T extends ShowCommand = ShowCommand> {
   commandId: string;
   idempotencyKey: string;

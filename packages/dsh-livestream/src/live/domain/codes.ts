@@ -36,7 +36,11 @@ export type SpeechPartState = (typeof SPEECH_PART_STATES)[number];
 /** 已过 starting 的口播视为已提交。此后改词返回 TOO_LATE。 */
 export const SPEECH_COMMITTED_STATES = ['starting', 'playing', 'ended', 'aborted', 'failed'] as const;
 
-/** 计划 §3.2 点名的冲突码。静默覆盖不在此列。 */
+/**
+ * 计划 §3.2 点名的冲突码。静默覆盖不在此列。
+ * STALE_DIRECTION：epoch 拒过期。命令 epoch 不是当前 epoch，
+ * 或过期 task / scene 试图 take、派发、改输入时用这一枚。旧产物可入库，不能上播。
+ */
 export const CONFLICT_CODES = [
   'STALE_DIRECTION',
   'REVISION_CONFLICT',

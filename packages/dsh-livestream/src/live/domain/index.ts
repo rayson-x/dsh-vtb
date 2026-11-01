@@ -70,6 +70,9 @@ export type {
 
 export type { CommandEnvelope, CommandResult, CommandTarget, RejectSnapshot, ShowCommand, TakeOutcome } from './commands';
 
+export { MANDATE_DELIVERIES, MANDATE_FLOOR, mandatePermits } from './mandate';
+export type { MandateCard, MandateDelivery, MandateScope } from './mandate';
+
 export type { DriftSample, LivePatchRequest, LivePatchResult, ProgrammeClockPort, SceneHostPort, SceneLocalTime } from './ports';
 
 export { TOOL_BOUNDARIES, TOOL_PERMISSIONS, boundaryDenied, roleAllows, toolFor } from './permissions';

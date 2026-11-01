@@ -96,7 +96,10 @@ export interface ProductionTask {
   dependsOn: string[];
   deadlineShowTime?: ShowTimeMs;
   cancelled: boolean;
-  /** 过时方向的产物可以入库，但不能凭这个标志上播。 */
+  /**
+   * 过时方向的产物可以入库，但不能上播。
+   * liveEligible === false 时 take 返回 STALE_DIRECTION。
+   */
   liveEligible: boolean;
   status: ProductionTaskStatus;
   assetVersionIds: string[];
@@ -190,7 +193,11 @@ export interface CueBinding {
 
 export type PlaybackKind = 'applied' | 'painted' | 'spoken' | 'ended' | 'failed';
 
-/** 实际执行回执。不包含命令受理序号，避免拿受理冒充绘制或发声。 */
+/**
+ * 事实回执：已经发生的绘制、发声、结束或失败。
+ * 不是 CommandEnvelope。命令只表达意图，回执才是播出事实。
+ * 不含命令受理序号。过期实例的回执标 orphan，不能写成当前方向的在播结果。
+ */
 export interface PlaybackEvent {
   id: string;
   kind: PlaybackKind;
@@ -230,6 +237,7 @@ export type SdkReadinessSignals = Partial<Record<SdkReadySignal, { atShowTime: S
 export interface SceneInstance {
   instanceId: string;
   revision: number;
+  /** 与当前 epoch 不一致时，take / updateInputs 返回 STALE_DIRECTION。 */
   directionEpoch: number;
   assetVersionId: string;
   codeVersion: string;
@@ -250,6 +258,10 @@ export interface SceneInstance {
   audioAllowed: boolean;
 }
 
+/**
+ * 一次性方向切换授权，只由 issueSwitchAuthorization 签发。
+ * 任务能改什么见 MandateCard。任务卡不能代替这张切换授权。
+ */
 export interface SwitchAuthorization {
   id: string;
   kind: 'master-soft' | 'master-hard' | 'group-veto';

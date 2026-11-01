@@ -19,9 +19,15 @@ import {
   TOOL_PERMISSIONS,
   createDomainFixture,
   evaluateGroupVeto,
+  MANDATE_FLOOR,
+  mandatePermits,
   type CommandEnvelope,
   type DriftSample,
+  type MandateCard,
+  type PlaybackEvent,
 } from '../src/live/domain/index';
+
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
 describe('域契约形状', () => {
   it('提议和口播状态跟计划 §3 一致', () => {
@@ -122,6 +128,55 @@ describe('域契约形状', () => {
       { atShowTime: 10_000, activeAudienceIds: ['a', 'b'], oppositionIds: ['a', 'b'] },
     ]);
     expect(decision.ok).toBe(false);
+  });
+
+  it('任务卡挡住越权交付，扩范围必须换新卡', () => {
+    const commandIsNotReceipt: Same<CommandEnvelope, PlaybackEvent> = false;
+    expect(commandIsNotReceipt).toBe(false);
+
+    const editorial = {
+      mandateId: 'm-ed',
+      scope: { role: 'editorial' as const, directionEpoch: 1, allowedActions: ['prepareDirection'] },
+      forbiddenActions: [...MANDATE_FLOOR.editorial],
+      acceptanceEvidence: ['候选方向没有成为当前 epoch'],
+      delivery: 'direction-candidate' as const,
+    } satisfies MandateCard;
+    const production = {
+      mandateId: 'm-prod',
+      scope: { role: 'production' as const, taskId: 'task-1', directionEpoch: 1, allowedActions: ['publishCandidate'] },
+      forbiddenActions: [...MANDATE_FLOOR.production],
+      acceptanceEvidence: ['候选入库且 liveEligible 仍由 Runtime 判定'],
+      delivery: 'candidate' as const,
+    } satisfies MandateCard;
+    const performer = {
+      mandateId: 'm-host',
+      scope: { role: 'performer' as const, directionEpoch: 1, allowedActions: ['offerSpeech'] },
+      forbiddenActions: [...MANDATE_FLOOR.performer],
+      acceptanceEvidence: ['口播入队，方向 epoch 未变'],
+      delivery: 'speech' as const,
+    } satisfies MandateCard;
+
+    expect(mandatePermits(editorial, 'prepareDirection')).toBe(true);
+    expect(mandatePermits(editorial, 'take')).toBe(false);
+    expect(mandatePermits(editorial, 'switchDirection')).toBe(false);
+    expect(mandatePermits(production, 'publishCandidate')).toBe(true);
+    expect(mandatePermits(production, 'take')).toBe(false);
+    expect(mandatePermits(production, 'replaceOnAir')).toBe(false);
+    expect(mandatePermits(performer, 'offerSpeech')).toBe(true);
+    expect(mandatePermits(performer, 'switchDirection')).toBe(false);
+    expect('comment' in editorial).toBe(false);
+
+    const widened = {
+      ...editorial,
+      mandateId: 'm-ed-2',
+      supersedesMandateId: editorial.mandateId,
+      scope: { ...editorial.scope, allowedActions: [...editorial.scope.allowedActions, 'requestProduction'] },
+    } satisfies MandateCard;
+    expect(widened.supersedesMandateId).toBe(editorial.mandateId);
+    expect(widened.mandateId).not.toBe(editorial.mandateId);
+    expect(mandatePermits(editorial, 'requestProduction')).toBe(false);
+    expect(mandatePermits(widened, 'requestProduction')).toBe(true);
+    expect(mandatePermits(widened, 'take')).toBe(false);
   });
 
   it('契约只放在本包 src/live/domain', () => {
