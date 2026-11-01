@@ -14,6 +14,8 @@
     "plugin:test": "npm --prefix packages/dsh-livestream test",
     "scene-host:check": "npm --prefix packages/scene-host run check",
     "scene-host:test": "npm --prefix packages/scene-host test",
+    "scene-package:check": "npm --prefix packages/scene-package run check",
+    "scene-package:test": "npm --prefix packages/scene-package test",
     "plugin:install": "node scripts/dsh.mjs plugin --profile web add ./packages/dsh-livestream",
     "stage": "npm --prefix packages/dsh-livestream run dev",
     "stage:demo": "npm --prefix packages/dsh-livestream run dev -- --demo",

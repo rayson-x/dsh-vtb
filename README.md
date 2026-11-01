@@ -6,6 +6,10 @@ AI 虚拟主播「大肥鱼」的本地直播舞台。DSH 负责主持和后台�
 
 `packages/scene-host` 只是脚手架和端口接线。**P2 运行验收没有通过。** 连续 100 次 live patch 保实例、真实 Remotion / HyperFrames 播放器和 Chromium 绘制仍然阻塞。详见 `packages/scene-host/README.md`。
 
+## 本仓库的 scene-package 不是 P4 认证
+
+`packages/scene-package` 只是组件生产链的可测骨架。**P4 脚手架已落地，两条制作路径与代表组件认证没有完成。** 没有私有 SDK 时，pick / scaffold 返回 blocked。详见 `packages/scene-package/README.md`。
+
 ## 开播
 
 项目使用本机 DSH 的 `live` 配置，并需将本插件加入该配置。`.dsh/` 是本机状态，不随仓库提交。
