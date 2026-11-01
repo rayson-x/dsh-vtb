@@ -2,6 +2,7 @@
  * P5 角色运行与路由。计划 §2.2、§3.4–§3.5、§8。
  * 内存夹具实现端口。真实 DSH 接线留在 TODO(P5-wire)，不进入现有主持人主路径。
  * P6 编导 / 制作是这上面的骨架，不是模型决定循环，也不是上播。
+ * P7 主播 / 导播是决策循环骨架，不是真实播放完成。
  */
 
 export { projectRoleBriefs } from './briefs';
@@ -37,10 +38,15 @@ export type {
 export { ProductionQueue } from './queue';
 export { RoleRegistry, RoleSession, residentRoles } from './registry';
 export { acceptReport } from './reports';
+export { DirectorDesk, BlockedSceneHost, decideDirector } from './director/index';
+export type { DirectorDecision, DirectorTurn, RecordedHostCall } from './director/index';
+export { PerformerDesk, decidePerformer } from './performer/index';
+export type { PerformerDecision, PerformerTurn } from './performer/index';
+export { LiveFloor, openP7 } from './floor';
 export { EditorialDesk, judgeInterest } from './editorial/index';
 export type { CandidateRef, ContentPools, ElasticRundown, InterestJudgment, SupplyReceipt } from './editorial/index';
 export { editorialMandate, gateAction, productionMandate } from './gate';
 export { openP6 } from './open';
 export { ProductionDesk, assessTakeable, CandidateShelf, fixtureScenePackage } from './production/index';
 export type { IntakeResult, ShelfRecord } from './production/index';
-export { P6_ACCEPTANCE } from './status';
+export { P6_ACCEPTANCE, P7_ACCEPTANCE, P7_MATRIX } from './status';

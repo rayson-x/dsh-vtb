@@ -55,7 +55,7 @@ export function projectRoleBriefs(state: EngineeringState): RoleBriefs {
 /**
  * 投影入口。events / playback / generationCancels 故意留空：
  * 低延迟简报不读它们。权威仍在内核事件库。
- * 内核还没有编导在线位；这里不据此制造垫话。
+ * 编导在线位来自内核。投影不据此制造垫话。
  */
 function toSnapshot(state: EngineeringState): DomainSnapshot {
   return {
@@ -78,9 +78,9 @@ function toSnapshot(state: EngineeringState): DomainSnapshot {
     switches: state.switches,
     windDown: state.windDown,
     generationCancels: [],
-    interactions: [],
+    interactions: state.interactions,
     hostCalls: [],
-    editorialOnline: true,
+    editorialOnline: state.editorialOnline,
     connected: state.connected,
     clock: { showTime: 0, running: false, scenes: {}, driftSamples: [] },
     committedCueIds: state.committedCueIds,

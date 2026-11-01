@@ -11,7 +11,8 @@
  * - TODO(P5-wire)：核对真实 worker 没有挂在父 exec.signal 上。夹具没有父信号，
  *   workerAborted 保持 false。
  * - 急件取消不保证云端模型时延。§9.2 的 200/500ms 要在真实链路上测。
- * - P6 / P7 才做编导制作和主播导播的决定循环。这里的工具调用只查白名单。
+ * - 编导 / 制作的决定循环在 editorial 与 production。主播 / 导播的决定循环在 performer 与 director。
+ *   那些循环仍是夹具，不是模型。这里的工具调用只查白名单。
  */
 
 import type { AgentRole, SpeechPartState } from '../domain/codes';

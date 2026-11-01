@@ -65,6 +65,8 @@ export type KernelFact =
   | { op: 'switch'; record: SwitchRecord }
   | { op: 'wind-down'; lease: WindDownLease | null }
   | { op: 'performer-cue'; message: PerformerCueMessage }
+  | { op: 'interaction'; interaction: { id: string; text: string; atShowTime: number } }
+  | { op: 'editorial-presence'; online: boolean }
   | { op: 'notice'; notice: DirectorNotice }
   | { op: 'commit-cue'; cueId: string }
   | { op: 'cancel-generation'; record: GenerationCancelRecord }
@@ -128,6 +130,9 @@ export interface EngineeringState {
   authorizations: Record<string, SwitchAuthorization>;
   switches: SwitchRecord[];
   performerCues: PerformerCueMessage[];
+  interactions: Array<{ id: string; text: string; atShowTime: number }>;
+  /** 编导暂停时为 false。现场决定不读它当审批。 */
+  editorialOnline: boolean;
   notices: DirectorNotice[];
   windDown: WindDownLease | null;
   generationCancels: GenerationCancelRecord[];
@@ -183,6 +188,8 @@ export function createEngineeringState(): EngineeringState {
     authorizations: {},
     switches: [],
     performerCues: [],
+    interactions: [],
+    editorialOnline: true,
     notices: [],
     windDown: null,
     generationCancels: [],
@@ -289,6 +296,12 @@ function applyFact(state: EngineeringState, fact: KernelFact): void {
       return;
     case 'performer-cue':
       state.performerCues = [...state.performerCues, structuredClone(fact.message)];
+      return;
+    case 'interaction':
+      state.interactions = [...state.interactions, structuredClone(fact.interaction)];
+      return;
+    case 'editorial-presence':
+      state.editorialOnline = fact.online;
       return;
     case 'notice':
       state.notices = [...state.notices, structuredClone(fact.notice)];

@@ -114,11 +114,13 @@ export function planCommand(command: CommandEnvelope, ctx: PlanContext): Plan {
     case 'reconnect':
       return planReconnect(ctx);
     case 'requestInteraction':
+      return planInteraction(command, payload, ctx);
+    case 'setEditorialPresence':
+      return planEditorialPresence(command, payload, ctx);
     case 'holdScene':
     case 'resumeScene':
     case 'retireScene':
     case 'disposeScene':
-    case 'setEditorialPresence':
       return fail('ILLEGAL_TRANSITION', `领域内核未接 ${payload.type}。真实场景生命周期留到播放接线`);
     default: {
       const neverPayload: never = payload;
@@ -947,6 +949,30 @@ function planPerformerCue(command: CommandEnvelope, payload: Extract<ShowCommand
       directionEpoch: ctx.state.project.currentEpoch,
     },
   }]);
+}
+
+/** 主播的互动请求只记意图。不生成口播，也不记 playing。 */
+function planInteraction(command: CommandEnvelope, payload: Extract<ShowCommand, { type: 'requestInteraction' }>, ctx: PlanContext): Plan {
+  const stale = requireEpoch(ctx.state, command) ?? targetIs(command, 'show', ctx.state.project.id);
+  if (stale) return stale;
+  if (ctx.state.interactions.some((item) => item.id === payload.requestId)) {
+    return fail('REVISION_CONFLICT', '互动请求编号已存在');
+  }
+  return succeed('show.command', [{
+    op: 'interaction',
+    interaction: { id: payload.requestId, text: payload.text, atShowTime: ctx.now },
+  }]);
+}
+
+/** 编导在线位。暂停只改这个事实，不制造垫话，也不改口播。 */
+function planEditorialPresence(
+  command: CommandEnvelope,
+  payload: Extract<ShowCommand, { type: 'setEditorialPresence' }>,
+  ctx: PlanContext,
+): Plan {
+  const stale = requireEpoch(ctx.state, command) ?? targetIs(command, 'show', ctx.state.project.id);
+  if (stale) return stale;
+  return succeed('show.command', [{ op: 'editorial-presence', online: payload.online }]);
 }
 
 function planRecordPlayback(
