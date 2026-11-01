@@ -47,3 +47,38 @@ export function visualToDraw(v: Visual, at?: string, url?: string): Draw | strin
       return `${v.kind} 画不到画布上，换成 [[draw …]] 自己画`;
   }
 }
+
+/** 把 visualToDraw 的结果收成导演必须照抄的那条 [[draw]]。编号用短 alias。 */
+export function preparedCue(draw: Draw): string {
+  const rows = draw.rows ?? [];
+  let body = '';
+  switch (draw.kind) {
+    case 'versus':
+      body = rows.map((r) => (r.note ? `${r.label} | ${r.note}` : r.label)).join(' || ');
+      break;
+    case 'list':
+    case 'flow':
+      body = rows.map((r) => r.label).join(' | ');
+      break;
+    case 'timeline':
+      body = rows.map((r) => `${r.label}:${r.note ?? ''}`).join(' | ');
+      break;
+    case 'bars':
+    case 'line':
+    case 'race':
+      body = rows.map((r) => `${r.label}:${r.value ?? 0}`).join(' | ');
+      break;
+    case 'poll':
+      body = [draw.text, ...rows.map((r) => r.label)].filter(Boolean).join(' | ');
+      break;
+    default:
+      body = draw.text;
+  }
+  const opts: string[] = [];
+  if ((draw.kind === 'bars' || draw.kind === 'line' || draw.kind === 'race') && draw.text) opts.push(`unit=${draw.text}`);
+  if (draw.note) opts.push(`note=${draw.note}`);
+  if (draw.size) opts.push(`size=${draw.size}`);
+  if (draw.at) opts.push(`at=${draw.at}`);
+  if (draw.answer !== undefined) opts.push(`answer=${draw.answer}`);
+  return `[[draw ${draw.id} ${draw.kind} ${body}${opts.length ? ` ${opts.join(' ')}` : ''}]]`;
+}
