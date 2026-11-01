@@ -1,6 +1,7 @@
 /**
  * 共创直播内核入口。公共实体、命令和拒绝码仍从 live/domain 来。
  * P3 是事件、时间线和播放契约。P5 是角色 session、路由和取消端口。
+ * P6 是编导与制作骨架：内容池、兴趣、运行单、候选入库。不是上播。
  * 这里不导出播放器，也不导出私有 SDK，也不接现有主持人主路径。
  */
 
@@ -18,7 +19,7 @@ export type { BusClaim, ExecutionEffects, MediaObservation } from './playback/in
 
 export { closeTaskForEpoch, openTask, publishOntoTask } from './production/index';
 
-export { MemoryAgentHarness, projectRoleBriefs } from './agents/index';
+export { EditorialDesk, MemoryAgentHarness, ProductionDesk, judgeInterest, openP6, projectRoleBriefs, P6_ACCEPTANCE } from './agents/index';
 export type { HarnessOptions, IngestReceipt, ProductionAssignment, RoleBriefs } from './agents/index';
 export { TASK_REPORT_STATUSES } from './agents/index';
 export type {
