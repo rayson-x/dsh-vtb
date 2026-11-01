@@ -24,7 +24,7 @@ controller.start();
 const demo = () => runDemo(controller);
 const lib = dirname(fileURLToPath(import.meta.url));
 const voiceDir = join(lib, '..', '.cache', 'voice');
-// 密钥来自进程环境。根目录 `node --env-file=.env`（npm run stage:voice）会把 .env 放进来。
+// 密钥来自进程环境。`npm run stage:voice` 在根目录有 .env 时会把它放进来；没有文件也能起舞台。
 controller.setVoice(new ElevenLabsVoice({
   dir: voiceDir,
   secret: (name) => {
