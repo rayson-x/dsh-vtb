@@ -1,0 +1,51 @@
+/* 标题、数字用的宋体：Noto Serif SC（OFL 1.1，子集化），文件和许可在本布景的 fonts/ 里 */
+@font-face { font-family: 'Noto Serif SC'; font-style: normal; font-weight: 400; font-display: swap; src: url('/sets/midnight-tales/fonts/midnight-song.woff2') format('woff2'); }
+/* 深夜怪谈：暗、烛光、下雨。深色纸面配浅米色字，烛光金做强调，暗红做标记 */
+.stage[data-set="midnight-tales"] {
+  --display: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
+  --canvas-panel: linear-gradient(135deg, #392e22, #211b16);
+  --canvas-paper: #e5d4ad;
+  --canvas-ink: #f2e4c7;
+  --canvas-muted: #cbbb99;
+  --canvas-line: #6d512f;
+  --canvas-track: #4a3825;
+  --canvas-accent: #e4bb69;
+  --canvas-soft: linear-gradient(180deg, #b18a45, #70502a);
+  --canvas-on-accent: #241a10;
+  --canvas-mark: #e28a70;
+  --canvas-good: #9ec28a;
+  --canvas-shadow: rgba(7, 4, 2, 0.55);
+  --canvas-highlight: rgba(231, 190, 107, 0.28);
+  --fx-particle-blend: screen;
+  --set-room: url(/sets/midnight-tales/room.webp);
+  --kit-board: url(/sets/midnight-tales/kit/board.webp); --kit-board-slice: 140 90 90 90;
+  --kit-subtitle: url(/sets/midnight-tales/kit/subtitle.webp); --kit-subtitle-slice: 55 80 55 80;
+  --kit-plaque: url(/sets/midnight-tales/kit/plaque.webp); --kit-note: url(/sets/midnight-tales/kit/note.webp);
+  --kit-badge: url(/sets/midnight-tales/kit/badge.webp); --kit-gift: url(/sets/midnight-tales/kit/gift.webp);
+  --ink-navy: #ece3cf; --ink-soft: #c2b498; --ink-faint: #93866e;
+  --whale: #e0b45a; --coral: #c2463a; --gold: #e0b45a; --mark: #d0503f;
+  --paper: rgba(29, 25, 21, 0.94); --chip: #2c251d;
+  --tint-a: rgba(224, 180, 90, 0.14); --tint-b: rgba(194, 70, 58, 0.2);
+  --note-paper: #e9dfc6; --note-back: #d9c9a3; --clue-paper: #e9dfc6;
+  --room-vignette: rgba(0, 0, 0, 0.55);
+}
+/* 浅色的旧纸（节目便签、便利贴、线索）上用深色字 */
+.stage[data-set="midnight-tales"] .plaque { padding: 58px 28px 46px 74px; color: var(--ink-navy); text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.stage[data-set="midnight-tales"] .note { padding: 62px 40px 34px 40px; transform: rotate(1deg); }
+.stage[data-set="midnight-tales"] .el-subtitle { border-width: 46px 80px 46px 80px; }
+.stage[data-set="midnight-tales"] .subtitle span, .stage[data-set="midnight-tales"] .subtitle em.accent { color: rgba(236, 227, 207, 0.62); }
+.stage[data-set="midnight-tales"] .subtitle span.lit { color: var(--ink-navy); }
+.stage[data-set="midnight-tales"] .onair b { background: #8e2c24; }
+.stage[data-set="midnight-tales"] .onair span { color: var(--ink-navy); }
+.stage[data-set="midnight-tales"] .alert { padding: 40px 34px 34px 140px; color: var(--ink-navy); }
+.stage[data-set="midnight-tales"] .alert b { color: var(--gold); }
+.stage[data-set="midnight-tales"] .alert em { color: #f0c89a; }
+.stage[data-set="midnight-tales"] .dm-line { box-shadow: 0 0 0 2px rgba(224, 180, 90, 0.5), 0 8px 16px rgba(0, 0, 0, 0.4); }
+.stage[data-set="midnight-tales"] .dm-text { color: var(--ink-navy); }
+
+.stage[data-set="midnight-tales"] .note { --ink-navy: #2a2018; --ink-soft: #5a4a36; }
+
+/* 铜件的边缘反光与凹槽阴影，强度只给控件本身。 */
+.stage[data-set="midnight-tales"] :is(.poll-bar, .tier-items, .soup-col, .flow-step b, .vs-side, .draw-wall) { box-shadow: inset 0 1px 0 var(--canvas-highlight), inset 0 0 0 1px var(--canvas-line), 0 3px 8px var(--canvas-shadow); }
+.stage[data-set="midnight-tales"] :is(.draw-bar, .poll-bar i, .score-bins i, .guess-plot > i, .race-row div i) { box-shadow: inset 0 2px 1px var(--canvas-highlight), inset 0 -3px 4px var(--canvas-shadow); }
+.stage[data-set="midnight-tales"] :is(.draw-ring .fill, .draw-timer .left) { filter: drop-shadow(0 1px 1px var(--canvas-shadow)) drop-shadow(0 0 3px var(--canvas-highlight)); }

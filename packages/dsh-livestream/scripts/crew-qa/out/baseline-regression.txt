@@ -1,0 +1,15 @@
+
+ RUN  v3.2.4 /Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream
+
+ ❯ test/crew.test.ts (5 tests | 1 failed | 4 skipped) 10ms
+   × 舞台车道 > 旧主持人调用和显式 host 保持全权限，其他岗位只能走自己的车道 9ms
+     → {"type":"room","id":"midnight-tales","lane":"lighting"}: expected true to be false // Object.is equality
+   ↓ 舞台车道 > graphics 不能全擦、翻页、同编号替换或间接挤掉互动道具；主持人仍可撤下
+   ↓ 舞台车道 > 音响拒绝路径、非有限数和越界参数，背景换曲、调音量、停止与独立音效可观测
+   ↓ 车道分镜合并 > 错误格式、坏画布、越道和不存在的目标在进入舞台前丢掉
+   ↓ 车道分镜合并 > 主持人同位置覆盖、四动作预算、全屏预算、带偏移的配套音效避让和迟到剔除
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 skipped (5)
+   Start at  23:30:27
+   Duration  932ms (transform 201ms, setup 0ms, collect 241ms, tests 10ms, environment 0ms, prepare 121ms)

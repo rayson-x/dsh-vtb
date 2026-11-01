@@ -1,0 +1,155 @@
+<!--
+场景 balance
+演示：天平两边放砝码。设好左右分量之后再放上去，梁才往重的一边沉。
+
+参数：
+- left   number  0–12  默认 2  左边砝码颗数
+- right  number  0–12  默认 6  右边砝码颗数
+
+动作：
+- tip    松开，梁沉向重的一边
+- reset  托平，砝码还在
+
+重放：do(action, { replay: true }) 直接跳到沉下去或托平，不播动画。
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>天平</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #status { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="status"></div>
+<script src="kit.js"></script>
+<script>
+const K = window.SceneKit;
+const { colors } = K;
+
+const state = { left: 2, right: 6, angle: 0, revealed: false, anim: null };
+
+function truth() {
+  const scale = Math.max(state.left, state.right, 1);
+  return K.clamp((state.right - state.left) / scale * 0.42, -0.5, 0.5);
+}
+
+function commit() {
+  if (!state.anim) return;
+  state.angle = state.anim.to;
+  state.revealed = state.anim.revealed;
+  state.anim = null;
+}
+
+function aim(to, revealed, replay) {
+  if (replay) {
+    state.angle = to;
+    state.revealed = revealed;
+    state.anim = null;
+    return;
+  }
+  commit();
+  state.anim = { from: state.angle, to, revealed, t0: performance.now(), dur: 640 };
+}
+
+function set(params) {
+  params = params || {};
+  const left = params.left === undefined ? state.left : Math.round(K.num(params.left, state.left, 0, 12));
+  const right = params.right === undefined ? state.right : Math.round(K.num(params.right, state.right, 0, 12));
+  if (left === state.left && right === state.right) return;
+  state.left = left;
+  state.right = right;
+  if (state.revealed || (state.anim && state.anim.revealed)) aim(truth(), true, false);
+}
+
+function doAction(action, options) {
+  const replay = !!(options && options.replay);
+  if (action === 'tip') aim(truth(), true, replay);
+  else if (action === 'reset') aim(0, false, replay);
+}
+
+window.scene = { set, do: doAction };
+
+function angleNow(now) {
+  const a = state.anim;
+  if (!a) return state.angle;
+  const k = K.clamp((now - a.t0) / a.dur, 0, 1);
+  const v = K.lerp(a.from, a.to, K.ease(k));
+  if (k >= 1) { state.angle = a.to; state.revealed = a.revealed; state.anim = null; return state.angle; }
+  return v;
+}
+
+K.mount(document.getElementById('c'), (ctx, w, h, now) => {
+  const ang = angleNow(now);
+  const heavier = state.left === state.right ? '两边一样重' : (state.left > state.right ? '左边更重' : '右边更重');
+  const status = state.revealed || (state.anim && state.anim.revealed) ? heavier : `左 ${state.left} · 右 ${state.right}，还托着`;
+  const { f, chart } = K.chrome(ctx, w, h, '天平', '重的一边往下沉', status);
+  ctx.save();
+  const cx = chart.x + chart.w / 2;
+  const cy = chart.y + chart.h * 0.34;
+  const beam = Math.min(chart.w * 0.36, chart.h * 0.42);
+  const hang = Math.max(f.body, chart.h * 0.18);
+  ctx.fillStyle = colors.mute;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + 8);
+  ctx.lineTo(cx - f.body * 0.7, chart.y + chart.h * 0.92);
+  ctx.lineTo(cx + f.body * 0.7, chart.y + chart.h * 0.92);
+  ctx.closePath();
+  ctx.fill();
+  const left = end(cx, cy, beam, Math.PI + ang);
+  const right = end(cx, cy, beam, ang);
+  ctx.strokeStyle = colors.gold;
+  ctx.lineWidth = Math.max(6, f.label * 0.28);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(left.x, left.y);
+  ctx.lineTo(right.x, right.y);
+  ctx.stroke();
+  ctx.fillStyle = colors.gold;
+  ctx.beginPath();
+  ctx.arc(cx, cy, Math.max(7, f.label * 0.28), 0, Math.PI * 2);
+  ctx.fill();
+  drawPan(ctx, left, hang, state.left, colors.foam, f);
+  drawPan(ctx, right, hang, state.right, colors.coral, f);
+  ctx.restore();
+});
+
+function end(cx, cy, len, ang) {
+  return { x: cx + Math.cos(ang) * len, y: cy + Math.sin(ang) * len };
+}
+
+function drawPan(ctx, at, hang, count, color, f) {
+  const y = at.y + hang;
+  ctx.strokeStyle = colors.mute;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(at.x, at.y);
+  ctx.lineTo(at.x, y);
+  ctx.stroke();
+  const bowlW = Math.max(f.body * 2.2, 54);
+  ctx.fillStyle = colors.panel;
+  ctx.beginPath();
+  ctx.moveTo(at.x - bowlW / 2, y);
+  ctx.quadraticCurveTo(at.x, y + f.body * 0.85, at.x + bowlW / 2, y);
+  ctx.lineTo(at.x - bowlW / 2, y);
+  ctx.fill();
+  const blockH = Math.max(5, (hang * 0.72) / 12);
+  const blockW = bowlW * 0.62;
+  ctx.fillStyle = color;
+  for (let i = 0; i < count; i++) {
+    K.roundRect(ctx, at.x - blockW / 2, y - (i + 1) * (blockH + 1), blockW, blockH, 3);
+    ctx.fill();
+  }
+  ctx.fillStyle = colors.text;
+  ctx.font = K.font(f.title * 0.7, 700, true);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(String(count), at.x, at.y - 8);
+}
+</script>
+</body>
+</html>

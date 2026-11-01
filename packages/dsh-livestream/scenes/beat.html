@@ -1,0 +1,140 @@
+<!--
+场景 beat
+演示：节拍器和步点：鼓点一响亮一格，看「走到第几步」。
+
+参数：
+- bpm    number  40–208  默认 120  每分钟多少拍
+- steps  number  4–128   默认 128  一共多少步
+
+动作：
+- start  开始走，第一拍马上亮
+- stop   停在当前这一步
+
+重放：do(action, { replay: true }) 立刻进入走着或停下的状态。
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>节拍</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #status { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="status"></div>
+<script src="kit.js"></script>
+<script>
+const K = window.SceneKit;
+const { colors } = K;
+
+const state = {
+  bpm: 120,
+  steps: 128,
+  step: 0,
+  playing: false,
+  phase: 0.5,
+  beatAt: 0,
+};
+
+function set(params) {
+  params = params || {};
+  const bpm = params.bpm === undefined ? state.bpm : Math.round(K.num(params.bpm, state.bpm, 40, 208));
+  const steps = params.steps === undefined ? state.steps : Math.round(K.num(params.steps, state.steps, 4, 128));
+  if (bpm === state.bpm && steps === state.steps) return;
+  state.bpm = bpm;
+  state.steps = steps;
+  if (state.step > steps) {
+    state.step = steps;
+    state.playing = false;
+  }
+}
+
+function doAction(action) {
+  if (action === 'stop') { state.playing = false; return; }
+  if (action !== 'start') return;
+  if (state.playing) return;
+  if (state.step >= state.steps) state.step = 0;
+  state.playing = true;
+  state.beatAt = performance.now();
+  state.phase = 0;
+  if (state.step === 0) state.step = 1;
+}
+
+window.scene = { set, do: doAction };
+
+K.mount(document.getElementById('c'), (ctx, w, h, now) => {
+  if (state.playing) {
+    const interval = 60000 / state.bpm;
+    const elapsed = now - state.beatAt;
+    if (elapsed >= interval) {
+      const ticks = Math.min(8, Math.floor(elapsed / interval));
+      state.beatAt += ticks * interval;
+      state.step = Math.min(state.steps, state.step + ticks);
+      if (state.step >= state.steps) state.playing = false;
+    }
+    const interval2 = 60000 / state.bpm;
+    state.phase = state.playing ? K.clamp((now - state.beatAt) / interval2, 0, 1) : 0;
+  }
+  const status = state.playing
+    ? `第 ${state.step} / ${state.steps} 步`
+    : (state.step ? `停在第 ${state.step} 步` : `${state.steps} 步 · ${state.bpm} 拍`);
+  const { f, chart } = K.chrome(ctx, w, h, '节拍', '一拍一步，走到点上', status);
+
+  const ang = state.playing || state.step ? K.lerp(0.62, -0.62, state.phase) : 0;
+  const pivotX = chart.x + chart.w * 0.62;
+  const pivotY = chart.y + 6;
+  const len = Math.min(chart.h * 0.42, chart.w * 0.26, 220);
+  const bobX = pivotX + Math.sin(ang) * len;
+  const bobY = pivotY + Math.cos(ang) * len;
+  ctx.strokeStyle = colors.mute;
+  ctx.lineWidth = Math.max(4, f.label * 0.2);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pivotX, pivotY);
+  ctx.lineTo(bobX, bobY);
+  ctx.stroke();
+  ctx.fillStyle = state.playing ? colors.coral : colors.gold;
+  ctx.beginPath();
+  ctx.arc(bobX, bobY, Math.max(10, f.label * 0.55), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = colors.panel;
+  ctx.beginPath();
+  ctx.arc(pivotX, pivotY, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = colors.text;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.font = K.font(Math.min(f.title * 1.3, chart.h * 0.28), 400, true);
+  ctx.fillText(String(state.step), chart.x, chart.y);
+  ctx.fillStyle = colors.mute;
+  ctx.font = K.font(f.label, 500, false);
+  ctx.fillText(`/ ${state.steps}`, chart.x, chart.y + f.title * 1.25);
+
+  const cols = Math.min(16, state.steps);
+  const rows = Math.ceil(state.steps / cols);
+  const gridTop = chart.y + chart.h * 0.56;
+  const gridH = chart.h * 0.4;
+  const cell = Math.min(chart.w / cols, gridH / rows);
+  const gridW = cell * cols;
+  const ox = chart.x + (chart.w - gridW) / 2;
+  const oy = gridTop;
+  const dot = Math.max(3, cell * 0.28);
+  for (let i = 0; i < state.steps; i++) {
+    const c = i % cols;
+    const r = Math.floor(i / cols);
+    const on = i < state.step;
+    const cur = i === state.step - 1;
+    ctx.beginPath();
+    ctx.fillStyle = cur ? colors.gold : on ? colors.foam : '#15284a';
+    ctx.arc(ox + (c + 0.5) * cell, oy + (r + 0.5) * cell, cur ? dot * 1.25 : dot, 0, Math.PI * 2);
+    ctx.fill();
+  }
+});
+</script>
+</body>
+</html>

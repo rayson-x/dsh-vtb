@@ -1,0 +1,196 @@
+<!--
+场景 bar-race
+演示：几根柱子按年份赛跑，谁高谁往上排。数据由 data 给（要用查到的真实数字）；没给就只显示「等数据」，不放示意数字。
+
+参数：
+- data  string  JSON  默认空  {"years":["2016","2018"],"series":[{"name":"甲","values":[30,40]},{"name":"乙","values":[20,50]}]}
+        years 2–8 个，series 2–6 条，name 不超过 6 个字，values 跟 years 一样长、非负。
+
+动作：
+- play   从第一年跑到最后一年
+- reset  回到第一年
+
+重放：do(action, { replay: true }) 直接停在最后一年或第一年，不播动画。
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>柱状竞赛</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #status { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="status"></div>
+<script src="kit.js"></script>
+<script>
+const K = window.SceneKit;
+const { colors } = K;
+const PALETTE = [colors.whale, colors.foam, colors.gold, colors.coral, '#c4b5fd', colors.mute];
+
+/** 没给数据：空的，画面只写「等数据」（不放编出来的示意数字） */
+const DEFAULT = { years: [''], series: [] };
+
+const state = {
+  years: DEFAULT.years,
+  series: DEFAULT.series.map((s, i) => ({ ...s, color: PALETTE[i] })),
+  display: DEFAULT.series.map((s) => s.values[0]),
+  rank: [],
+  year: 0,
+  dataText: '',
+  bad: false,
+  anim: null,
+};
+
+function orderOf(values) {
+  return values.map((_, i) => i).sort((a, b) => values[b] - values[a] || a - b);
+}
+
+function snapRanks() {
+  const order = orderOf(state.display);
+  state.rank = state.series.map(() => 0);
+  order.forEach((si, rank) => { state.rank[si] = rank; });
+}
+
+function easeRanks() {
+  const order = orderOf(state.display);
+  const target = state.series.map(() => 0);
+  order.forEach((si, rank) => { target[si] = rank; });
+  state.rank = state.rank.map((r, i) => r + (target[i] - r) * 0.2);
+}
+
+snapRanks();
+
+function maxValue() {
+  let m = 1;
+  for (const s of state.series) for (const v of s.values) m = Math.max(m, v);
+  return m;
+}
+
+function normalize(raw) {
+  let obj;
+  try { obj = JSON.parse(raw); } catch { return null; }
+  if (!obj || !Array.isArray(obj.years) || !Array.isArray(obj.series)) return null;
+  const years = obj.years.slice(0, 8).map((y) => [...String(y)].slice(0, 8).join(''));
+  if (years.length < 2) return null;
+  const series = [];
+  for (const item of obj.series.slice(0, 6)) {
+    if (!item || typeof item.name !== 'string' || !Array.isArray(item.values)) continue;
+    const name = [...item.name].slice(0, 6).join('') || '未名';
+    const values = years.map((_, i) => {
+      const n = Number(item.values[i]);
+      return Number.isFinite(n) ? Math.max(0, n) : 0;
+    });
+    series.push({ name, values, color: PALETTE[series.length % PALETTE.length] });
+  }
+  if (series.length < 2) return null;
+  return { years, series };
+}
+
+function applyPack(pack) {
+  state.years = pack.years;
+  state.series = pack.series;
+  state.year = 0;
+  state.display = pack.series.map((s) => s.values[0]);
+  state.anim = null;
+  snapRanks();
+}
+
+function set(params) {
+  params = params || {};
+  if (typeof params.data !== 'string') return;
+  if (params.data === state.dataText) return;
+  state.dataText = params.data;
+  const pack = normalize(params.data);
+  if (!pack) { state.bad = true; return; }
+  state.bad = false;
+  applyPack(pack);
+}
+
+function atYear(index) {
+  state.year = index;
+  state.display = state.series.map((s) => s.values[index]);
+  state.anim = null;
+  snapRanks();
+}
+
+function doAction(action, options) {
+  const replay = !!(options && options.replay);
+  if (action === 'reset') { atYear(0); return; }
+  if (action !== 'play') return;
+  if (replay) { atYear(state.years.length - 1); return; }
+  state.anim = null;
+  atYear(0);
+  state.anim = { t0: performance.now(), dur: 480 * (state.years.length - 1) };
+}
+
+window.scene = { set, do: doAction };
+
+function tick(now) {
+  const a = state.anim;
+  if (!a) { easeRanks(); return; }
+  const span = state.years.length - 1;
+  const k = K.clamp((now - a.t0) / a.dur, 0, 1);
+  const pos = k * span;
+  const i = Math.min(span - 1, Math.floor(pos));
+  const f = pos - i;
+  const next = Math.min(span, i + 1);
+  state.year = k >= 1 ? span : i;
+  state.display = state.series.map((s) => K.lerp(s.values[i], s.values[next], f));
+  if (k >= 1) {
+    state.display = state.series.map((s) => s.values[span]);
+    state.anim = null;
+    snapRanks();
+    return;
+  }
+  easeRanks();
+}
+
+K.mount(document.getElementById('c'), (ctx, w, h, now) => {
+  if (!state.series.length) {
+    K.chrome(ctx, w, h, '', '', '等数据');
+    return;
+  }
+  tick(now);
+  const year = state.years[state.year];
+  const status = state.bad ? '这串数据读不了，还是上一组' : (state.anim ? `${year} 年，正在跑` : `${year} 年`);
+  const { f, chart } = K.chrome(ctx, w, h, '', '', status);
+  ctx.save();
+  const n = state.series.length;
+  const nameW = Math.min(chart.w * 0.22, f.body * 4);
+  const yearBand = f.title + 4;
+  const rowH = Math.max(12, (chart.h - yearBand) / n);
+  const max = maxValue();
+  const barLeft = chart.x + nameW;
+  const barMax = Math.max(20, chart.w - nameW - f.body * 3.4);
+  state.series.forEach((s, i) => {
+    const y = chart.y + yearBand + (state.rank[i] + 0.5) * rowH;
+    const bh = Math.max(8, rowH * 0.62);
+    const bw = (state.display[i] / max) * barMax;
+    ctx.fillStyle = colors.mute;
+    ctx.font = K.font(Math.min(f.body, rowH * 0.46), 700, false);
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(K.ellipsis(ctx, s.name, nameW - 8, Math.min(f.body, rowH * 0.46), 700), barLeft - 8, y);
+    ctx.fillStyle = s.color;
+    K.roundRect(ctx, barLeft, y - bh / 2, Math.max(bh * 0.35, bw), bh, Math.min(10, bh / 2));
+    ctx.fill();
+    ctx.fillStyle = colors.text;
+    ctx.textAlign = 'left';
+    const value = String(Math.round(state.display[i]));
+    ctx.fillText(value, Math.min(barLeft + bw + 8, chart.x + chart.w - ctx.measureText(value).width - 2), y);
+  });
+  ctx.fillStyle = colors.gold;
+  ctx.font = K.font(f.title, 400, true);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(year, chart.x, chart.y);
+  ctx.restore();
+});
+</script>
+</body>
+</html>

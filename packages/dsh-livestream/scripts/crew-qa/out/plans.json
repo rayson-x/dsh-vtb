@@ -1,0 +1,1575 @@
+{
+  "A": [
+    {
+      "segment": 1,
+      "text": "大家晚上好啊——十一点了还在的，都是真爱。今天深更半夜的，咱们聊点软的：恋爱。主人给的方向是「恋爱的四象型」，我一听就来劲了——这东西到底是在说星座的火土风水，还是说人在感情里的四种反应模式？我先把资料翻一翻，你们也帮我判断一下：你们觉得自己是哪一型的？",
+      "speak": "大家晚上好啊——十一点了还在的，都是真爱。今天深更半夜的，咱们聊点软的：*恋爱*。主人给的方向是「恋爱的四象型」，我一听就来劲了——这东西到底是在说星座的火土风水，还是说人在感情里的四种反应模式？我先把资料翻一翻，<[[fx bubbles]]>你们也帮我判断一下：你们觉得自己是哪一型的？",
+      "markers": [
+        {
+          "from": 36,
+          "to": 38
+        }
+      ],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 21,
+          "text": "大家晚上好啊——十一点了还在的，都是真爱。",
+          "ms": 5020
+        },
+        {
+          "from": 21,
+          "length": 84,
+          "text": "今天深更半夜的，咱们聊点软的：恋爱。主人给的方向是「恋爱的四象型」，我一听就来劲了——这东西到底是在说星座的火土风水，还是说人在感情里的四种反应模式？我先把资料翻一翻，",
+          "ms": 18880
+        },
+        {
+          "from": 105,
+          "length": 22,
+          "text": "你们也帮我判断一下：你们觉得自己是哪一型的？",
+          "ms": 5240
+        }
+      ],
+      "ms": 28340,
+      "cues": [
+        {
+          "at": 105,
+          "raw": "[[fx bubbles]]",
+          "cmd": {
+            "type": "vfx",
+            "name": "bubbles",
+            "lane": "host"
+          }
+        }
+      ],
+      "errors": [],
+      "calls": []
+    },
+    {
+      "segment": 2,
+      "text": "顺便把灯调暗一点，这种话题亮着大灯聊有点尴尬。 嗯，这个亮度才对，像宿舍熄灯以后那半小时。",
+      "speak": "顺便把灯调暗一点，这种话题亮着大灯聊有点尴尬。[[room midnight-tales]] 嗯，这个亮度才对，像宿舍熄灯以后那半小时。",
+      "markers": [],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 23,
+          "text": "顺便把灯调暗一点，这种话题亮着大灯聊有点尴尬。",
+          "ms": 5460
+        },
+        {
+          "from": 23,
+          "length": 22,
+          "text": " 嗯，这个亮度才对，像宿舍熄灯以后那半小时。",
+          "ms": 5240
+        }
+      ],
+      "ms": 10300,
+      "cues": [
+        {
+          "at": 23,
+          "raw": "[[room midnight-tales]]",
+          "cmd": {
+            "type": "room",
+            "id": "midnight-tales",
+            "by": "agent",
+            "lane": "host"
+          }
+        }
+      ],
+      "errors": [],
+      "calls": []
+    },
+    {
+      "segment": 3,
+      "text": "趁着翻资料，先来个不严谨的小投票：恋爱里你一慌，第一反应是什么？发数字就行。1 追得更紧，2 往后退一步，3 还好，能说开，4 又想追又想跑。",
+      "speak": "趁着翻资料，先来个不严谨的小投票：*恋爱里你一慌，第一反应是什么*？发数字就行。1 追得更紧，2 往后退一步，3 还好，能说开，4 又想追又想跑。",
+      "markers": [
+        {
+          "from": 17,
+          "to": 31
+        }
+      ],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 24,
+          "text": "趁着翻资料，先来个不严谨的小投票：恋爱里你一慌，",
+          "ms": 5680
+        },
+        {
+          "from": 24,
+          "length": 47,
+          "text": "第一反应是什么？发数字就行。1 追得更紧，2 往后退一步，3 还好，能说开，4 又想追又想跑。",
+          "ms": 10740
+        }
+      ],
+      "ms": 16020,
+      "cues": [],
+      "errors": [],
+      "calls": []
+    },
+    {
+      "segment": 4,
+      "text": "资料到手了，而且比我想的更有意思。先说一句可能有点扫兴的话：「四象型」在心理学里真有一套，但它不是星座的火土风水，是一群人在 1970 年代看婴儿看出来的。 发数字，我一会儿揭晓，看看这屋里哪种最多。",
+      "speak": "资料到手了，而且比我想的更有意思。先说一句可能有点扫兴的话：*「四象型」在心理学里真有一套*，但它不是星座的火土风水，是一群人在 1970 年代看*婴儿*看出来的。[[draw a poll 恋爱里你一慌，第一反应是？ | 追得更紧 | 往后退一步 | 还好，能说开 | 又想追又想跑]] 发数字，我一会儿揭晓，看看这屋里哪种最多。",
+      "markers": [
+        {
+          "from": 30,
+          "to": 44
+        },
+        {
+          "from": 71,
+          "to": 73
+        }
+      ],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 17,
+          "text": "资料到手了，而且比我想的更有意思。",
+          "ms": 4140
+        },
+        {
+          "from": 17,
+          "length": 66,
+          "text": "先说一句可能有点扫兴的话：「四象型」在心理学里真有一套，但它不是星座的火土风水，是一群人在 1970 年代看婴儿看出来的。 发数字，",
+          "ms": 14920
+        },
+        {
+          "from": 83,
+          "length": 17,
+          "text": "我一会儿揭晓，看看这屋里哪种最多。",
+          "ms": 4140
+        }
+      ],
+      "ms": 22400,
+      "cues": [
+        {
+          "at": 78,
+          "raw": "[[draw a poll 恋爱里你一慌，第一反应是？ | 追得更紧 | 往后退一步 | 还好，能说开 | 又想追又想跑]]",
+          "cmd": {
+            "type": "draw",
+            "id": "a",
+            "kind": "poll",
+            "text": "恋爱里你一慌，第一反应是？",
+            "rows": [
+              {
+                "label": "追得更紧"
+              },
+              {
+                "label": "往后退一步"
+              },
+              {
+                "label": "还好，能说开"
+              },
+              {
+                "label": "又想追又想跑"
+              }
+            ],
+            "lane": "host"
+          }
+        }
+      ],
+      "errors": [],
+      "calls": []
+    },
+    {
+      "segment": 5,
+      "text": "故事从一间小房间开始。心理学家 Ainsworth 找了几十对妈妈和 9 到 30 个月大的宝宝，把那间房布置成有玩具的样子，然后安排一场 21 分钟的戏：妈妈坐着，陌生人进来，妈妈离开，陌生人陪，妈妈回来。她只看四件事——宝宝敢不敢玩、妈妈走时哭不哭、怕不怕陌生人、妈妈回来时怎么反应。就这么七八个来回，看出了一个规律。",
+      "speak": "[[page]] 故事从一间小房间开始。心理学家 Ainsworth 找了几十对妈妈和 9 到 30 个月大的宝宝，把那间房布置成有玩具的样子，然后安排一场 21 分钟的戏：妈妈坐着，陌生人进来，妈妈离开，陌生人陪，妈妈回来。她只看四件事——宝宝敢不敢玩、妈妈走时哭不哭、怕不怕陌生人、妈妈回来时*怎么反应*。就这么七八个来回，看出了一个规律。",
+      "markers": [
+        {
+          "from": 139,
+          "to": 143
+        }
+      ],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 11,
+          "text": "故事从一间小房间开始。",
+          "ms": 2820
+        },
+        {
+          "from": 11,
+          "length": 38,
+          "text": "心理学家 Ainsworth 找了几十对妈妈和 9 到 30 个月大的宝宝，",
+          "ms": 8760
+        },
+        {
+          "from": 49,
+          "length": 112,
+          "text": "把那间房布置成有玩具的样子，然后安排一场 21 分钟的戏：妈妈坐着，陌生人进来，妈妈离开，陌生人陪，妈妈回来。她只看四件事——宝宝敢不敢玩、妈妈走时哭不哭、怕不怕陌生人、妈妈回来时怎么反应。就这么七八个来回，看出了一个规律。",
+          "ms": 25040
+        }
+      ],
+      "ms": 35820,
+      "cues": [
+        {
+          "at": 0,
+          "raw": "[[page]]",
+          "cmd": {
+            "type": "page",
+            "lane": "host"
+          }
+        }
+      ],
+      "errors": [],
+      "calls": []
+    },
+    {
+      "segment": 6,
+      "text": "弹幕我这边一条都没刷出来，可能是卡了——你们随便发个「1」让我看看通不通。通了我就把刚才那个投票挂上来。",
+      "speak": "弹幕我这边一条都没刷出来，可能是卡了——你们随便发个「1」让我看看通不通。通了我就把刚才那个投票挂上来。",
+      "markers": [],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 13,
+          "text": "弹幕我这边一条都没刷出来，",
+          "ms": 3260
+        },
+        {
+          "from": 13,
+          "length": 39,
+          "text": "可能是卡了——你们随便发个「1」让我看看通不通。通了我就把刚才那个投票挂上来。",
+          "ms": 8980
+        }
+      ],
+      "ms": 11840,
+      "cues": [],
+      "errors": [],
+      "calls": []
+    },
+    {
+      "segment": 7,
+      "text": "三种宝宝，三种反应。安全型拿妈妈当基地，妈妈在就敢爬去玩，妈妈走会难过，一回来要个抱抱就好了。回避型看着最省事：妈妈走他不哭，回来他连看都不看，抱起来也不贴。矛盾型反过来，妈妈还没走他就开始不安，人回来了又黏又推，怎么哄都哄不好。",
+      "speak": "[[draw a timeline 妈妈和宝宝进房间:0 | 陌生人进来:0 | 妈妈离开:0 | 陌生人安抚:0 | 妈妈回来:0 note=总时长约21分钟]] 三种宝宝，三种反应。安全型拿妈妈当*基地*，妈妈在就敢爬去玩，妈妈走会难过，一回来要个抱抱就好了。回避型看着最省事：妈妈走他不哭，回来他连看都不看，抱起来也不贴。矛盾型反过来，妈妈还没走他就开始不安，人回来了又黏又推，怎么哄都哄不好。",
+      "markers": [
+        {
+          "from": 17,
+          "to": 19
+        }
+      ],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 20,
+          "text": "三种宝宝，三种反应。安全型拿妈妈当基地，",
+          "ms": 4800
+        },
+        {
+          "from": 20,
+          "length": 78,
+          "text": "妈妈在就敢爬去玩，妈妈走会难过，一回来要个抱抱就好了。回避型看着最省事：妈妈走他不哭，回来他连看都不看，抱起来也不贴。矛盾型反过来，妈妈还没走他就开始不安，",
+          "ms": 17560
+        },
+        {
+          "from": 98,
+          "length": 17,
+          "text": "人回来了又黏又推，怎么哄都哄不好。",
+          "ms": 4140
+        }
+      ],
+      "ms": 25700,
+      "cues": [
+        {
+          "at": 0,
+          "raw": "[[draw a timeline 妈妈和宝宝进房间:0 | 陌生人进来:0 | 妈妈离开:0 | 陌生人安抚:0 | 妈妈回来:0 note=总时长约21分钟]]",
+          "cmd": {
+            "type": "draw",
+            "id": "a",
+            "kind": "timeline",
+            "text": "",
+            "rows": [
+              {
+                "label": "妈妈和宝宝进房间",
+                "note": "0"
+              },
+              {
+                "label": "陌生人进来",
+                "note": "0"
+              },
+              {
+                "label": "妈妈离开",
+                "note": "0"
+              },
+              {
+                "label": "陌生人安抚",
+                "note": "0"
+              },
+              {
+                "label": "妈妈回来",
+                "note": "0"
+              }
+            ],
+            "note": "总时长约21分钟",
+            "lane": "host"
+          }
+        }
+      ],
+      "errors": [],
+      "calls": []
+    }
+  ],
+  "B": [
+    {
+      "segment": 1,
+      "text": "大家晚上好啊——十一点了还在的，都是真爱。今天深更半夜的，咱们聊点软的：恋爱。主人给的方向是「恋爱的四象型」，我一听就来劲了——这东西到底是在说星座的火土风水，还是说人在感情里的四种反应模式？我先把资料翻一翻，你们也帮我判断一下：你们觉得自己是哪一型的？",
+      "speak": "大家晚上好啊——十一点了还在的，都是真爱。今天深更半夜的，咱们聊点软的：*恋爱*。主人给的方向是「恋爱的四象型」，我一听就来劲了——这东西到底是在说星座的火土风水，还是说人在感情里的四种反应模式？我先把资料翻一翻，你们也帮我判断一下：你们觉得自己是哪一型的？",
+      "markers": [
+        {
+          "from": 36,
+          "to": 38
+        }
+      ],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 21,
+          "text": "大家晚上好啊——十一点了还在的，都是真爱。",
+          "ms": 5020
+        },
+        {
+          "from": 21,
+          "length": 84,
+          "text": "今天深更半夜的，咱们聊点软的：恋爱。主人给的方向是「恋爱的四象型」，我一听就来劲了——这东西到底是在说星座的火土风水，还是说人在感情里的四种反应模式？我先把资料翻一翻，",
+          "ms": 18880
+        },
+        {
+          "from": 105,
+          "length": 22,
+          "text": "你们也帮我判断一下：你们觉得自己是哪一型的？",
+          "ms": 5240
+        }
+      ],
+      "ms": 28340,
+      "cues": [
+        {
+          "at": 0,
+          "raw": "[[draw g1_1 text 深夜聊恋爱 size=xl]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g1_1",
+            "kind": "text",
+            "text": "深夜聊恋爱",
+            "size": "xl",
+            "lane": "graphics"
+          }
+        },
+        {
+          "at": 0,
+          "raw": "[[sound bed name=/sets/midnight-tales/sfx/bed.mp3 volume=0.1 fadeMs=800]]",
+          "cmd": {
+            "type": "sound",
+            "action": "bed",
+            "name": "/sets/midnight-tales/sfx/bed.mp3",
+            "volume": 0.1,
+            "fadeMs": 800,
+            "lane": "sound"
+          }
+        },
+        {
+          "at": 16,
+          "raw": "[[fx bubbles]]",
+          "cmd": {
+            "type": "vfx",
+            "name": "bubbles",
+            "lane": "lighting"
+          }
+        },
+        {
+          "at": 47,
+          "raw": "[[draw g1_2 text 恋爱的四象型 size=l]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g1_2",
+            "kind": "text",
+            "text": "恋爱的四象型",
+            "size": "l",
+            "lane": "graphics"
+          }
+        },
+        {
+          "at": 55,
+          "raw": "[[sound effect name=pop volume=0.3]]",
+          "cmd": {
+            "type": "sound",
+            "action": "effect",
+            "name": "pop",
+            "volume": 0.3,
+            "lane": "sound"
+          }
+        },
+        {
+          "at": 72,
+          "raw": "[[draw g1_3 versus 星座 | 火土风水 || 感情 | 四种反应模式]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g1_3",
+            "kind": "versus",
+            "text": "",
+            "rows": [
+              {
+                "label": "星座",
+                "note": "火土风水"
+              },
+              {
+                "label": "感情",
+                "note": "四种反应模式"
+              }
+            ],
+            "lane": "graphics"
+          }
+        },
+        {
+          "at": 115,
+          "raw": "[[draw g1_4 text 你是哪一型？ size=m]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g1_4",
+            "kind": "text",
+            "text": "你是哪一型？",
+            "size": "m",
+            "lane": "graphics"
+          }
+        }
+      ],
+      "errors": [],
+      "calls": [
+        {
+          "lane": "graphics",
+          "ms": 1373,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[draw g1_1 text 深夜聊恋爱 size=xl]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g1_1",
+                "kind": "text",
+                "text": "深夜聊恋爱",
+                "size": "xl",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 47,
+              "raw": "[[draw g1_2 text 恋爱的四象型 size=l]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g1_2",
+                "kind": "text",
+                "text": "恋爱的四象型",
+                "size": "l",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 72,
+              "raw": "[[draw g1_3 versus 星座 | 火土风水 || 感情 | 四种反应模式]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g1_3",
+                "kind": "versus",
+                "text": "",
+                "rows": [
+                  {
+                    "label": "星座",
+                    "note": "火土风水"
+                  },
+                  {
+                    "label": "感情",
+                    "note": "四种反应模式"
+                  }
+                ],
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 115,
+              "raw": "[[draw g1_4 text 你是哪一型？ size=m]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g1_4",
+                "kind": "text",
+                "text": "你是哪一型？",
+                "size": "m",
+                "lane": "graphics"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "lighting",
+          "ms": 859,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 16,
+              "raw": "[[fx bubbles]]",
+              "cmd": {
+                "type": "vfx",
+                "name": "bubbles",
+                "lane": "lighting"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "sound",
+          "ms": 1059,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[sound bed name=/sets/midnight-tales/sfx/bed.mp3 volume=0.1 fadeMs=800]]",
+              "cmd": {
+                "type": "sound",
+                "action": "bed",
+                "name": "/sets/midnight-tales/sfx/bed.mp3",
+                "volume": 0.1,
+                "fadeMs": 800,
+                "lane": "sound"
+              }
+            },
+            {
+              "at": 55,
+              "raw": "[[sound effect name=pop volume=0.3]]",
+              "cmd": {
+                "type": "sound",
+                "action": "effect",
+                "name": "pop",
+                "volume": 0.3,
+                "lane": "sound"
+              }
+            }
+          ],
+          "errors": []
+        }
+      ]
+    },
+    {
+      "segment": 2,
+      "text": "顺便把灯调暗一点，这种话题亮着大灯聊有点尴尬。 嗯，这个亮度才对，像宿舍熄灯以后那半小时。",
+      "speak": "顺便把灯调暗一点，这种话题亮着大灯聊有点尴尬。[[room midnight-tales]] 嗯，这个亮度才对，像宿舍熄灯以后那半小时。",
+      "markers": [],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 23,
+          "text": "顺便把灯调暗一点，这种话题亮着大灯聊有点尴尬。",
+          "ms": 5460
+        },
+        {
+          "from": 23,
+          "length": 22,
+          "text": " 嗯，这个亮度才对，像宿舍熄灯以后那半小时。",
+          "ms": 5240
+        }
+      ],
+      "ms": 10300,
+      "cues": [
+        {
+          "at": 0,
+          "raw": "[[draw g2_1 text 熄灯后那半小时 size=m]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g2_1",
+            "kind": "text",
+            "text": "熄灯后那半小时",
+            "size": "m",
+            "lane": "graphics"
+          }
+        },
+        {
+          "at": 0,
+          "raw": "[[sound bed name=/sets/midnight-tales/sfx/bed.mp3 volume=0.1 fadeMs=800]]",
+          "cmd": {
+            "type": "sound",
+            "action": "bed",
+            "name": "/sets/midnight-tales/sfx/bed.mp3",
+            "volume": 0.1,
+            "fadeMs": 800,
+            "lane": "sound"
+          }
+        },
+        {
+          "at": 23,
+          "raw": "[[room midnight-tales]]",
+          "cmd": {
+            "type": "room",
+            "id": "midnight-tales",
+            "by": "agent",
+            "lane": "host"
+          }
+        },
+        {
+          "at": 24,
+          "raw": "[[fx chill]]",
+          "cmd": {
+            "type": "vfx",
+            "name": "chill",
+            "lane": "lighting"
+          }
+        }
+      ],
+      "errors": [
+        "lighting: 「海底小书房」没有这个特效：candle（有：bubbles shine splash sparkle）",
+        "sound: 配套音效前后800毫秒避让"
+      ],
+      "calls": [
+        {
+          "lane": "graphics",
+          "ms": 958,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[draw g2_1 text 熄灯后那半小时 size=m]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g2_1",
+                "kind": "text",
+                "text": "熄灯后那半小时",
+                "size": "m",
+                "lane": "graphics"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "lighting",
+          "ms": 985,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[fx candle]]",
+              "cmd": {
+                "type": "vfx",
+                "name": "candle",
+                "lane": "lighting"
+              }
+            },
+            {
+              "at": 24,
+              "raw": "[[fx chill]]",
+              "cmd": {
+                "type": "vfx",
+                "name": "chill",
+                "lane": "lighting"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "sound",
+          "ms": 1073,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[sound bed name=/sets/midnight-tales/sfx/bed.mp3 volume=0.1 fadeMs=800]]",
+              "cmd": {
+                "type": "sound",
+                "action": "bed",
+                "name": "/sets/midnight-tales/sfx/bed.mp3",
+                "volume": 0.1,
+                "fadeMs": 800,
+                "lane": "sound"
+              }
+            },
+            {
+              "at": 26,
+              "raw": "[[sound effect name=pop volume=0.3]]",
+              "cmd": {
+                "type": "sound",
+                "action": "effect",
+                "name": "pop",
+                "volume": 0.3,
+                "lane": "sound"
+              }
+            }
+          ],
+          "errors": []
+        }
+      ]
+    },
+    {
+      "segment": 3,
+      "text": "趁着翻资料，先来个不严谨的小投票：恋爱里你一慌，第一反应是什么？发数字就行。1 追得更紧，2 往后退一步，3 还好，能说开，4 又想追又想跑。",
+      "speak": "趁着翻资料，先来个不严谨的小投票：*恋爱里你一慌，第一反应是什么*？发数字就行。1 追得更紧，2 往后退一步，3 还好，能说开，4 又想追又想跑。",
+      "markers": [
+        {
+          "from": 17,
+          "to": 31
+        }
+      ],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 24,
+          "text": "趁着翻资料，先来个不严谨的小投票：恋爱里你一慌，",
+          "ms": 5680
+        },
+        {
+          "from": 24,
+          "length": 47,
+          "text": "第一反应是什么？发数字就行。1 追得更紧，2 往后退一步，3 还好，能说开，4 又想追又想跑。",
+          "ms": 10740
+        }
+      ],
+      "ms": 16020,
+      "cues": [
+        {
+          "at": 6,
+          "raw": "[[fx candle]]",
+          "cmd": {
+            "type": "vfx",
+            "name": "candle",
+            "lane": "lighting"
+          }
+        },
+        {
+          "at": 9,
+          "raw": "[[draw g3_1 text 恋爱里你一慌，第一反应是什么？ size=l]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g3_1",
+            "kind": "text",
+            "text": "恋爱里你一慌，第一反应是什么？",
+            "size": "l",
+            "lane": "graphics"
+          }
+        },
+        {
+          "at": 38,
+          "raw": "[[draw g3_2 list 1 追得更紧 | 2 往后退一步 | 3 还好，能说开 | 4 又想追又想跑]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g3_2",
+            "kind": "list",
+            "text": "",
+            "rows": [
+              {
+                "label": "1 追得更紧"
+              },
+              {
+                "label": "2 往后退一步"
+              },
+              {
+                "label": "3 还好，能说开"
+              },
+              {
+                "label": "4 又想追又想跑"
+              }
+            ],
+            "lane": "graphics"
+          }
+        }
+      ],
+      "errors": [],
+      "calls": [
+        {
+          "lane": "graphics",
+          "ms": 962,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 9,
+              "raw": "[[draw g3_1 text 恋爱里你一慌，第一反应是什么？ size=l]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g3_1",
+                "kind": "text",
+                "text": "恋爱里你一慌，第一反应是什么？",
+                "size": "l",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 38,
+              "raw": "[[draw g3_2 list 1 追得更紧 | 2 往后退一步 | 3 还好，能说开 | 4 又想追又想跑]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g3_2",
+                "kind": "list",
+                "text": "",
+                "rows": [
+                  {
+                    "label": "1 追得更紧"
+                  },
+                  {
+                    "label": "2 往后退一步"
+                  },
+                  {
+                    "label": "3 还好，能说开"
+                  },
+                  {
+                    "label": "4 又想追又想跑"
+                  }
+                ],
+                "lane": "graphics"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "lighting",
+          "ms": 858,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 6,
+              "raw": "[[fx candle]]",
+              "cmd": {
+                "type": "vfx",
+                "name": "candle",
+                "lane": "lighting"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "sound",
+          "ms": 886,
+          "status": "ok",
+          "cues": [],
+          "errors": []
+        }
+      ]
+    },
+    {
+      "segment": 4,
+      "text": "资料到手了，而且比我想的更有意思。先说一句可能有点扫兴的话：「四象型」在心理学里真有一套，但它不是星座的火土风水，是一群人在 1970 年代看婴儿看出来的。 发数字，我一会儿揭晓，看看这屋里哪种最多。",
+      "speak": "资料到手了，而且比我想的更有意思。先说一句可能有点扫兴的话：*「四象型」在心理学里真有一套*，但它不是星座的火土风水，是一群人在 1970 年代看*婴儿*看出来的。[[draw a poll 恋爱里你一慌，第一反应是？ | 追得更紧 | 往后退一步 | 还好，能说开 | 又想追又想跑]] 发数字，我一会儿揭晓，看看这屋里哪种最多。",
+      "markers": [
+        {
+          "from": 30,
+          "to": 44
+        },
+        {
+          "from": 71,
+          "to": 73
+        }
+      ],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 17,
+          "text": "资料到手了，而且比我想的更有意思。",
+          "ms": 4140
+        },
+        {
+          "from": 17,
+          "length": 66,
+          "text": "先说一句可能有点扫兴的话：「四象型」在心理学里真有一套，但它不是星座的火土风水，是一群人在 1970 年代看婴儿看出来的。 发数字，",
+          "ms": 14920
+        },
+        {
+          "from": 83,
+          "length": 17,
+          "text": "我一会儿揭晓，看看这屋里哪种最多。",
+          "ms": 4140
+        }
+      ],
+      "ms": 22400,
+      "cues": [
+        {
+          "at": 0,
+          "raw": "[[draw g4_1 text 四象型 size=l]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g4_1",
+            "kind": "text",
+            "text": "四象型",
+            "size": "l",
+            "lane": "graphics"
+          }
+        },
+        {
+          "at": 0,
+          "raw": "[[fx candle]]",
+          "cmd": {
+            "type": "vfx",
+            "name": "candle",
+            "lane": "lighting"
+          }
+        },
+        {
+          "at": 0,
+          "raw": "[[sound bed name=/sets/midnight-tales/sfx/bed.mp3 volume=0.1 fadeMs=800]]",
+          "cmd": {
+            "type": "sound",
+            "action": "bed",
+            "name": "/sets/midnight-tales/sfx/bed.mp3",
+            "volume": 0.1,
+            "fadeMs": 800,
+            "lane": "sound"
+          }
+        },
+        {
+          "at": 30,
+          "raw": "[[underline g4_1]]",
+          "cmd": {
+            "type": "touch",
+            "id": "g4_1",
+            "fx": "underline",
+            "lane": "graphics"
+          }
+        },
+        {
+          "at": 30,
+          "raw": "[[sound effect name=pop volume=0.3]]",
+          "cmd": {
+            "type": "sound",
+            "action": "effect",
+            "name": "pop",
+            "volume": 0.3,
+            "lane": "sound"
+          }
+        },
+        {
+          "at": 45,
+          "raw": "[[draw g4_2 text 不是星座 是婴儿观察 size=m at=below:g4_1]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g4_2",
+            "kind": "text",
+            "text": "不是星座 是婴儿观察",
+            "at": "below:g4_1",
+            "size": "m",
+            "lane": "graphics"
+          }
+        },
+        {
+          "at": 47,
+          "raw": "[[fx flicker]]",
+          "cmd": {
+            "type": "vfx",
+            "name": "flicker",
+            "lane": "lighting"
+          }
+        },
+        {
+          "at": 78,
+          "raw": "[[draw a poll 恋爱里你一慌，第一反应是？ | 追得更紧 | 往后退一步 | 还好，能说开 | 又想追又想跑]]",
+          "cmd": {
+            "type": "draw",
+            "id": "a",
+            "kind": "poll",
+            "text": "恋爱里你一慌，第一反应是？",
+            "rows": [
+              {
+                "label": "追得更紧"
+              },
+              {
+                "label": "往后退一步"
+              },
+              {
+                "label": "还好，能说开"
+              },
+              {
+                "label": "又想追又想跑"
+              }
+            ],
+            "lane": "host"
+          }
+        },
+        {
+          "at": 79,
+          "raw": "[[draw g4_3 text 发数字 看看哪种最多 size=m at=bottom]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g4_3",
+            "kind": "text",
+            "text": "发数字 看看哪种最多",
+            "at": "bottom",
+            "size": "m",
+            "lane": "graphics"
+          }
+        }
+      ],
+      "errors": [],
+      "calls": [
+        {
+          "lane": "graphics",
+          "ms": 1457,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[draw g4_1 text 四象型 size=l]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g4_1",
+                "kind": "text",
+                "text": "四象型",
+                "size": "l",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 30,
+              "raw": "[[underline g4_1]]",
+              "cmd": {
+                "type": "touch",
+                "id": "g4_1",
+                "fx": "underline",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 45,
+              "raw": "[[draw g4_2 text 不是星座 是婴儿观察 size=m at=below:g4_1]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g4_2",
+                "kind": "text",
+                "text": "不是星座 是婴儿观察",
+                "at": "below:g4_1",
+                "size": "m",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 79,
+              "raw": "[[draw g4_3 text 发数字 看看哪种最多 size=m at=bottom]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g4_3",
+                "kind": "text",
+                "text": "发数字 看看哪种最多",
+                "at": "bottom",
+                "size": "m",
+                "lane": "graphics"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "lighting",
+          "ms": 731,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[fx candle]]",
+              "cmd": {
+                "type": "vfx",
+                "name": "candle",
+                "lane": "lighting"
+              }
+            },
+            {
+              "at": 47,
+              "raw": "[[fx flicker]]",
+              "cmd": {
+                "type": "vfx",
+                "name": "flicker",
+                "lane": "lighting"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "sound",
+          "ms": 911,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[sound bed name=/sets/midnight-tales/sfx/bed.mp3 volume=0.1 fadeMs=800]]",
+              "cmd": {
+                "type": "sound",
+                "action": "bed",
+                "name": "/sets/midnight-tales/sfx/bed.mp3",
+                "volume": 0.1,
+                "fadeMs": 800,
+                "lane": "sound"
+              }
+            },
+            {
+              "at": 30,
+              "raw": "[[sound effect name=pop volume=0.3]]",
+              "cmd": {
+                "type": "sound",
+                "action": "effect",
+                "name": "pop",
+                "volume": 0.3,
+                "lane": "sound"
+              }
+            }
+          ],
+          "errors": []
+        }
+      ]
+    },
+    {
+      "segment": 5,
+      "text": "故事从一间小房间开始。心理学家 Ainsworth 找了几十对妈妈和 9 到 30 个月大的宝宝，把那间房布置成有玩具的样子，然后安排一场 21 分钟的戏：妈妈坐着，陌生人进来，妈妈离开，陌生人陪，妈妈回来。她只看四件事——宝宝敢不敢玩、妈妈走时哭不哭、怕不怕陌生人、妈妈回来时怎么反应。就这么七八个来回，看出了一个规律。",
+      "speak": " 故事从一间小房间开始。心理学家 Ainsworth 找了几十对妈妈和 9 到 30 个月大的宝宝，把那间房布置成有玩具的样子，然后安排一场 21 分钟的戏：妈妈坐着，陌生人进来，妈妈离开，陌生人陪，妈妈回来。她只看四件事——宝宝敢不敢玩、妈妈走时哭不哭、怕不怕陌生人、妈妈回来时*怎么反应*。就这么七八个来回，看出了一个规律。",
+      "markers": [
+        {
+          "from": 139,
+          "to": 143
+        }
+      ],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 11,
+          "text": "故事从一间小房间开始。",
+          "ms": 2820
+        },
+        {
+          "from": 11,
+          "length": 38,
+          "text": "心理学家 Ainsworth 找了几十对妈妈和 9 到 30 个月大的宝宝，",
+          "ms": 8760
+        },
+        {
+          "from": 49,
+          "length": 112,
+          "text": "把那间房布置成有玩具的样子，然后安排一场 21 分钟的戏：妈妈坐着，陌生人进来，妈妈离开，陌生人陪，妈妈回来。她只看四件事——宝宝敢不敢玩、妈妈走时哭不哭、怕不怕陌生人、妈妈回来时怎么反应。就这么七八个来回，看出了一个规律。",
+          "ms": 25040
+        }
+      ],
+      "ms": 35820,
+      "cues": [
+        {
+          "at": 0,
+          "raw": "[[fx candle]]",
+          "cmd": {
+            "type": "vfx",
+            "name": "candle",
+            "lane": "lighting"
+          }
+        },
+        {
+          "at": 0,
+          "raw": "[[sound bed name=/sets/midnight-tales/sfx/bed.mp3 volume=0.1 fadeMs=800]]",
+          "cmd": {
+            "type": "sound",
+            "action": "bed",
+            "name": "/sets/midnight-tales/sfx/bed.mp3",
+            "volume": 0.1,
+            "fadeMs": 800,
+            "lane": "sound"
+          }
+        },
+        {
+          "at": 35,
+          "raw": "[[draw g5_2 text 妈妈 × 几十对 · 宝宝 9–30 个月 size=m]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g5_2",
+            "kind": "text",
+            "text": "妈妈 × 几十对 · 宝宝 9–30 个月",
+            "size": "m",
+            "lane": "graphics"
+          }
+        },
+        {
+          "at": 70,
+          "raw": "[[draw g5_3 number 21 note=分钟的实验时长]]",
+          "cmd": {
+            "type": "draw",
+            "id": "g5_3",
+            "kind": "number",
+            "text": "21",
+            "note": "分钟的实验时长",
+            "lane": "graphics"
+          }
+        },
+        {
+          "at": 153,
+          "raw": "[[fx heartbeat]]",
+          "cmd": {
+            "type": "vfx",
+            "name": "heartbeat",
+            "lane": "lighting"
+          }
+        },
+        {
+          "at": 158,
+          "raw": "[[sound effect name=pop volume=0.3]]",
+          "cmd": {
+            "type": "sound",
+            "action": "effect",
+            "name": "pop",
+            "volume": 0.3,
+            "lane": "sound"
+          }
+        }
+      ],
+      "errors": [
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具"
+      ],
+      "calls": [
+        {
+          "lane": "graphics",
+          "ms": 1533,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[draw g5_1 text 一间小房间 size=l]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g5_1",
+                "kind": "text",
+                "text": "一间小房间",
+                "size": "l",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 35,
+              "raw": "[[draw g5_2 text 妈妈 × 几十对 · 宝宝 9–30 个月 size=m]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g5_2",
+                "kind": "text",
+                "text": "妈妈 × 几十对 · 宝宝 9–30 个月",
+                "size": "m",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 70,
+              "raw": "[[draw g5_3 number 21 note=分钟的实验时长]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g5_3",
+                "kind": "number",
+                "text": "21",
+                "note": "分钟的实验时长",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 78,
+              "raw": "[[draw g5_4 flow 妈妈坐着 | 陌生人进来 | 妈妈离开 | 陌生人陪 | 妈妈回来]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g5_4",
+                "kind": "flow",
+                "text": "",
+                "rows": [
+                  {
+                    "label": "妈妈坐着"
+                  },
+                  {
+                    "label": "陌生人进来"
+                  },
+                  {
+                    "label": "妈妈离开"
+                  },
+                  {
+                    "label": "陌生人陪"
+                  },
+                  {
+                    "label": "妈妈回来"
+                  }
+                ],
+                "lane": "graphics"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "lighting",
+          "ms": 1014,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[fx candle]]",
+              "cmd": {
+                "type": "vfx",
+                "name": "candle",
+                "lane": "lighting"
+              }
+            },
+            {
+              "at": 153,
+              "raw": "[[fx heartbeat]]",
+              "cmd": {
+                "type": "vfx",
+                "name": "heartbeat",
+                "lane": "lighting"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "sound",
+          "ms": 880,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[sound bed name=/sets/midnight-tales/sfx/bed.mp3 volume=0.1 fadeMs=800]]",
+              "cmd": {
+                "type": "sound",
+                "action": "bed",
+                "name": "/sets/midnight-tales/sfx/bed.mp3",
+                "volume": 0.1,
+                "fadeMs": 800,
+                "lane": "sound"
+              }
+            },
+            {
+              "at": 158,
+              "raw": "[[sound effect name=pop volume=0.3]]",
+              "cmd": {
+                "type": "sound",
+                "action": "effect",
+                "name": "pop",
+                "volume": 0.3,
+                "lane": "sound"
+              }
+            }
+          ],
+          "errors": []
+        }
+      ]
+    },
+    {
+      "segment": 6,
+      "text": "弹幕我这边一条都没刷出来，可能是卡了——你们随便发个「1」让我看看通不通。通了我就把刚才那个投票挂上来。",
+      "speak": "弹幕我这边一条都没刷出来，可能是卡了——你们随便发个「1」让我看看通不通。通了我就把刚才那个投票挂上来。",
+      "markers": [],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 13,
+          "text": "弹幕我这边一条都没刷出来，",
+          "ms": 3260
+        },
+        {
+          "from": 13,
+          "length": 39,
+          "text": "可能是卡了——你们随便发个「1」让我看看通不通。通了我就把刚才那个投票挂上来。",
+          "ms": 8980
+        }
+      ],
+      "ms": 11840,
+      "cues": [],
+      "errors": [
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具"
+      ],
+      "calls": [
+        {
+          "lane": "graphics",
+          "ms": 913,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[draw g6_1 text 弹幕卡了？ size=l]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g6_1",
+                "kind": "text",
+                "text": "弹幕卡了？",
+                "size": "l",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 20,
+              "raw": "[[draw g6_2 text 发个「1」试试 size=l]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g6_2",
+                "kind": "text",
+                "text": "发个「1」试试",
+                "size": "l",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 37,
+              "raw": "[[draw g6_3 text 通了就挂投票 size=m]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g6_3",
+                "kind": "text",
+                "text": "通了就挂投票",
+                "size": "m",
+                "lane": "graphics"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "lighting",
+          "ms": 459,
+          "status": "ok",
+          "cues": [],
+          "errors": []
+        },
+        {
+          "lane": "sound",
+          "ms": 459,
+          "status": "ok",
+          "cues": [],
+          "errors": []
+        }
+      ]
+    },
+    {
+      "segment": 7,
+      "text": "三种宝宝，三种反应。安全型拿妈妈当基地，妈妈在就敢爬去玩，妈妈走会难过，一回来要个抱抱就好了。回避型看着最省事：妈妈走他不哭，回来他连看都不看，抱起来也不贴。矛盾型反过来，妈妈还没走他就开始不安，人回来了又黏又推，怎么哄都哄不好。",
+      "speak": " 三种宝宝，三种反应。安全型拿妈妈当*基地*，妈妈在就敢爬去玩，妈妈走会难过，一回来要个抱抱就好了。回避型看着最省事：妈妈走他不哭，回来他连看都不看，抱起来也不贴。矛盾型反过来，妈妈还没走他就开始不安，人回来了又黏又推，怎么哄都哄不好。",
+      "markers": [
+        {
+          "from": 17,
+          "to": 19
+        }
+      ],
+      "chunks": [
+        {
+          "from": 0,
+          "length": 20,
+          "text": "三种宝宝，三种反应。安全型拿妈妈当基地，",
+          "ms": 4800
+        },
+        {
+          "from": 20,
+          "length": 78,
+          "text": "妈妈在就敢爬去玩，妈妈走会难过，一回来要个抱抱就好了。回避型看着最省事：妈妈走他不哭，回来他连看都不看，抱起来也不贴。矛盾型反过来，妈妈还没走他就开始不安，",
+          "ms": 17560
+        },
+        {
+          "from": 98,
+          "length": 17,
+          "text": "人回来了又黏又推，怎么哄都哄不好。",
+          "ms": 4140
+        }
+      ],
+      "ms": 25700,
+      "cues": [
+        {
+          "at": 0,
+          "raw": "[[fx candle]]",
+          "cmd": {
+            "type": "vfx",
+            "name": "candle",
+            "lane": "lighting"
+          }
+        }
+      ],
+      "errors": [
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具"
+      ],
+      "calls": [
+        {
+          "lane": "graphics",
+          "ms": 1148,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[draw g7_1 text 三种宝宝 size=l]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g7_1",
+                "kind": "text",
+                "text": "三种宝宝",
+                "size": "l",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 10,
+              "raw": "[[draw g7_2 text 安全型：妈妈是基地 size=m at=left]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g7_2",
+                "kind": "text",
+                "text": "安全型：妈妈是基地",
+                "at": "left",
+                "size": "m",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 47,
+              "raw": "[[draw g7_3 text 回避型：不哭不看不贴 size=m at=right]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g7_3",
+                "kind": "text",
+                "text": "回避型：不哭不看不贴",
+                "at": "right",
+                "size": "m",
+                "lane": "graphics"
+              }
+            },
+            {
+              "at": 79,
+              "raw": "[[draw g7_4 text 矛盾型：又黏又推 size=m at=bottom]]",
+              "cmd": {
+                "type": "draw",
+                "id": "g7_4",
+                "kind": "text",
+                "text": "矛盾型：又黏又推",
+                "at": "bottom",
+                "size": "m",
+                "lane": "graphics"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "lighting",
+          "ms": 739,
+          "status": "ok",
+          "cues": [
+            {
+              "at": 0,
+              "raw": "[[fx candle]]",
+              "cmd": {
+                "type": "vfx",
+                "name": "candle",
+                "lane": "lighting"
+              }
+            }
+          ],
+          "errors": []
+        },
+        {
+          "lane": "sound",
+          "ms": 710,
+          "status": "ok",
+          "cues": [],
+          "errors": []
+        }
+      ]
+    }
+  ]
+}

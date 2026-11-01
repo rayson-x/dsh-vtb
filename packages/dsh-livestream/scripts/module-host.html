@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+html, body, #root { margin: 0; width: 100%; height: 100%; background: transparent !important; overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const bundle = q.get('bundle');
+const gid = q.get('gid');
+const parent = window.parent;
+const props = parent.__graphicModuleProps && parent.__graphicModuleProps[gid];
+try {
+  if (!bundle || !props) throw new Error('没有模块参数');
+  const style = getComputedStyle(parent.document.documentElement);
+  const lines = [];
+  for (let i = 0; i < style.length; i++) {
+    const name = style.item(i);
+    if (!name.startsWith('--')) continue;
+    const value = style.getPropertyValue(name).trim();
+    if (!value || /[;{}]|[\r\n]/.test(value)) continue;
+    lines.push(name + ':' + value);
+  }
+  lines.push('--bg:transparent');
+  document.documentElement.style.cssText = lines.join(';');
+  const token = q.get('token');
+  const src = token && !bundle.includes('?') ? bundle + '?token=' + encodeURIComponent(token) : bundle;
+  const mod = await import(src);
+  const scene = mod.default && (mod.default.setup || typeof mod.default === 'function') ? mod.default : mod;
+  const setup = scene.setup || scene;
+  window.__effect = await setup(document.getElementById('root'), props);
+  document.documentElement.dataset.graphicReady = '1';
+} catch (err) {
+  document.documentElement.dataset.graphicError = (err && err.message) || '装不上';
+}
+</script>
+</body>
+</html>

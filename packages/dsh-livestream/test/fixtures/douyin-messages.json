@@ -1,0 +1,293 @@
+{
+  "chat": {
+    "method": "WebcastChatMessage",
+    "body": {
+      "common": {
+        "method": "WebcastChatMessage",
+        "msgId": "10001",
+        "roomId": "30001"
+      },
+      "user": {
+        "id": "10001",
+        "shortId": "10002",
+        "nickName": "阳光宅男",
+        "payGrade": {
+          "level": "16"
+        },
+        "fansClub": {
+          "data": {
+            "level": 10,
+            "userFansClubStatus": 1,
+            "anchorId": "20001"
+          }
+        },
+        "displayId": "10002"
+      },
+      "content": "谁家过年不吃顿饺子"
+    }
+  },
+  "chatUnlit": {
+    "method": "WebcastChatMessage",
+    "body": {
+      "common": {
+        "method": "WebcastChatMessage",
+        "msgId": "10002",
+        "roomId": "30001"
+      },
+      "user": {
+        "id": "10002",
+        "shortId": "10003",
+        "nickName": "˗ˋ派大星ˊ˗",
+        "payGrade": {
+          "level": "17"
+        },
+        "fansClub": {
+          "data": {
+            "level": 8,
+            "userFansClubStatus": 2,
+            "anchorId": "20001"
+          }
+        },
+        "displayId": "10003"
+      },
+      "content": "鹤子：显着你了…"
+    }
+  },
+  "giftEnd": {
+    "method": "WebcastGiftMessage",
+    "body": {
+      "common": {
+        "method": "WebcastGiftMessage",
+        "msgId": "10003",
+        "roomId": "30001",
+        "createTime": "1793364634"
+      },
+      "giftId": "10003",
+      "groupCount": "1",
+      "repeatCount": "1",
+      "comboCount": "1",
+      "user": {
+        "id": "10003",
+        "shortId": "10004",
+        "nickName": "辣酱拌面",
+        "payGrade": {
+          "level": "27"
+        },
+        "fansClub": {
+          "data": {
+            "level": 8,
+            "userFansClubStatus": 1,
+            "anchorId": "20001"
+          }
+        },
+        "displayId": "10004"
+      },
+      "repeatEnd": 1,
+      "groupId": "10004",
+      "gift": {
+        "id": "10005",
+        "combo": true,
+        "diamondCount": 2,
+        "name": "大啤酒"
+      },
+      "sendType": "1",
+      "traceId": "10006"
+    }
+  },
+  "giftMid": {
+    "method": "WebcastGiftMessage",
+    "body": {
+      "common": {
+        "method": "WebcastGiftMessage",
+        "msgId": "10006",
+        "roomId": "30001",
+        "createTime": "1793364634050"
+      },
+      "giftId": "10006",
+      "groupCount": "1",
+      "repeatCount": "1",
+      "comboCount": "1",
+      "user": {
+        "id": "10006",
+        "shortId": "10007",
+        "nickName": "永",
+        "payGrade": {
+          "level": "11"
+        },
+        "fansClub": {
+          "data": {
+            "level": 8,
+            "userFansClubStatus": 1,
+            "anchorId": "20001"
+          }
+        },
+        "displayId": "10007"
+      },
+      "groupId": "10007",
+      "gift": {
+        "id": "10008",
+        "combo": true,
+        "diamondCount": 1,
+        "name": "人气票"
+      },
+      "traceId": "10009"
+    }
+  },
+  "giftPricey": {
+    "method": "WebcastGiftMessage",
+    "body": {
+      "common": {
+        "method": "WebcastGiftMessage",
+        "msgId": "10009",
+        "roomId": "30001",
+        "createTime": "1793364634"
+      },
+      "giftId": "10009",
+      "groupCount": "1",
+      "repeatCount": "1",
+      "comboCount": "1",
+      "user": {
+        "id": "10009",
+        "shortId": "10010",
+        "nickName": "来了",
+        "payGrade": {
+          "level": "6"
+        },
+        "fansClub": {
+          "data": {
+            "level": 7,
+            "userFansClubStatus": 1,
+            "anchorId": "20001"
+          }
+        },
+        "displayId": "10010"
+      },
+      "repeatEnd": 1,
+      "groupId": "10010",
+      "gift": {
+        "id": "10011",
+        "combo": true,
+        "diamondCount": 19,
+        "name": "撩一下"
+      },
+      "sendType": "4",
+      "traceId": "10012"
+    }
+  },
+  "enter": {
+    "method": "WebcastMemberMessage",
+    "body": {
+      "common": {
+        "method": "WebcastMemberMessage",
+        "msgId": "10012",
+        "roomId": "30001"
+      },
+      "user": {
+        "id": "10012",
+        "shortId": "10013",
+        "nickName": "🐯🐯🐯🐯",
+        "payGrade": {
+          "level": "32"
+        },
+        "fansClub": {
+          "data": {
+            "level": 7,
+            "userFansClubStatus": 1,
+            "anchorId": "20001"
+          }
+        },
+        "displayId": "10013"
+      },
+      "memberCount": "142816"
+    }
+  },
+  "like": {
+    "method": "WebcastLikeMessage",
+    "body": {
+      "common": {
+        "method": "WebcastLikeMessage",
+        "msgId": "10013",
+        "roomId": "30001"
+      },
+      "count": "30",
+      "total": "4597076",
+      "user": {
+        "id": "10013",
+        "shortId": "10014",
+        "nickName": "无响应",
+        "payGrade": {
+          "level": "28"
+        },
+        "fansClub": {
+          "data": {
+            "level": 10,
+            "userFansClubStatus": 1,
+            "anchorId": "20001"
+          }
+        },
+        "displayId": "10014"
+      }
+    }
+  },
+  "follow": {
+    "method": "WebcastSocialMessage",
+    "body": {
+      "common": {
+        "method": "WebcastSocialMessage",
+        "msgId": "10014",
+        "roomId": "30001"
+      },
+      "user": {
+        "id": "10014",
+        "shortId": "10015",
+        "nickName": "大器晚成",
+        "payGrade": {},
+        "fansClub": {
+          "data": {}
+        },
+        "displayId": "10015"
+      },
+      "action": "1",
+      "shareTarget": "20001"
+    }
+  },
+  "share": {
+    "method": "WebcastSocialMessage",
+    "body": {
+      "common": {
+        "method": "WebcastSocialMessage",
+        "msgId": "10015",
+        "roomId": "30001"
+      },
+      "user": {
+        "id": "10015",
+        "shortId": "10016",
+        "nickName": "精神病研究中心",
+        "payGrade": {
+          "level": "2"
+        },
+        "fansClub": {
+          "data": {}
+        },
+        "displayId": "10016"
+      },
+      "action": "3",
+      "shareTarget": "20001"
+    }
+  },
+  "viewers": {
+    "method": "WebcastRoomUserSeqMessage",
+    "body": {
+      "common": {
+        "method": "WebcastRoomUserSeqMessage",
+        "msgId": "10016",
+        "roomId": "30001",
+        "createTime": "1793364636206"
+      },
+      "total": "145747",
+      "totalUser": "1945997",
+      "totalStr": "10万+",
+      "onlineUserForAnchor": "14.6万"
+    }
+  }
+}

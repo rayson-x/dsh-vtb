@@ -1,0 +1,219 @@
+<!--
+场景 probability
+演示：一组一组抛硬币，正面次数堆成钟形（运气的形状）；抛得越多，比例越靠近概率。
+
+参数：
+- n  number  1–60  默认 20  每一组抛几次
+- p  number  0–1   默认 0.5 正面的概率
+
+动作：
+- flip   抛一组，直方图加一格
+- run    连抛 24 组，钟形长出来
+- reset  清空，从头数
+
+重放：do(action, { replay: true }) 直接跳到这一下的结果，不播动画。
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>运气的形状</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #status { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="status"></div>
+<script src="kit.js"></script>
+<script>
+const K = window.SceneKit;
+const { colors } = K;
+
+const state = {
+  n: 20,
+  p: 0.5,
+  seed: 11,
+  hist: new Float64Array(21),
+  trials: 0,
+  last: null,
+  coin: 0,
+  anim: null,
+  rand: K.mulberry32(11),
+};
+
+function clearHist() {
+  state.hist = new Float64Array(state.n + 1);
+  state.trials = 0;
+  state.last = null;
+  state.coin = 0;
+  state.anim = null;
+  state.rand = K.mulberry32(state.seed);
+}
+
+function oneGroup() {
+  let heads = 0;
+  for (let i = 0; i < state.n; i++) if (state.rand() < state.p) heads += 1;
+  return heads;
+}
+
+function addHeads(heads) {
+  state.hist[heads] += 1;
+  state.trials += 1;
+  state.last = heads;
+  state.coin = 0;
+}
+
+/** 把还在播的动画结算完，避免连点把次数弄丢或算重。 */
+function commit() {
+  const a = state.anim;
+  if (!a) return;
+  if (a.kind === 'flip') addHeads(a.heads);
+  else for (let i = a.shown; i < a.list.length; i++) addHeads(a.list[i]);
+  state.anim = null;
+}
+
+function pmf(n, p) {
+  const a = new Float64Array(n + 1);
+  if (p <= 0) { a[0] = 1; return a; }
+  if (p >= 1) { a[n] = 1; return a; }
+  a[0] = (1 - p) ** n;
+  for (let k = 0; k < n; k++) a[k + 1] = a[k] * (n - k) / (k + 1) * (p / (1 - p));
+  return a;
+}
+
+function set(params) {
+  params = params || {};
+  const n = params.n === undefined ? state.n : Math.round(K.num(params.n, state.n, 1, 60));
+  const p = params.p === undefined ? state.p : K.num(params.p, state.p, 0, 1);
+  if (n === state.n && Math.abs(p - state.p) < 1e-9) return;
+  state.n = n;
+  state.p = p;
+  clearHist();
+}
+
+function doAction(action, options) {
+  const replay = !!(options && options.replay);
+  if (action === 'reset') { clearHist(); return; }
+  if (action !== 'flip' && action !== 'run') return;
+  commit();
+  if (action === 'flip') {
+    const heads = oneGroup();
+    if (replay) { addHeads(heads); return; }
+    state.anim = { kind: 'flip', t0: performance.now(), dur: 560, heads };
+    return;
+  }
+  const list = [];
+  for (let i = 0; i < 24; i++) list.push(oneGroup());
+  if (replay) { for (const h of list) addHeads(h); return; }
+  state.anim = { kind: 'run', t0: performance.now(), dur: 900, list, shown: 0 };
+}
+
+window.scene = { set, do: doAction };
+
+K.mount(document.getElementById('c'), (ctx, w, h, now) => {
+  const a = state.anim;
+  if (a && a.kind === 'flip') {
+    const k = K.clamp((now - a.t0) / a.dur, 0, 1);
+    state.coin = k * Math.PI * 4;
+    if (k >= 1) commit();
+  } else if (a && a.kind === 'run') {
+    const k = K.clamp((now - a.t0) / a.dur, 0, 1);
+    const need = Math.floor(k * a.list.length);
+    while (a.shown < need) addHeads(a.list[a.shown++]);
+    state.coin = now / 70;
+    if (k >= 1) commit();
+  }
+
+  let heads = 0;
+  for (let k = 0; k < state.hist.length; k++) heads += k * state.hist[k];
+  const total = state.trials * state.n;
+  const pct = total ? Math.round((heads / total) * 100) : Math.round(state.p * 100);
+  const status = total
+    ? `正面 ${pct}% · 理论 ${Math.round(state.p * 100)}%`
+    : `每组 ${state.n} 次 · 概率 ${Math.round(state.p * 100)}%`;
+  const { f, chart } = K.chrome(ctx, w, h, '运气的形状', '抛得越多，越像钟形', status);
+
+  const coinR = Math.max(28, Math.min(chart.h * 0.3, chart.w * 0.14, 120));
+  const coinCx = chart.x + coinR + 6;
+  const coinCy = chart.y + chart.h * 0.4;
+  const squash = Math.max(0.1, Math.abs(Math.cos(state.coin)));
+  ctx.save();
+  ctx.translate(coinCx, coinCy);
+  ctx.scale(squash, 1);
+  ctx.beginPath();
+  ctx.arc(0, 0, coinR, 0, Math.PI * 2);
+  ctx.fillStyle = colors.gold;
+  ctx.fill();
+  ctx.restore();
+  if (squash > 0.35) {
+    ctx.fillStyle = colors.bg;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = K.font(coinR * 0.62, 700, true);
+    const letter = state.anim ? (Math.cos(state.coin) >= 0 ? '正' : '反') : (state.last == null ? '币' : String(state.last));
+    ctx.fillText(letter, coinCx, coinCy);
+  }
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = colors.mute;
+  ctx.font = K.font(f.label, 500, false);
+  ctx.fillText(state.last == null ? '还没抛' : '这组正面', coinCx, coinCy + coinR + 8);
+
+  const plotX = coinCx + coinR + f.pad * 0.8;
+  const plotY = chart.y + 8;
+  const plotW = Math.max(20, chart.x + chart.w - plotX);
+  const plotH = Math.max(20, chart.h - f.label - 16);
+  const n = state.n;
+  const theory = pmf(n, state.p);
+  const ghost = Math.max(state.trials, 8);
+  let maxC = 1;
+  for (let k = 0; k <= n; k++) maxC = Math.max(maxC, state.hist[k], theory[k] * ghost);
+  const xOf = (k) => plotX + ((k + 0.5) / (n + 1)) * plotW;
+  const yOf = (v) => plotY + plotH - (v / maxC) * plotH;
+  const bw = Math.max(2, plotW / (n + 1) - 2);
+
+  ctx.strokeStyle = colors.line;
+  ctx.beginPath();
+  ctx.moveTo(plotX, plotY + plotH);
+  ctx.lineTo(plotX + plotW, plotY + plotH);
+  ctx.stroke();
+
+  for (let k = 0; k <= n; k++) {
+    const bh = (state.hist[k] / maxC) * plotH;
+    ctx.fillStyle = colors.whale;
+    K.roundRect(ctx, xOf(k) - bw / 2, plotY + plotH - bh, bw, Math.max(bh, 0), 3);
+    ctx.fill();
+  }
+
+  ctx.beginPath();
+  ctx.strokeStyle = colors.gold;
+  ctx.lineWidth = Math.max(3, f.label * 0.14);
+  for (let k = 0; k <= n; k++) {
+    const x = xOf(k);
+    const y = yOf(theory[k] * ghost);
+    if (k === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  const mean = n * state.p;
+  ctx.setLineDash([6, 6]);
+  ctx.strokeStyle = colors.foam;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(xOf(mean), plotY);
+  ctx.lineTo(xOf(mean), plotY + plotH);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = colors.gold;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.font = K.font(f.label, 500, false);
+  ctx.fillText(state.trials ? '理论次数' : '理论形状', plotX + plotW, plotY);
+});
+</script>
+</body>
+</html>

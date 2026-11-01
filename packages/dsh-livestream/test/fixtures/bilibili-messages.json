@@ -1,0 +1,226 @@
+[
+  {
+    "cmd": "DANMU_MSG",
+    "dm_v2": "",
+    "info": [
+      [
+        0,
+        1,
+        25,
+        16777215,
+        1793364243993,
+        -42927266,
+        0,
+        "ab101365",
+        0,
+        0,
+        0,
+        "",
+        0,
+        "{}",
+        "{}",
+        {
+          "extra": "{\"send_from_me\":false,\"master_player_hidden\":false,\"mode\":0,\"color\":16777215,\"dm_type\":0,\"font_size\":25,\"player_mode\":1,\"show_player_type\":0,\"content\":\"抱着海皇倒立[dog][花]\",\"user_hash\":\"10001\",\"emoticon_unique\":\"\",\"bulge_display\":0,\"recommend_score\":6,\"dm_score\":0,\"chronos_force_display\":0,\"main_state_dm_color\":\"\",\"objective_state_dm_color\":\"\",\"direction\":0,\"pk_direction\":0,\"quartet_direction\":0,\"anniversary_crowd\":0,\"yeah_space_type\":\"\",\"yeah_space_url\":\"\",\"jump_to_url\":\"\",\"space_type\":\"\",\"space_url\":\"\",\"animation\":{},\"emots\":{\"[dog]\":{\"count\":1,\"descript\":\"[dog]\",\"emoji\":\"[dog]\",\"emoticon_id\":208,\"emoticon_unique\":\"emoji_208\",\"height\":20,\"url\":\"\",\"width\":20},\"[花]\":{\"count\":1,\"descript\":\"[花]\",\"emoji\":\"[花]\",\"emoticon_id\":209,\"emoticon_unique\":\"emoji_209\",\"height\":20,\"url\":\"\",\"width\":20}},\"is_audited\":false,\"id_str\":\"5350b50f5f57c36c68b5d494f56ae4917691\",\"icon\":null,\"show_reply\":true,\"reply_mid\":0,\"reply_uname\":\"\",\"reply_uname_color\":\"\",\"reply_is_mystery\":false,\"reply_type_enum\":0,\"hit_combo\":0,\"esports_jump_url\":\"\",\"is_mirror\":false,\"is_collaboration_member\":false,\"card\":{\"card_type\":0,\"oid_str\":\"\",\"oid_str_1\":\"\",\"origin_oid_str\":\"\",\"share_id\":\"\",\"share_origin\":\"\",\"from\":\"\",\"card_content\":null},\"voice\":null,\"background_type\":0}",
+          "mode": 0,
+          "show_player_type": 0,
+          "user": {
+            "anon": null,
+            "base": {
+              "face": "",
+              "is_mystery": false,
+              "name": "爱***",
+              "name_color": 0,
+              "name_color_str": "",
+              "official_info": {
+                "desc": "",
+                "role": 0,
+                "title": "",
+                "type": -1
+              },
+              "origin_info": {
+                "face": "",
+                "name": "爱***"
+              },
+              "risk_ctrl_info": null
+            },
+            "bubble_box": null,
+            "dm_config": {
+              "color": 16777215,
+              "length": 80,
+              "mode": 1
+            },
+            "guard": null,
+            "guard_leader": null,
+            "medal": null,
+            "name_color": null,
+            "title": {
+              "old_title_css_id": "",
+              "title_css_id": ""
+            },
+            "uhead_frame": null,
+            "uid": 0,
+            "wealth": {
+              "dm_icon_key": "",
+              "level": 2
+            }
+          }
+        },
+        {
+          "activity_identity": "",
+          "activity_source": 0,
+          "not_show": 0
+        },
+        0
+      ],
+      "抱着海皇倒立[dog][花]",
+      [
+        0,
+        "爱***",
+        0,
+        0,
+        0,
+        10000,
+        1,
+        ""
+      ],
+      [],
+      [
+        0,
+        0,
+        9868950,
+        ">50000",
+        0
+      ],
+      [
+        "",
+        ""
+      ],
+      0,
+      0,
+      null,
+      {
+        "ct": "55978884",
+        "ts": 1793364243
+      },
+      0,
+      0,
+      null,
+      null,
+      0,
+      39,
+      [
+        2
+      ],
+      null
+    ]
+  },
+  {
+    "cmd": "SEND_GIFT_V2",
+    "danmu": {
+      "area": 1
+    },
+    "data": {
+      "dmscore": 42,
+      "pb": "EgbmmZoqKioaSmh0dHBzOi8vaTIuaGRzbGIuY29tL2Jmcy9mYWNlLzVlZmY3MGJjMWRmMGM1MmM1MWVlYTVjZjA3Mjk4YTEyY2Q1OTEzMGEuanBnQgBS2gUI0YkCEg/nsonkuJ3lm6Lnga/niYwYASABKGQwZDhkQgRnb2xkShM0ODMzNTk5MDMzMzU0MjYzNTUyUJSiktcGWAFiUmJhdGNoOmdpZnQ6Y29tYm9faWQ6NmVkZDg4NzgyMGExMjVkMWY3YTE0ZjQ1YjUwNmY0MzA6NTk3MDE2MDozNDAwMToxNzkzMzY0MjQ0LjUyNDhoCnBkeAWFAQAAgD+IAQGSAQbmipXlloLAAanS0QvqARMKDOWwj+a9rumZoumVvxDwsewCigKCAgjwsewCEvoBCgzlsI/mva7pmaLplb8SSmh0dHBzOi8vaTEuaGRzbGIuY29tL2Jmcy9mYWNlLzE2NDIwOTI1YjUwMTUzZjk5OTM1YzU0MTViZGRiMmFjZWNmZWE4NzcuanBnMloKDOWwj+a9rumZoumVvxJKaHR0cHM6Ly9pMS5oZHNsYi5jb20vYmZzL2ZhY2UvMTY0MjA5MjViNTAxNTNmOTk5MzVjNTQxNWJkZGIyYWNlY2ZlYTg3Ny5qcGc6QggBEj4yMDI155m+5aSnVVDkuLvjgIEyMDI05bm05bqm5pyA6auY5Lq65rCU5aWWVVDkuLvjgIHnn6XlkI1VUOS4u5ICBwiM4NcCEAGaAuUBCkpodHRwczovL3MxLmhkc2xiLmNvbS9iZnMvbGl2ZS9lMDUxZGZkNDU1NzY3OGY4ZWRjYWM0OTkzZWQwMGEwOTM1Y2JkOWNjLnBuZxJLaHR0cHM6Ly9pMC5oZHNsYi5jb20vYmZzL2xpdmUvMzJiNzk5MTIwZTE2MTRmYTYyNzViNmQxNWRhN2E1MmIyMWRkMDE5ZC53ZWJwKkpodHRwczovL2kwLmhkc2xiLmNvbS9iZnMvbGl2ZS84MTZmOGI3YWEyMTMyODg4ZmNlOTI4Y2RmYjE3YjljZjIxY2MwODIzLmdpZqoCFAgBEgcI9bfwAhACEgcIjODXAhABWAFqAHq6ARK3AQoG5pmaKioqEkpodHRwczovL2kyLmhkc2xiLmNvbS9iZnMvZmFjZS81ZWZmNzBiYzFkZjBjNTJjNTFlZWE1Y2YwNzI5OGExMmNkNTkxMzBhLmpwZzJUCgbmmZoqKioSSmh0dHBzOi8vaTIuaGRzbGIuY29tL2Jmcy9mYWNlLzVlZmY3MGJjMWRmMGM1MmM1MWVlYTVjZjA3Mjk4YTEyY2Q1OTEzMGEuanBnOgsg////////////AQ=="
+    }
+  },
+  {
+    "cmd": "INTERACT_WORD_V2",
+    "data": {
+      "dmscore": 4,
+      "pb": "Egbnq7kqKioiAQEoATCSujk4lKKS1wZAh/Pa5pg0SikI8LHsAhAHGgbmva7mgLsgnvf1AijAgYMGMMCBgwY4wIGDBmCSujloWmIAePSNlJDz6NPxGJoBALIBvgESVAoG56u5KioqEkpodHRwczovL2kwLmhkc2xiLmNvbS9iZnMvZmFjZS82ZjQ2Nzk0Y2Y4ZWY3MzJmZjRmYzA5YTE5NWQwYjgwN2Y3MjM1YmE0LmpwZxpiCgbmva7mgLsQBxjAgYMGIMCBgwYowIGDBjCe9/UCOPL4AVDwsewCYFp6CSM5MTkyOThDQ4IBCSM5MTkyOThDQ4oBCSM5MTkyOThDQ5IBByNGRkZGRkaaAQkjOTE5Mjk4RTYiADIAugEAwgEA"
+    }
+  },
+  {
+    "cmd": "LIKE_INFO_V3_CLICK",
+    "data": {
+      "contribution_info": {
+        "grade": 0
+      },
+      "dmscore": 6,
+      "fans_medal": {
+        "anchor_roomid": 0,
+        "guard_level": 0,
+        "icon_id": 0,
+        "is_lighted": 0,
+        "medal_color": 0,
+        "medal_color_border": 0,
+        "medal_color_end": 0,
+        "medal_color_start": 0,
+        "medal_level": 0,
+        "medal_name": "",
+        "score": 0,
+        "special": "",
+        "target_id": 0
+      },
+      "group_medal": null,
+      "identities": [
+        1
+      ],
+      "is_mystery": false,
+      "like_icon": "",
+      "like_text": "为主播点赞了",
+      "msg_type": 6,
+      "show_area": 0,
+      "uid": 10001,
+      "uinfo": {
+        "anon": null,
+        "base": {
+          "face": "",
+          "is_mystery": false,
+          "name": "酷炫的小陈",
+          "name_color": 0,
+          "name_color_str": "",
+          "official_info": {
+            "desc": "",
+            "role": 0,
+            "title": "",
+            "type": -1
+          },
+          "origin_info": {
+            "face": "",
+            "name": "酷炫的小陈"
+          },
+          "risk_ctrl_info": null
+        },
+        "guard": {
+          "expired_str": "",
+          "level": 0
+        },
+        "guard_leader": null,
+        "medal": null,
+        "title": null,
+        "uhead_frame": null,
+        "uid": 10001,
+        "wealth": null
+      },
+      "uname": "酷炫的小陈",
+      "uname_color": ""
+    }
+  },
+  {
+    "cmd": "ONLINE_RANK_COUNT",
+    "data": {
+      "count": 2794,
+      "count_text": "2794",
+      "online_count": 2794,
+      "online_count_text": "2794"
+    }
+  },
+  {
+    "cmd": "WATCHED_CHANGE",
+    "data": {
+      "num": 122158,
+      "text_small": "12.2万",
+      "text_large": "12.2万人看过"
+    }
+  },
+  {
+    "cmd": "LOG_IN_NOTICE",
+    "data": {
+      "notice_msg": "为保护用户隐私，未登录无法查看他人昵称",
+      "image_web": "",
+      "image_app": ""
+    }
+  }
+]

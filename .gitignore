@@ -1,0 +1,11 @@
+.deps/
+node_modules/
+.dsh/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+packages/dsh-livestream/lib/
+packages/dsh-livestream/assets/
+packages/dsh-livestream/.cache/

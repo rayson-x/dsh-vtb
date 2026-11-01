@@ -1,0 +1,187 @@
+<!--
+试玩页：每个场景一个 700×420 的画面，旁边按 controls 改参数、点动作。
+按钮直接调 iframe 里的 window.scene.set / do，和主播台词里的 [[set]] [[do]] 同一条路。
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>场景试玩</title>
+<style>
+  html, body { margin: 0; background: #071226; color: #eef3ff; font-family: 'PingFang SC', 'Noto Sans SC', sans-serif; }
+  h1 { font-weight: 500; font-size: 32px; margin: 28px 28px 8px; }
+  p.lead { margin: 0 28px 12px; color: #8d9cc6; font-size: 18px; }
+  .card { display: flex; gap: 18px; align-items: flex-start; margin: 22px 28px 36px; }
+  iframe { width: 700px; height: 420px; border: 0; background: #071226; flex: none; border-radius: 12px; }
+  .ctl { width: 320px; }
+  h2 { margin: 0 0 8px; font-size: 22px; font-weight: 600; color: #8fe3d8; }
+  .line { margin: 0 0 12px; color: #8d9cc6; font-size: 14px; line-height: 1.45; }
+  label { display: block; margin: 8px 0 4px; font-size: 15px; color: #8d9cc6; }
+  input, select, textarea {
+    width: 100%; box-sizing: border-box; background: #0e1d40; color: #eef3ff;
+    border: 1px solid rgba(150, 180, 255, 0.25); border-radius: 8px; font: 16px 'PingFang SC', 'Noto Sans SC', sans-serif;
+    padding: 8px 10px;
+  }
+  textarea { min-height: 88px; resize: vertical; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button {
+    background: #4d6bfe; color: #eef3ff; border: 0; border-radius: 8px;
+    font: 600 16px 'PingFang SC', 'Noto Sans SC', sans-serif; padding: 8px 12px; cursor: pointer;
+  }
+  button.set { background: #0e1d40; color: #f4c86a; border: 1px solid #f4c86a; }
+</style>
+</head>
+<body>
+<h1>场景试玩</h1>
+<p class="lead">每个画面 700×420。改完参数点「应用」，动作按钮等同于 [[do]]。</p>
+<div id="list"></div>
+<script>
+const SCENES = [
+  {
+    file: 'probability.html',
+    title: 'probability · 运气的形状',
+    line: 'n 每组次数 1–60；p 正面概率 0–1；do flip 抛一组；do run 连抛；do reset 重来',
+    params: [
+      { key: 'n', label: 'n 每组次数', min: 1, max: 60, step: 1, value: 20 },
+      { key: 'p', label: 'p 正面概率', min: 0, max: 1, step: 0.05, value: 0.5 },
+    ],
+    actions: [['flip', '抛一组'], ['run', '连抛'], ['reset', '重来']],
+  },
+  {
+    file: 'percolation.html',
+    title: 'percolation · 渗流',
+    line: 'open 缝隙比例 0–1；do pour 倒水；do reset 水退掉；do reroll 换一块石头',
+    params: [{ key: 'open', label: 'open 缝隙比例', min: 0, max: 1, step: 0.05, value: 0.5 }],
+    actions: [['pour', '倒水'], ['reset', '水退掉'], ['reroll', '换石头']],
+  },
+  {
+    file: 'entropy.html',
+    title: 'entropy · 熵增',
+    line: 'count 粒子个数 8–80；do release 抽掉隔板；do reset 回到左边',
+    params: [{ key: 'count', label: 'count 粒子个数', min: 8, max: 80, step: 1, value: 36 }],
+    actions: [['release', '抽掉隔板'], ['reset', '回到左边']],
+  },
+  {
+    file: 'function-plot.html',
+    title: 'function-plot · 函数曲线',
+    line: 'kind 曲线种类；a、b 参数；do trace 描线；do reset 退回',
+    params: [
+      { key: 'kind', label: 'kind 曲线', type: 'select', value: 'sigmoid', options: ['exp', 'log', 'sigmoid', 'sine', 'compound'] },
+      { key: 'a', label: 'a 强度', min: -3, max: 3, step: 0.1, value: 1 },
+      { key: 'b', label: 'b 第二参数', min: -2, max: 2, step: 0.1, value: 0 },
+    ],
+    actions: [['trace', '描线'], ['reset', '退回']],
+  },
+  {
+    file: 'beat.html',
+    title: 'beat · 节拍',
+    line: 'bpm 每分钟多少拍 40–208；steps 步数 4–128；do start 开始；do stop 停下',
+    params: [
+      { key: 'bpm', label: 'bpm 拍速', min: 40, max: 208, step: 1, value: 120 },
+      { key: 'steps', label: 'steps 步数', min: 4, max: 128, step: 1, value: 128 },
+    ],
+    actions: [['start', '开始'], ['stop', '停下']],
+  },
+  {
+    file: 'bar-race.html',
+    title: 'bar-race · 柱状竞赛',
+    line: 'data JSON 字符串；do play 从第一年跑到最后；do reset 回到第一年',
+    params: [{ key: 'data', label: 'data JSON', type: 'text', value: '' }],
+    actions: [['play', '开跑'], ['reset', '回到第一年']],
+  },
+  {
+    file: 'balance.html',
+    title: 'balance · 天平',
+    line: 'left、right 砝码颗数 0–12；do tip 松开；do reset 托平',
+    params: [
+      { key: 'left', label: 'left 左边', min: 0, max: 12, step: 1, value: 2 },
+      { key: 'right', label: 'right 右边', min: 0, max: 12, step: 1, value: 6 },
+    ],
+    actions: [['tip', '松开'], ['reset', '托平']],
+  },
+];
+
+const list = document.getElementById('list');
+for (const scene of SCENES) {
+  const card = document.createElement('section');
+  card.className = 'card';
+  const frame = document.createElement('iframe');
+  frame.src = scene.file;
+  frame.title = scene.title;
+  const ctl = document.createElement('div');
+  ctl.className = 'ctl';
+  const h2 = document.createElement('h2');
+  h2.textContent = scene.title;
+  const line = document.createElement('p');
+  line.className = 'line';
+  line.textContent = scene.line;
+  ctl.append(h2, line);
+  const inputs = [];
+  for (const param of scene.params) {
+    const label = document.createElement('label');
+    label.textContent = param.label;
+    let input;
+    if (param.type === 'select') {
+      input = document.createElement('select');
+      for (const opt of param.options) {
+        const o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        if (opt === param.value) o.selected = true;
+        input.append(o);
+      }
+    } else if (param.type === 'text') {
+      input = document.createElement('textarea');
+      input.placeholder = '{"years":["1","2"],"series":[{"name":"甲","values":[1,3]},{"name":"乙","values":[2,1]}]}';
+    } else {
+      input = document.createElement('input');
+      input.type = 'number';
+      input.min = String(param.min);
+      input.max = String(param.max);
+      input.step = String(param.step);
+      input.value = String(param.value);
+    }
+    input.dataset.key = param.key;
+    input.dataset.kind = param.type || 'number';
+    inputs.push(input);
+    ctl.append(label, input);
+  }
+  const btns = document.createElement('div');
+  btns.className = 'btns';
+  if (scene.params.length) {
+    const apply = document.createElement('button');
+    apply.type = 'button';
+    apply.className = 'set';
+    apply.textContent = '应用参数';
+    apply.addEventListener('click', () => {
+      const api = frame.contentWindow && frame.contentWindow.scene;
+      if (!api) return;
+      const params = {};
+      for (const input of inputs) {
+        if (input.dataset.kind === 'text') {
+          const text = input.value.trim();
+          if (text) params[input.dataset.key] = text;
+        } else if (input.dataset.kind === 'select') params[input.dataset.key] = input.value;
+        else params[input.dataset.key] = Number(input.value);
+      }
+      api.set(params);
+    });
+    btns.append(apply);
+  }
+  for (const [name, labelText] of scene.actions) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = labelText;
+    button.addEventListener('click', () => {
+      const api = frame.contentWindow && frame.contentWindow.scene;
+      if (api) api.do(name);
+    });
+    btns.append(button);
+  }
+  ctl.append(btns);
+  card.append(frame, ctl);
+  list.append(card);
+}
+</script>
+</body>
+</html>

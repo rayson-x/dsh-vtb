@@ -1,0 +1,6 @@
+out/raw/
+out/runtime.mjs
+out/dev.log
+out/capture-*.json
+out/browser-*.log
+out/baseline-*.ts

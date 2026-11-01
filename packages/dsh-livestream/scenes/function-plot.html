@@ -1,0 +1,195 @@
+<!--
+场景 function-plot
+演示：把一条函数曲线描出来。指数、对数、S 形、正弦、复利。
+
+参数：
+- kind  string  exp | log | sigmoid | sine | compound  默认 sigmoid  哪一种曲线
+- a     number  -3–3  默认 1    强度（复利里是时间倍率）
+- b     number  -2–2  默认 0    第二参数（复利里是年利率，0.1 = 10%）
+
+动作：
+- trace  沿曲线描一遍
+- reset  描线退回起点，坐标还在
+
+重放：do(action, { replay: true }) 直接跳到描完或退回，不播动画。
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>函数曲线</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #status { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="status"></div>
+<script src="kit.js"></script>
+<script>
+const K = window.SceneKit;
+const { colors } = K;
+
+const KINDS = {
+  exp: {
+    title: '指数曲线',
+    sub: 'y = e 的 (a×x) 次方 + b',
+    x0: -1.4,
+    x1: 1.5,
+    f: (x, a, b) => Math.exp(a * x) + b,
+  },
+  log: {
+    title: '对数曲线',
+    sub: 'y = a × ln(x) + b',
+    x0: 0.2,
+    x1: 8,
+    f: (x, a, b) => a * Math.log(x) + b,
+  },
+  sigmoid: {
+    title: 'S 形曲线',
+    sub: '陡不陡看 a，中心看 b',
+    x0: -6,
+    x1: 6,
+    f: (x, a, b) => 1 / (1 + Math.exp(-a * (x - b))),
+  },
+  sine: {
+    title: '正弦曲线',
+    sub: 'y = a × sin(x + b)',
+    x0: -6.3,
+    x1: 6.3,
+    f: (x, a, b) => a * Math.sin(x + b),
+  },
+  compound: {
+    title: '复利曲线',
+    sub: 'b 是年利率，0.1 即一成',
+    x0: 0,
+    x1: 30,
+    f: (x, a, b) => (1 + Math.max(0, b)) ** (a * x),
+  },
+};
+
+const state = { kind: 'sigmoid', a: 1, b: 0, progress: 0, anim: null };
+
+function samples() {
+  const spec = KINDS[state.kind];
+  const n = 160;
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const x = spec.x0 + (spec.x1 - spec.x0) * (i / n);
+    const y = spec.f(x, state.a, state.b);
+    pts.push({ x, y: Number.isFinite(y) ? y : null });
+  }
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const p of pts) {
+    if (p.y == null) continue;
+    minY = Math.min(minY, p.y);
+    maxY = Math.max(maxY, p.y);
+  }
+  if (!Number.isFinite(minY)) { minY = -1; maxY = 1; }
+  if (maxY - minY < 1e-4) { minY -= 1; maxY += 1; }
+  const pad = (maxY - minY) * 0.12;
+  return { spec, pts, minY: minY - pad, maxY: maxY + pad };
+}
+
+function set(params) {
+  params = params || {};
+  const kind = typeof params.kind === 'string' && KINDS[params.kind] ? params.kind : state.kind;
+  const a = params.a === undefined ? state.a : K.num(params.a, state.a, -3, 3);
+  const b = params.b === undefined ? state.b : K.num(params.b, state.b, -2, 2);
+  if (kind === state.kind && a === state.a && b === state.b) return;
+  state.kind = kind;
+  state.a = a;
+  state.b = b;
+  state.progress = 0;
+  state.anim = null;
+}
+
+function doAction(action, options) {
+  const replay = !!(options && options.replay);
+  if (action === 'reset') { state.progress = 0; state.anim = null; return; }
+  if (action !== 'trace') return;
+  if (replay) { state.progress = 1; state.anim = null; return; }
+  state.anim = { t0: performance.now(), dur: 1100, from: state.progress };
+}
+
+window.scene = { set, do: doAction };
+
+K.mount(document.getElementById('c'), (ctx, w, h, now) => {
+  if (state.anim) {
+    const k = K.clamp((now - state.anim.t0) / state.anim.dur, 0, 1);
+    state.progress = K.lerp(state.anim.from, 1, K.ease(k));
+    if (k >= 1) { state.progress = 1; state.anim = null; }
+  }
+  const spec = KINDS[state.kind];
+  const shown = Math.round(state.progress * 100);
+  const rate = state.kind === 'compound' ? Math.max(0, state.b) : state.b;
+  const status = state.kind === 'compound'
+    ? `a=${trim(state.a)}  利率 ${Math.round(rate * 100)}%`
+    : `a=${trim(state.a)}  b=${trim(state.b)}  描了 ${shown}%`;
+  const { f, chart } = K.chrome(ctx, w, h, spec.title, spec.sub, state.progress >= 1 ? '曲线描完了' : status);
+
+  const pack = samples();
+  const padL = f.label * 2.2;
+  const padB = f.label + 6;
+  const plot = {
+    x: chart.x + padL,
+    y: chart.y + 8,
+    w: chart.w - padL - 8,
+    h: chart.h - padB - 8,
+  };
+  const X = (x) => plot.x + ((x - pack.spec.x0) / (pack.spec.x1 - pack.spec.x0)) * plot.w;
+  const Y = (y) => plot.y + plot.h - ((y - pack.minY) / (pack.maxY - pack.minY)) * plot.h;
+
+  ctx.strokeStyle = colors.line;
+  ctx.lineWidth = 2;
+  if (pack.minY < 0 && pack.maxY > 0) {
+    ctx.beginPath();
+    ctx.moveTo(plot.x, Y(0));
+    ctx.lineTo(plot.x + plot.w, Y(0));
+    ctx.stroke();
+  }
+  if (pack.spec.x0 < 0 && pack.spec.x1 > 0) {
+    ctx.beginPath();
+    ctx.moveTo(X(0), plot.y);
+    ctx.lineTo(X(0), plot.y + plot.h);
+    ctx.stroke();
+  }
+
+  const draw = (upto, color, width) => {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    let open = false;
+    const n = Math.max(1, Math.floor(upto * (pack.pts.length - 1)));
+    for (let i = 0; i <= n; i++) {
+      const p = pack.pts[i];
+      if (p.y == null) { open = false; continue; }
+      const x = X(p.x);
+      const y = Y(p.y);
+      if (!open) { ctx.moveTo(x, y); open = true; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  };
+  draw(1, 'rgba(141, 156, 198, 0.45)', 2);
+  if (state.progress > 0) draw(state.progress, colors.whale, Math.max(4, f.label * 0.16));
+
+  ctx.fillStyle = colors.mute;
+  ctx.font = K.font(f.label, 500, false);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(trim(pack.spec.x0), plot.x, chart.y + chart.h);
+  ctx.textAlign = 'right';
+  ctx.fillText(trim(pack.spec.x1), plot.x + plot.w, chart.y + chart.h);
+});
+
+function trim(n) {
+  const v = Math.round(n * 100) / 100;
+  return String(v);
+}
+</script>
+</body>
+</html>

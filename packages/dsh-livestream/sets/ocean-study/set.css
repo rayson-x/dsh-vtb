@@ -1,0 +1,4 @@
+/* 海底小书房：默认布景，变量在 stage.css 的 :root 里 */
+
+/* 浅纸上保留深色笔画，粒子的金色和描边仍清楚。 */
+.stage[data-set="ocean-study"] { --fx-particle-blend: multiply; }

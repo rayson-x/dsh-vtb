@@ -1,0 +1,39 @@
+{
+  "repositories": [
+    {
+      "name": "AI-Vtuber",
+      "url": "https://github.com/beiyege-01/AI-Vtuber",
+      "commit": "5d77658df1bdf33d01d53cb0d3e72066febc7eec"
+    },
+    {
+      "name": "DouyinLiveWebFetcher",
+      "url": "https://github.com/saermart/DouyinLiveWebFetcher.git",
+      "commit": "40a904bdb0561a5a9c958a95634a29681cc4fbf4"
+    },
+    {
+      "name": "deepseek-harness",
+      "url": "https://github.com/deepseek-ai/deepseek-harness.git",
+      "commit": "f3803c96974ad4a94195fb97e5c637e9c2a3afe3"
+    },
+    {
+      "name": "dsh-livestream",
+      "url": "https://github.com/luckui/dsh-livestream",
+      "commit": "6c2f405b5520bea932808c224ba9ca6d65f41756"
+    },
+    {
+      "name": "dyhub",
+      "url": "https://github.com/ymstar/dyhub.git",
+      "commit": "77ab1fbb3ac6cb0886af40cf32865d998d9e6aab"
+    },
+    {
+      "name": "dsh-whale-girl-live2d",
+      "url": "https://github.com/Andersen216/dsh-whale-girl-live2d.git",
+      "commit": "f977bef508690e75ba6535cd8f4ce18e7f6ba9b0"
+    },
+    {
+      "name": "bilibili-openlive",
+      "url": "https://github.com/bilibili-openplatform/OpenLive_CSharpDemo.git",
+      "commit": "a1a12430407c7e01c928637479c1b238b3a00933"
+    }
+  ]
+}

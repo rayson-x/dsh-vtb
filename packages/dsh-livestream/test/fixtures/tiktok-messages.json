@@ -1,0 +1,186 @@
+{
+  "chat": {
+    "method": "WebcastChatMessage",
+    "body": {
+      "common": {
+        "msgId": "10001",
+        "createTime": "1793381474608"
+      },
+      "user": {
+        "id": "10002",
+        "nickname": "thuc dinh",
+        "displayId": "thucdinhne",
+        "payGrade": {
+          "level": 0
+        },
+        "badgeList": [
+          {
+            "sceneType": 8,
+            "openweburl": "aweme://user_level",
+            "privilegeLogExtra": {
+              "level": "11"
+            },
+            "combine": {
+              "str": "11"
+            }
+          }
+        ]
+      },
+      "content": "cái tóc hoi rối nha e gái @"
+    }
+  },
+  "giftEnd": {
+    "method": "WebcastGiftMessage",
+    "body": {
+      "common": {
+        "msgId": "20001",
+        "createTime": "1793381480630",
+        "displayText": {
+          "key": "webcast_aweme_gift_send_messageNew"
+        }
+      },
+      "user": {
+        "id": "10003",
+        "nickname": "Hồng Diệpp",
+        "idStr": "10003",
+        "displayId": "hng.dipp03",
+        "payGrade": {
+          "level": 0
+        },
+        "badgeList": [
+          {
+            "sceneType": 8,
+            "openweburl": "aweme://user_level",
+            "privilegeLogExtra": {
+              "level": "7"
+            },
+            "combine": {
+              "str": "7"
+            }
+          }
+        ]
+      },
+      "giftId": "5655",
+      "groupId": "30001",
+      "groupCount": 1,
+      "repeatCount": 3,
+      "comboCount": 3,
+      "repeatEnd": 1,
+      "gift": {
+        "id": "5655",
+        "name": "Rose",
+        "type": 1,
+        "combo": true,
+        "diamondCount": 1
+      }
+    }
+  },
+  "like": {
+    "method": "WebcastLikeMessage",
+    "body": {
+      "common": {
+        "msgId": "10004",
+        "createTime": "1793381480216",
+        "displayText": {
+          "key": "pm_mt_msg_viewer"
+        }
+      },
+      "user": {
+        "id": "10005",
+        "nickname": "H I E U 〽️",
+        "displayId": "minh_hiu_2610",
+        "payGrade": {
+          "level": 0
+        },
+        "badgeList": [
+          {
+            "sceneType": 8,
+            "openweburl": "aweme://user_level",
+            "privilegeLogExtra": {
+              "level": "5"
+            },
+            "combine": {
+              "str": "5"
+            }
+          }
+        ]
+      },
+      "count": 9,
+      "total": "392690"
+    }
+  },
+  "enter": {
+    "method": "WebcastMemberMessage",
+    "body": {
+      "common": {
+        "msgId": "10006",
+        "createTime": "1793381479992",
+        "displayText": {
+          "key": "live_room_enter_toast"
+        }
+      },
+      "user": {
+        "id": "10007",
+        "nickname": "Thúy Vân",
+        "displayId": "dyj7qscynkap",
+        "payGrade": {
+          "level": 0
+        }
+      },
+      "action": 1
+    }
+  },
+  "shareKey": {
+    "method": "WebcastSocialMessage",
+    "body": {
+      "common": {
+        "msgId": "10008",
+        "createTime": "1793381486152",
+        "displayText": {
+          "key": "ttlive_repost_commentsArea_repostedUsername_im"
+        }
+      },
+      "user": {
+        "id": "10009",
+        "nickname": "𝚑.",
+        "displayId": "huongcte_0",
+        "payGrade": {
+          "level": 0
+        },
+        "badgeList": [
+          {
+            "sceneType": 8,
+            "openweburl": "aweme://user_level",
+            "privilegeLogExtra": {
+              "level": "5"
+            },
+            "combine": {
+              "str": "5"
+            }
+          }
+        ]
+      },
+      "action": "4"
+    }
+  },
+  "viewers": {
+    "method": "WebcastRoomUserSeqMessage",
+    "body": {
+      "common": {
+        "msgId": "10010",
+        "createTime": "1793381480049"
+      },
+      "total": "1889",
+      "totalUser": "28891"
+    }
+  },
+  "battle": {
+    "method": "WebcastLinkMicBattle",
+    "body": {
+      "common": {
+        "msgId": "20002",
+        "createTime": "1793381702361"
+      }
+    }
+  }
+}

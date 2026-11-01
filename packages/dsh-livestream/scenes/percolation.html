@@ -1,0 +1,189 @@
+<!--
+场景 percolation
+演示：方格里的石头和缝。缝开得不够，水下不去；过了临界就一下渗到底。
+
+参数：
+- open  number  0–1  默认 0.5  缝隙比例（同一块石头，只改阈值）
+
+动作：
+- pour    从顶上倒水
+- reset   水退掉，石头不动
+- reroll  换一块石头
+
+重放：do(action, { replay: true }) 直接跳到这一下的结果，不播动画。
+默认种子下：open=0.5 渗不到底，open=0.6 能渗到底。
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>渗流</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #status { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="status"></div>
+<script src="kit.js"></script>
+<script>
+const K = window.SceneKit;
+const { colors } = K;
+const COLS = 16;
+const ROWS = 12;
+const N = COLS * ROWS;
+
+const state = {
+  open: 0.5,
+  seed: 2,
+  u: new Float32Array(N),
+  gap: new Uint8Array(N),
+  wet: new Uint8Array(N),
+  poured: false,
+  percolated: false,
+  anim: null,
+};
+
+function roll() {
+  const rand = K.mulberry32(state.seed);
+  for (let i = 0; i < N; i++) state.u[i] = rand();
+  applyOpen();
+}
+
+function applyOpen() {
+  for (let i = 0; i < N; i++) state.gap[i] = state.u[i] < state.open ? 1 : 0;
+  state.wet.fill(0);
+  state.poured = false;
+  state.percolated = false;
+  state.anim = null;
+}
+
+function floodOrder() {
+  const seen = new Uint8Array(N);
+  const q = [];
+  for (let x = 0; x < COLS; x++) if (state.gap[x]) { seen[x] = 1; q.push(x); }
+  const order = [];
+  let qi = 0;
+  while (qi < q.length) {
+    const i = q[qi++];
+    order.push(i);
+    const x = i % COLS;
+    const y = (i / COLS) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
+      const j = ny * COLS + nx;
+      if (seen[j] || !state.gap[j]) continue;
+      seen[j] = 1;
+      q.push(j);
+    }
+  }
+  return order;
+}
+
+function paint(order, count) {
+  state.wet.fill(0);
+  for (let i = 0; i < count; i++) state.wet[order[i]] = 1;
+  state.poured = count >= order.length;
+  state.percolated = false;
+  if (state.poured) {
+    const row = (ROWS - 1) * COLS;
+    for (let x = 0; x < COLS; x++) if (state.wet[row + x]) state.percolated = true;
+  }
+}
+
+function commit() {
+  const a = state.anim;
+  if (!a) return;
+  paint(a.order, a.order.length);
+  state.anim = null;
+}
+
+roll();
+
+function set(params) {
+  params = params || {};
+  if (params.open === undefined) return;
+  const open = K.num(params.open, state.open, 0, 1);
+  if (Math.abs(open - state.open) < 1e-9) return;
+  state.open = open;
+  applyOpen();
+}
+
+function doAction(action, options) {
+  const replay = !!(options && options.replay);
+  if (action === 'reset') { applyOpen(); return; }
+  if (action === 'reroll') {
+    state.seed = (state.seed + 1) >>> 0;
+    roll();
+    return;
+  }
+  if (action !== 'pour') return;
+  commit();
+  const order = floodOrder();
+  if (replay || !order.length) { paint(order, order.length); return; }
+  state.wet.fill(0);
+  state.poured = false;
+  state.percolated = false;
+  state.anim = { order, shown: 0, t0: performance.now(), dur: 900 };
+}
+
+window.scene = { set, do: doAction };
+
+K.mount(document.getElementById('c'), (ctx, w, h, now) => {
+  const a = state.anim;
+  if (a) {
+    const k = K.clamp((now - a.t0) / a.dur, 0, 1);
+    const need = Math.floor(K.ease(k) * a.order.length);
+    if (need !== a.shown) paint(a.order, need);
+    a.shown = need;
+    if (k >= 1) commit();
+  }
+  const pct = Math.round(state.open * 100);
+  let status = `缝隙 ${pct}%，水还在上面`;
+  if (state.anim) status = `缝隙 ${pct}%，水往下流`;
+  else if (state.poured) status = state.percolated ? `缝隙 ${pct}%，渗到底了` : `缝隙 ${pct}%，停在半路`;
+  const { f, chart } = K.chrome(ctx, w, h, '渗流', '缝开过一半，水才到底', status);
+
+  const gap = Math.max(2, Math.min(chart.w, chart.h) * 0.008);
+  const size = Math.min((chart.w - gap) / COLS, (chart.h - f.label - gap) / ROWS);
+  const gridW = size * COLS;
+  const gridH = size * ROWS;
+  const ox = chart.x + (chart.w - gridW) / 2;
+  const oy = chart.y + f.label * 0.2 + (chart.h - f.label - gridH) / 2;
+
+  ctx.fillStyle = colors.gold;
+  ctx.fillRect(ox, oy - Math.max(4, size * 0.12), gridW, Math.max(3, size * 0.08));
+
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const i = y * COLS + x;
+      const px = ox + x * size;
+      const py = oy + y * size;
+      const inset = Math.max(1.5, size * 0.08);
+      if (!state.gap[i]) {
+        ctx.fillStyle = '#24365c';
+        K.roundRect(ctx, px + inset * 0.3, py + inset * 0.3, size - inset * 0.6, size - inset * 0.6, size * 0.16);
+        ctx.fill();
+      }
+      if (state.wet[i]) {
+        ctx.fillStyle = colors.whale;
+        K.roundRect(ctx, px + inset, py + inset, size - inset * 2, size - inset * 2, size * 0.18);
+        ctx.fill();
+      }
+    }
+  }
+
+  ctx.strokeStyle = state.percolated ? colors.foam : colors.coral;
+  ctx.lineWidth = Math.max(3, size * 0.1);
+  ctx.beginPath();
+  ctx.moveTo(ox, oy + gridH + 2);
+  ctx.lineTo(ox + gridW, oy + gridH + 2);
+  ctx.stroke();
+});
+</script>
+</body>
+</html>

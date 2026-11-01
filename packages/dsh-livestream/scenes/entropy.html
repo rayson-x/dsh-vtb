@@ -1,0 +1,181 @@
+<!--
+场景 entropy
+演示：粒子先关在盒子左半边，抽掉隔板后散到整个盒子（熵增）。
+
+参数：
+- count  number  8–80  默认 36  粒子个数
+
+动作：
+- release  抽掉隔板
+- reset    粒子回到左边，隔板插上
+
+重放：do(action, { replay: true }) 直接跳到散开之后或回到左边，不播动画。
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>熵增</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #status { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="status"></div>
+<script src="kit.js"></script>
+<script>
+const K = window.SceneKit;
+const { colors } = K;
+
+const state = {
+  count: 36,
+  seed: 5,
+  wall: 1,
+  released: false,
+  ps: [],
+  anim: null,
+  last: 0,
+};
+
+function place(spread) {
+  const rand = K.mulberry32(spread ? state.seed + 99 : state.seed);
+  state.ps = [];
+  for (let i = 0; i < state.count; i++) {
+    state.ps.push({
+      x: spread ? 0.08 + rand() * 0.84 : 0.08 + rand() * 0.36,
+      y: 0.1 + rand() * 0.8,
+      vx: (spread ? 0.15 : 0.04) + (rand() - 0.5) * 0.2,
+      vy: (rand() - 0.5) * (spread ? 0.45 : 0.16),
+      c: rand() > 0.5 ? colors.gold : colors.foam,
+    });
+  }
+}
+
+function kick() {
+  const rand = K.mulberry32(state.seed + 3);
+  for (const p of state.ps) {
+    p.vx = 0.45 + rand() * 0.7;
+    p.vy = (rand() - 0.5) * 0.7;
+  }
+}
+
+place(false);
+
+function finishRelease() {
+  state.wall = 0;
+  state.released = true;
+  state.anim = null;
+}
+
+function set(params) {
+  params = params || {};
+  if (params.count === undefined) return;
+  const count = Math.round(K.num(params.count, state.count, 8, 80));
+  if (count === state.count) return;
+  state.count = count;
+  place(state.released);
+}
+
+function doAction(action, options) {
+  const replay = !!(options && options.replay);
+  if (action === 'reset') {
+    state.released = false;
+    state.wall = 1;
+    state.anim = null;
+    place(false);
+    return;
+  }
+  if (action !== 'release') return;
+  if (replay) {
+    state.released = true;
+    state.wall = 0;
+    state.anim = null;
+    place(true);
+    return;
+  }
+  if (state.released && state.wall === 0) return;
+  kick();
+  state.anim = { t0: performance.now(), dur: 420, from: state.wall };
+}
+
+window.scene = { set, do: doAction };
+
+function step(dt) {
+  for (const p of state.ps) {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    if (p.y < 0.06) { p.y = 0.06; p.vy = Math.abs(p.vy); }
+    if (p.y > 0.94) { p.y = 0.94; p.vy = -Math.abs(p.vy); }
+    if (p.x < 0.05) { p.x = 0.05; p.vx = Math.abs(p.vx); }
+    if (p.x > 0.95) { p.x = 0.95; p.vx = -Math.abs(p.vx); }
+    if (state.wall > 0.12 && p.vx > 0 && p.x > 0.47 && p.x < 0.53) {
+      p.x = 0.47;
+      p.vx = -Math.abs(p.vx) * 0.8;
+    }
+  }
+}
+
+K.mount(document.getElementById('c'), (ctx, w, h, now) => {
+  const dt = Math.min(0.05, state.last ? (now - state.last) / 1000 : 0.016);
+  state.last = now;
+  if (state.anim) {
+    const k = K.clamp((now - state.anim.t0) / state.anim.dur, 0, 1);
+    state.wall = K.lerp(state.anim.from, 0, K.ease(k));
+    if (k >= 1) finishRelease();
+  }
+  step(dt);
+
+  let right = 0;
+  for (const p of state.ps) if (p.x >= 0.5) right += 1;
+  const left = state.ps.length - right;
+  const status = state.released ? `左边 ${left} · 右边 ${right}` : `全在左边 · ${state.count} 个`;
+  const { f, chart } = K.chrome(ctx, w, h, '熵增', '抽掉隔板，粒子散开', status);
+
+  const box = {
+    x: chart.x + 8,
+    y: chart.y + 8,
+    w: chart.w - 16,
+    h: chart.h - 16,
+  };
+  ctx.strokeStyle = colors.line;
+  ctx.lineWidth = 3;
+  K.roundRect(ctx, box.x, box.y, box.w, box.h, 16);
+  ctx.stroke();
+
+  const wallX = box.x + box.w * 0.5;
+  if (state.wall > 0.02) {
+    const wallH = box.h * state.wall;
+    ctx.fillStyle = colors.coral;
+    K.roundRect(ctx, wallX - 5, box.y, 10, wallH, 4);
+    ctx.fill();
+  } else {
+    ctx.setLineDash([5, 8]);
+    ctx.strokeStyle = 'rgba(141, 156, 198, 0.45)';
+    ctx.beginPath();
+    ctx.moveTo(wallX, box.y + 8);
+    ctx.lineTo(wallX, box.y + box.h - 8);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  const r = Math.max(4, Math.min(box.w, box.h) * 0.018);
+  for (const p of state.ps) {
+    ctx.beginPath();
+    ctx.fillStyle = p.c;
+    ctx.arc(box.x + p.x * box.w, box.y + p.y * box.h, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = colors.mute;
+  ctx.font = K.font(f.label, 500, false);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('左', box.x + box.w * 0.25, box.y + box.h - 6);
+  ctx.fillText('右', box.x + box.w * 0.75, box.y + box.h - 6);
+});
+</script>
+</body>
+</html>

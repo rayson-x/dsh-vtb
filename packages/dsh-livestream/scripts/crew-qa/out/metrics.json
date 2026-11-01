@@ -1,0 +1,255 @@
+{
+  "input": "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/segments-1031.json",
+  "generatedAt": "2026-10-31T16:37:12.008Z",
+  "timing": "无语音合成；每字220ms+400ms，9秒提前量；使用实际字幕 startedAt/ms 调度；截图2秒、状态采样约100ms",
+  "metrics": {
+    "A": {
+      "lanes": {
+        "graphics": {
+          "calls": 0,
+          "p50Ms": null,
+          "p90Ms": null,
+          "onTimeRatio": null,
+          "failures": 0
+        },
+        "lighting": {
+          "calls": 0,
+          "p50Ms": null,
+          "p90Ms": null,
+          "onTimeRatio": null,
+          "failures": 0
+        },
+        "sound": {
+          "calls": 0,
+          "p50Ms": null,
+          "p90Ms": null,
+          "onTimeRatio": null,
+          "failures": 0
+        }
+      },
+      "dropped": 0,
+      "rejectedLane": 0,
+      "stageRejected": 0,
+      "alignment": [
+        {
+          "segment": 7,
+          "id": "a",
+          "keyword": "妈妈",
+          "cueAt": 0,
+          "keywordAt": 14,
+          "born": 1793464247190,
+          "actualMs": 1,
+          "expectedMs": 3360,
+          "errorMs": 3359
+        }
+      ],
+      "sparseRuns": [
+        {
+          "from": 1793464117832,
+          "to": 1793464273731,
+          "ms": 155899
+        }
+      ],
+      "evictedPerPage": {},
+      "acceptedCrossLane": 0,
+      "drops": []
+    },
+    "B": {
+      "lanes": {
+        "graphics": {
+          "calls": 7,
+          "p50Ms": 1148,
+          "p90Ms": 1533,
+          "onTimeRatio": 1,
+          "failures": 0
+        },
+        "lighting": {
+          "calls": 7,
+          "p50Ms": 858,
+          "p90Ms": 1014,
+          "onTimeRatio": 1,
+          "failures": 0
+        },
+        "sound": {
+          "calls": 7,
+          "p50Ms": 886,
+          "p90Ms": 1073,
+          "onTimeRatio": 1,
+          "failures": 0
+        }
+      },
+      "dropped": 11,
+      "rejectedLane": 0,
+      "stageRejected": 0,
+      "acceptedCrossLane": 0,
+      "alignment": [
+        {
+          "segment": 1,
+          "id": "g1_1",
+          "keyword": "恋爱",
+          "cueAt": 0,
+          "keywordAt": 36,
+          "born": 1793464461926,
+          "actualMs": 35,
+          "expectedMs": 8398.428571428572,
+          "errorMs": 8363
+        },
+        {
+          "segment": 1,
+          "id": "g1_2",
+          "keyword": "恋爱的四象型",
+          "cueAt": 47,
+          "keywordAt": 47,
+          "born": 1793464472812,
+          "actualMs": 10921,
+          "expectedMs": 10870.809523809523,
+          "errorMs": 50
+        },
+        {
+          "segment": 1,
+          "id": "g1_3",
+          "keyword": "星座",
+          "cueAt": 72,
+          "keywordAt": 72,
+          "born": 1793464478542,
+          "actualMs": 16651,
+          "expectedMs": 16489.85714285714,
+          "errorMs": 161
+        },
+        {
+          "segment": 1,
+          "id": "g1_4",
+          "keyword": "是哪一型",
+          "cueAt": 115,
+          "keywordAt": 121,
+          "born": 1793464488489,
+          "actualMs": 26598,
+          "expectedMs": 27718.909090909092,
+          "errorMs": 1121
+        },
+        {
+          "segment": 2,
+          "id": "g2_1",
+          "keyword": "后那半小时",
+          "cueAt": 0,
+          "keywordAt": 39,
+          "born": 1793464491092,
+          "actualMs": 2,
+          "expectedMs": 9272.909090909092,
+          "errorMs": 9271
+        },
+        {
+          "segment": 3,
+          "id": "g3_1",
+          "keyword": "恋爱里你一慌，第一反应是",
+          "cueAt": 9,
+          "keywordAt": 17,
+          "born": 1793464504427,
+          "actualMs": 2624,
+          "expectedMs": 4023.3333333333335,
+          "errorMs": 1399
+        },
+        {
+          "segment": 3,
+          "id": "g3_2",
+          "keyword": "3 还好，能说开",
+          "cueAt": 38,
+          "keywordAt": 53,
+          "born": 1793464510756,
+          "actualMs": 8953,
+          "expectedMs": 12306.808510638297,
+          "errorMs": 3354
+        },
+        {
+          "segment": 4,
+          "id": "g4_1",
+          "keyword": "四象型",
+          "cueAt": 0,
+          "keywordAt": 31,
+          "born": 1793464518408,
+          "actualMs": 1,
+          "expectedMs": 7312.848484848485,
+          "errorMs": 7312
+        },
+        {
+          "segment": 4,
+          "id": "g4_2",
+          "keyword": "不是星座",
+          "cueAt": 45,
+          "keywordAt": 47,
+          "born": 1793464528928,
+          "actualMs": 10521,
+          "expectedMs": 10929.818181818182,
+          "errorMs": 409
+        },
+        {
+          "segment": 4,
+          "id": "g4_3",
+          "keyword": "哪种最多",
+          "cueAt": 79,
+          "keywordAt": 95,
+          "born": 1793464536955,
+          "actualMs": 18548,
+          "expectedMs": 21991.352941176472,
+          "errorMs": 3443
+        },
+        {
+          "segment": 5,
+          "id": "g5_2",
+          "keyword": "30 个月",
+          "cueAt": 35,
+          "keywordAt": 39,
+          "born": 1793464550192,
+          "actualMs": 8504,
+          "expectedMs": 9275.736842105263,
+          "errorMs": 772
+        },
+        {
+          "segment": 5,
+          "id": "g5_3",
+          "keyword": "21",
+          "cueAt": 70,
+          "keywordAt": 70,
+          "born": 1793464558224,
+          "actualMs": 16536,
+          "expectedMs": 16278,
+          "errorMs": 258
+        }
+      ],
+      "sparseRuns": [],
+      "evictedPerPage": {
+        "1": 1
+      },
+      "drops": [
+        "lighting: 「海底小书房」没有这个特效：candle（有：bubbles shine splash sparkle）",
+        "sound: 配套音效前后800毫秒避让",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具",
+        "graphics: graphics 不能修改、擦掉或挤掉主持人的互动道具"
+      ]
+    }
+  },
+  "comparisons": [
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-01.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-02.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-03.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-04.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-05.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-06.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-07.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-08.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-09.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-10.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-11.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-12.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-13.jpg",
+    "/Users/Ruihan/orca/projects/aivtb-crew/packages/dsh-livestream/scripts/crew-qa/out/compare-14.jpg"
+  ],
+  "pairs": 82
+}
