@@ -3,6 +3,7 @@
  * P3 是事件、时间线和播放契约。P5 是角色 session、路由和取消端口。
  * P6 是编导与制作骨架：内容池、兴趣、运行单、候选入库。不是上播。
  * P7 是主播与导播的决策骨架：口播、现场命令、cue 与冷切。不是真实播放完成。
+ * P8 是迁移薄适配骨架：legacy/v2 互斥、显式 flag、旧入口映射。默认仍是 legacy。
  * 这里不导出播放器，也不导出私有 SDK，也不接现有主持人主路径。
  */
 
@@ -50,3 +51,31 @@ export type {
 
 export { normalizeInput, routeAggregate } from './events/index';
 export type { RawPlatformInput } from './events/index';
+
+export {
+  ControlPathRegistry,
+  FIXTURE_CHARACTER_ID,
+  LegacyControlLoop,
+  P8_ACCEPTANCE,
+  P8_MATRIX,
+  ROLLBACK_POLICY,
+  SWITCH_TO_V2_POLICY,
+  StageControl,
+  V2ControlPath,
+  adaptLegacyCommand,
+  fixtureInventory,
+  inventoryFingerprint,
+  openStageControl,
+  refuseDestructiveMigration,
+} from './migration/index';
+export type {
+  AdaptContext,
+  AdaptResult,
+  ControlPathAuditEvent,
+  ControlPathFlag,
+  ControlPathMode,
+  DanmakuBatch,
+  LegacyEntryCommand,
+  MigrationInventory,
+  SwitchResult,
+} from './migration/index';
