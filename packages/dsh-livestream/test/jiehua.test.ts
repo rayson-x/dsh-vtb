@@ -277,3 +277,130 @@ describe('长句与已提交的插话', () => {
     stage.stop();
   });
 });
+
+describe('节目单约束主持人的排播', () => {
+  it('有节目单时漏结点的正文不会被念；补正确标记才排播，短回应可先报安排', async () => {
+    const { Blackboard } = await import('../src/host/blackboard');
+    const { apply } = await import('../src/dsh/agent');
+    vi.useFakeTimers(); vi.setSystemTime(Date.now() + 60_000);
+    const { stage, liveInput, desk, wake, show } = await import('../src/dsh/runtime');
+    const oldTopic = desk.topic, oldState = stage.state, oldWake = wake.at, oldSession = show.sessionId;
+    const pushed = vi.fn();
+    const cleanups: (()=>void)[] = [];
+    show.sessionId = 'waiting-topic-test';
+    const b = new Blackboard(); b.topic('t1', { title: '当前话题' }); b.material('m1', '当前资料', {});
+    b.edit('t1', { add: [{ text: '当前点', material: 'm1', reason: '先讲这点', position: 'now' }] });
+    const previous = stage.blackboard; stage.blackboard = b.read();
+    const enqueue = vi.spyOn(stage, 'enqueue').mockReturnValue({ errors: [], done: Promise.resolve('done') });
+    const spies = [enqueue,
+      vi.spyOn(stage, 'remainingMs').mockReturnValue(0),
+      vi.spyOn(stage, 'call').mockImplementation(async <T>(method: string) => (method === 'blackboard.line' ? b.line() : '') as T),
+      vi.spyOn(stage, 'takeCueErrors').mockResolvedValue([]), vi.spyOn(stage, 'takeFilled').mockResolvedValue([]), vi.spyOn(stage, 'lineup').mockResolvedValue([]),
+      vi.spyOn(liveInput, 'hasBreak').mockReturnValue(false), vi.spyOn(liveInput, 'hasUrgent').mockReturnValue(false), vi.spyOn(liveInput, 'take').mockResolvedValue({ text: '', urgent: false }),
+    ];
+    let speak: any;
+    apply({ get: () => ({get: () => ({followup:pushed})}), effect: (fn: () => unknown, label: string) => { if (label === 'speak') fn(); else if (label === 'dsh-livestream 马上回') cleanups.push(fn() as ()=>void); }, tools: { register: (tool: unknown) => { speak = tool; } } });
+    try {
+      expect(await speak.execute({ text: '这点内容讲完了。' }, {})).toContain('没排播');
+      expect(enqueue).not.toHaveBeenCalled();
+      await speak.execute({ text: '这点内容讲完了。[[beat done b1]]' }, {});
+      expect(enqueue).toHaveBeenCalledTimes(1);
+      await speak.execute({ text: '小舟，这点讲完就接你的。', next: true }, {});
+      expect(enqueue).toHaveBeenCalledTimes(2);
+      stage.blackboard = undefined;
+      desk.topic = { task: desk.open('topic', '观众换题'), batches: 0, spokenAtLastBatch: 0, wants: [] };
+      expect(await speak.execute({ text: '[[mood happy]]', next: true }, {})).toContain('没有要念的字');
+      expect(enqueue).toHaveBeenCalledTimes(2);
+      expect(await speak.execute({ text: '还在等编导，我先再讲一段没有排进单的内容。' }, {})).toContain('没排播');
+      expect(enqueue).toHaveBeenCalledTimes(2);
+      await speak.execute({ text: '收到，旧题收住，新题马上接。', next: true }, {});
+      expect(enqueue).toHaveBeenCalledTimes(3);
+      expect(await speak.execute({ text: '我再给新题说一句开场。', next: true }, {})).toContain('没排播');
+      expect(enqueue).toHaveBeenCalledTimes(3);
+      const beforeWake = wake.at;
+      stage.state = {...stage.state, danmaku:[{id:'waiting-topic-owner', platform:'owner', user:'主人',text:'先解释刚才的问题',at:Date.now()}]};
+      await vi.advanceTimersByTimeAsync(500);
+      expect(pushed).toHaveBeenCalledTimes(1);
+      expect(wake.at).toBeGreaterThan(beforeWake);
+      expect(await speak.execute({text:'主人，先回你的问题，再接新题。',next:true},{})).not.toContain('没排播');
+      expect(enqueue).toHaveBeenCalledTimes(4);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(await speak.execute({text:'没有新消息，再补一句过场。',next:true},{})).toContain('没排播');
+      expect(enqueue).toHaveBeenCalledTimes(4);
+    } finally { cleanups.forEach(fn=>fn()); spies.forEach(s => s.mockRestore()); stage.blackboard = previous; desk.topic = oldTopic; stage.state = oldState; wake.at = oldWake; show.sessionId = oldSession; }
+  });
+});
+
+
+describe('真实急件的主持人排播门禁', () => {
+  it.each(['question-receipt', 'gift-timer', 'owner-timer'])('%s 在断句等待前拦普通稿，成功短回才放行', async source => {
+    vi.useFakeTimers(); vi.setSystemTime(Date.now() + 180_000 + ['question-receipt', 'gift-timer', 'owner-timer'].indexOf(source) * 60_000);
+    const { apply } = await import('../src/dsh/agent');
+    const { stage, liveInput, desk, show, wake } = await import('../src/dsh/runtime');
+    const previous = { state: stage.state, board: stage.blackboard, topic: desk.topic, session: show.sessionId, wake: wake.at };
+    const board = new (await import('../src/host/blackboard')).Blackboard();
+    board.topic('urgent-topic', { title: '当前话题' }); board.material('urgent-material', '资料', {});
+    board.edit('urgent-topic', { add: [{ text: '普通节目点', material: 'urgent-material', reason: '继续节目', position: 'now' }] });
+    stage.blackboard = board.read(); desk.topic = undefined; show.sessionId = 'urgent-regression';
+    const input = new LiveInput(() => undefined);
+    if (source === 'owner-timer') stage.state = { ...stage.state, danmaku: [{ id: 'urgent-owner-1', platform: 'owner', user: '主人', text: '先解释刚才的问题', at: Date.now() }] };
+    else input.ingest([source === 'gift-timer' ? gift : message]);
+    let release!: (value: string) => void;
+    const checkpoint = new Promise<string>(resolve => { release = resolve; });
+    const enqueue = vi.spyOn(stage, 'enqueue').mockReturnValue({ errors: [], done: Promise.resolve('done') });
+    const call = vi.spyOn(stage, 'call').mockImplementation(async <T>(method: string, args?: any) => {
+      if (method === 'input.take') return input.take(args.ctx) as T;
+      if (method === 'speech.break') return await checkpoint as T;
+      return (method === 'blackboard.line' ? board.line() : '') as T;
+    });
+    const spies = [enqueue, call, vi.spyOn(stage, 'remainingMs').mockReturnValue(0),
+      vi.spyOn(stage, 'takeCueErrors').mockResolvedValue([]), vi.spyOn(stage, 'takeFilled').mockResolvedValue([]), vi.spyOn(stage, 'lineup').mockResolvedValue([]),
+      vi.spyOn(liveInput, 'hasBreak').mockImplementation(() => input.hasBreak()), vi.spyOn(liveInput, 'hasUrgent').mockImplementation(() => input.hasUrgent())];
+    const tools = new Map<string, any>(), cleanups: (() => void)[] = [];
+    apply({ get: () => ({ get: () => ({ followup: vi.fn() }) }), effect: (fn: () => unknown, label: string) => {
+      if (label === 'speak' || label === 'stage_brief') fn();
+      else if (label === 'dsh-livestream 马上回') cleanups.push(fn() as () => void);
+    }, tools: { register: (tool: any) => tools.set(tool.name, tool) } });
+    const speak = (text: string, next = false) => tools.get('speak').execute({ text, next }, {});
+    const ordinary = '继续讲普通节目点。[[beat done b1]]';
+    let receipt: Promise<unknown> | undefined;
+    try {
+      if (source === 'question-receipt') { receipt = tools.get('stage_brief').execute({}, {}); await vi.advanceTimersByTimeAsync(0); }
+      else await vi.advanceTimersByTimeAsync(500);
+      expect(call.mock.calls.some(([method]) => method === 'speech.break')).toBe(true);
+      expect(await speak(ordinary)).toContain('没排播');
+      expect(enqueue).not.toHaveBeenCalled();
+      expect(await speak('[[mood happy]]', true)).toContain('没有要念的字');
+      expect(await speak(ordinary)).toContain('没排播');
+      expect(await speak('这是一段过长的优先回应。'.repeat(6), true)).toContain('没排播');
+      enqueue.mockReturnValueOnce({ errors: ['舞台没连上'], done: Promise.resolve('interrupted') });
+      expect(await speak('先回你的问题。', true)).toContain('舞台没连上');
+      expect(await speak(ordinary)).toContain('没排播');
+      desk.topic = { task: desk.open('topic', '等待新题'), batches: 0, spokenAtLastBatch: 0, wants: [] };
+      expect(await speak('先回你的问题。', true)).toContain('排上了');
+      // 在 break 尚未返回时已短回；同一批不能在 timer 恢复后再获一次等待话题回应机会。
+      await vi.advanceTimersByTimeAsync(50);
+      release('断句位置'); if (receipt) await receipt;
+      await vi.advanceTimersByTimeAsync(0);
+      expect(await speak('这条旧消息再回应一次。', true)).toContain('没排播');
+      desk.topic = undefined;
+      expect(await speak(ordinary)).toContain('排上了');
+      await vi.advanceTimersByTimeAsync(21_000);
+      expect(await speak(ordinary)).toContain('排上了');
+      // 新消息再次唤醒；旧批次经过两条入口后不要求重复回应。
+      if (source === 'owner-timer') stage.state = { ...stage.state, danmaku: [...stage.state.danmaku, { id: 'urgent-owner-2', platform: 'owner', user: '主人', text: '还有一个问题', at: Date.now() }] };
+      else input.ingest([{ ...message, user: { id: 'new-viewer', name: '小麦' } }]);
+      await vi.advanceTimersByTimeAsync(500);
+      const before = enqueue.mock.calls.length;
+      const denied = await speak(ordinary);
+      expect(denied).toContain('没排播'); expect(denied).toContain(source === 'owner-timer' ? '还有一个问题' : '小麦');
+      expect(enqueue).toHaveBeenCalledTimes(before);
+      expect(await speak('这条也先回应。', true)).toContain('排上了');
+      expect(await speak(ordinary)).toContain('排上了');
+    } finally {
+      release('断句位置'); if (receipt) await receipt;
+      cleanups.forEach(fn => fn()); spies.forEach(spy => spy.mockRestore());
+      stage.state = previous.state; stage.blackboard = previous.board; desk.topic = previous.topic; show.sessionId = previous.session; wake.at = previous.wake;
+    }
+  });
+});

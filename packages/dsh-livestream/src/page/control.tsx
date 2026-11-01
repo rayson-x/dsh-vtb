@@ -165,7 +165,7 @@ function Owner({ state }: { state: ReturnType<typeof useStage>['state'] }) {
         <span>{off ? '还没开播：先在这里设好方向和观众数据，再点上面的「开播」' : `她：${AGENT_NAMES[live?.agent ?? 'none']}`}</span>
         {topics.length > 0 && <span>聊过：{topics.join('、')}</span>}
       </div>
-      <button aria-pressed={crew} onClick={() => { void fetch('/crew', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: !crew }) }).then((r) => r.json()).then((r) => setCrew(r.enabled)).catch(() => setNote('舞台团队开关未送达，请重试')); }}>{crew ? '舞台团队：开（点击关闭）' : '舞台团队：关（点击开启）'}</button>
+      <button aria-pressed={crew} onClick={() => { void fetch('/crew', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: !crew }) }).then((r) => r.json()).then((r) => setCrew(r.enabled)).catch(() => setNote('舞台团队开关未送达，请重试')); }}>{crew ? '舞台团队：开（点击关闭）' : '舞台团队：关 · 当前主题（点击开启）'}</button>
       <textarea className="owner-direction" placeholder="今天这场的方向：主题、风格、想聊哪类话题" value={direction} onChange={(e) => setDirection(e.target.value)} />
       <div className="owner-row owner-sets">
         <span className="owner-note">布景：</span>

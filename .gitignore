@@ -9,3 +9,21 @@ node_modules/
 packages/dsh-livestream/lib/
 packages/dsh-livestream/assets/
 packages/dsh-livestream/.cache/
+
+# QA 的运行证据保留在本机，不混进代码提交。
+packages/dsh-livestream/scripts/*-qa/shots-*/
+packages/dsh-livestream/scripts/*-qa/contact-*/
+packages/dsh-livestream/scripts/*-qa/timeline-[0-9]*.png
+packages/dsh-livestream/scripts/*-qa/timeline-[0-9]*.svg
+packages/dsh-livestream/scripts/*-qa/run-[0-9]*.json
+packages/dsh-livestream/scripts/*-qa/derived-[0-9]*.json
+packages/dsh-livestream/scripts/*-qa/verdict-[0-9]*.json
+packages/dsh-livestream/scripts/*-qa/track-verdict-[0-9]*.json
+packages/dsh-livestream/scripts/*-qa/plan-verdict-[0-9]*.json
+packages/dsh-livestream/scripts/*-qa/version-[0-9]*.json
+packages/dsh-livestream/scripts/*-qa/*.jsonl
+packages/dsh-livestream/scripts/*-qa/strict.json
+packages/dsh-livestream/scripts/*-qa/metrics.json
+packages/dsh-livestream/scripts/*-qa/observations.json
+packages/dsh-livestream/scripts/*-qa/board-current.json
+packages/dsh-livestream/scripts/*-qa/validation-config.json

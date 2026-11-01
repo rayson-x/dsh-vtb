@@ -7,7 +7,7 @@
  * 基础效果都是 CSS 动画（时长和延迟按步骤给），演完自己消失；只有「震」要作用在整个舞台上，由 Stage 读 shakeOf()。
  */
 
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { SETS, effectMs, effectOf, type AmbientKind, type Prim } from '../stage/sets';
 import type { StageState } from '../stage/protocol';
 
@@ -111,9 +111,31 @@ export function SetFx({ state, now }: { state: StageState; now: number }) {
     const fx = effectOf(state.set, v.name);
     return fx && now - v.at < effectMs(fx) + 200;
   });
+  const mask = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const layer = mask.current;
+    // 每帧都会进来：没有粒子在演（闪白、骤暗等）就不去量字
+    if (!layer?.querySelector('.vfx-burst')) return;
+    const stage = layer.closest('.stage');
+    if (!stage) return;
+    const origin = stage.getBoundingClientRect(), unit = origin.width / 1920;
+    // SVG遮罩只作用于粒子步骤。每帧读真实字形的Range，跟随镜头、翻页和文字更新；
+    // 不遮整块展示板，其余空位仍能清楚看到气泡和星光。
+    const holes: string[] = [];
+    for (const item of stage.querySelectorAll('.draw-item')) for (const node of item.querySelectorAll('*')) {
+      if (getComputedStyle(node).visibility === 'hidden') continue;
+      for (const text of node.childNodes) if (text.nodeType === Node.TEXT_NODE && text.textContent?.trim()) {
+        const range = document.createRange(); range.selectNodeContents(text);
+        for (const b of range.getClientRects()) if (b.width && b.height) holes.push(`<rect x="${(b.left - origin.left) / unit - 8}" y="${(b.top - origin.top) / unit - 8}" width="${b.width / unit + 16}" height="${b.height / unit + 16}" rx="6" fill="black"/>`);
+      }
+    }
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><mask id="safe"><rect width="1920" height="1080" fill="white"/>${holes.join('')}</mask><rect width="1920" height="1080" fill="white" mask="url(#safe)"/></svg>`;
+    const image = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    for (const burst of layer.querySelectorAll<HTMLElement>('.vfx-burst')) burst.style.maskImage = image;
+  }, [now, state.draw]);
   if (!live.length) return null;
   return (
-    <div className="layer vfx-layer">
+    <div className="layer vfx-layer" ref={mask}>
       {live.map((v) => {
         const fx = effectOf(state.set, v.name)!;
         if (!started.current.has(v.id)) started.current.set(v.id, Math.max(0, now - v.at));

@@ -53,6 +53,8 @@ export interface Cell { col: number; row: number; w: number; h: number }
 
 export interface Item {
   id: string;
+  /** 同内容换编号后的引用别名，后续强调仍命中同一个元素。 */
+  aliases?: string[];
   kind: ItemKind;
   /** 主内容：字、数字、图片地址、emoji…（按种类解释） */
   text: string;

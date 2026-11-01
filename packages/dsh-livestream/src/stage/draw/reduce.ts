@@ -37,7 +37,15 @@ const size = (kind: ItemKind, s?: TextSize): [number, number] =>
   kind === 'text' ? TEXT_SIZE[s ?? 'm'] : kind === 'link' || kind === 'group' ? [0, 0] : KIND_SIZE[kind];
 
 export function reduceDraw(d: DrawState, cmd: DrawCommand, now: number, protectInteractions = false): DrawState | string {
-  const find = (id: string) => d.items.find((x) => x.id === id);
+  const canonical = (id: string) => d.items.find(x => x.id === id || x.aliases?.includes(id))?.id ?? id;
+  if (cmd.type === 'link' && (canonical(cmd.from) !== cmd.from || canonical(cmd.to) !== cmd.to)) return reduceDraw(d, { ...cmd, from: canonical(cmd.from), to: canonical(cmd.to) }, now, protectInteractions);
+  if (cmd.type === 'group' && cmd.members.some(id => canonical(id) !== id)) return reduceDraw(d, { ...cmd, members: [...new Set(cmd.members.map(canonical))] }, now, protectInteractions);
+  // 后续标记可能仍用模型刚给的新编号；去重合并后把它解析回画布上的唯一元素。
+  if ('id' in cmd && cmd.type !== 'draw' && cmd.id) {
+    const target = d.items.find(x => x.aliases?.includes(cmd.id!));
+    if (target && target.id !== cmd.id) return reduceDraw(d, { ...cmd, id: target.id }, now, protectInteractions);
+  }
+  const find = (id: string) => d.items.find((x) => x.id === id || x.aliases?.includes(id));
   switch (cmd.type) {
     case 'draw': {
       if (!ID.test(cmd.id)) return `编号只能是字母数字汉字，最多 16 个：${cmd.id}`;
@@ -46,9 +54,19 @@ export function reduceDraw(d: DrawState, cmd: DrawCommand, now: number, protectI
       if (!text && !cmd.rows?.length) return `${cmd.id} 没写内容`;
       if (cmd.enter && !ENTERS.includes(cmd.enter)) return `出场只能是 ${ENTERS.join(' ')}`;
       // 同一个编号再画一次 = 换掉它（位置不变）
-      const old = find(cmd.id);
-      const retired = new Set(d.items.filter((x) => INTERACTIVE.has(cmd.kind) && x.docked && x.id !== cmd.id).map((x) => x.id));
-      const rest = without(d.items.filter((x) => x.id !== cmd.id), retired);
+      // 说明按内容认同一个元素：编号和外观变了也原地更新，连线仍指向原编号。
+      const clean = (value: string) => value.normalize('NFKC').replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase();
+      const content = (x: { text: string; rows?: Item['rows'] }) => clean([x.text, ...(x.rows ?? []).map(r => `${r.label}:${r.value ?? ''}`)].join('|'));
+      const same = (a: string, b: string) => !!a && !!b && (a === b || Math.min(a.length, b.length) >= 3 && Math.abs(a.length - b.length) <= 2 && (a.includes(b) || b.includes(a)));
+      const key = content({ text, rows: cmd.rows?.slice(0, 8).map(r => ({ ...r, label: screenText(r.label, 16) })) });
+      const duplicate = cmd.kind !== 'image' && !INTERACTIVE.has(cmd.kind)
+        ? d.items.find(x => x.kind !== 'image' && x.kind !== 'link' && x.kind !== 'group' && (same(key, content(x)) || !cmd.rows?.length && INTERACTIVE.has(x.kind) && same(key, clean(x.text)))) : undefined;
+      // 主持人的互动原样保留；说明岗位重复引用互动问题时不另画一份。
+      if (duplicate && INTERACTIVE.has(duplicate.kind)) return { ...d, evicted: [] };
+      const id = duplicate?.id ?? find(cmd.id)?.id ?? cmd.id;
+      const old = find(id);
+      const retired = new Set(d.items.filter((x) => INTERACTIVE.has(cmd.kind) && x.docked && x.id !== id || x.id === cmd.id && x.id !== id).map((x) => x.id));
+      const rest = without(d.items.filter((x) => x.id !== id), retired);
       const where = anchorOf(cmd.at, rest);
       if ('error' in where) return where.error;
       const [w, h] = size(cmd.kind, cmd.size);
@@ -59,7 +77,7 @@ export function reduceDraw(d: DrawState, cmd: DrawCommand, now: number, protectI
       if (!spot) return '互动占满画布，请先翻页收进挂件位';
       spot.evicted.push(...retired);
       const item: Item = {
-        id: cmd.id, kind: cmd.kind, text, cell: spot.cell, enter: cmd.enter ?? DEFAULT_ENTER[cmd.kind], born: now,
+        id, aliases: [...new Set([...(old?.aliases ?? []), ...(id !== cmd.id ? [cmd.id] : [])])], kind: cmd.kind, text, cell: spot.cell, enter: cmd.enter ?? DEFAULT_ENTER[cmd.kind], born: now,
         ...(cmd.note ? { note: screenText(cmd.note, 40) } : {}),
         ...(cmd.rows?.length ? { rows: cmd.rows.slice(0, 8).map((r) => ({ label: screenText(r.label, 16), ...(r.value !== undefined ? { value: r.value } : {}), ...(r.note ? { note: screenText(r.note, 30) } : {}) })) } : {}),
         ...(cmd.kind === 'text' ? { size: cmd.size ?? 'm' } : {}),

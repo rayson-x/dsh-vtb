@@ -117,31 +117,77 @@ function camera(d: DrawState): CSSProperties {
 /** 内容按实际字形和子元素的范围等比缩进格子，测量在绘制前完成。 */
 function Fitted({ box, children, item, now }: { box: Box; children: ReactNode; item: Item; now: number }) {
   const ref = useRef<HTMLDivElement>(null);
+  const originals = useRef(new WeakMap<Text, { source: string; shown: string }>());
+  const fontStyles = useRef(new WeakMap<Element, { source: string; shown: string }>());
+  const age = now - (item.fx?.kind === 'count' ? item.fx.at : item.born);
+  const animatingText = item.kind === 'timer' || item.kind === 'number' && age < 1200 || ['type', 'decode'].includes(item.enter) && age < [...item.text].length * 70 + 300;
+  const layoutTick = animatingText ? now : 0;
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.transform = 'none';
     const r = el.getBoundingClientRect(), unit = r.width / box.w;
     if (!unit) return;
-    let left = r.left, top = r.top, right = r.right, bottom = r.bottom;
-    const include = (b: DOMRect) => {
-      if (!b.width || !b.height) return;
-      left = Math.min(left, b.left); top = Math.min(top, b.top);
-      right = Math.max(right, b.right); bottom = Math.max(bottom, b.bottom);
-    };
-    for (const node of el.querySelectorAll('*')) {
-      include(node.getBoundingClientRect());
-      for (const text of node.childNodes) if (text.nodeType === Node.TEXT_NODE && text.textContent?.trim()) {
-        const range = document.createRange(); range.selectNodeContents(text);
-        for (const rect of range.getClientRects()) include(rect);
-      }
+    // 先按原排版测量；小注也必须在最终缩放后保有18px，镜头总览0.88倍另留余量。
+    const nodes = [...el.querySelectorAll<HTMLElement | SVGElement>('*')];
+    const texts = nodes.flatMap(node => [...node.childNodes].filter((t): t is Text => t.nodeType === Node.TEXT_NODE && !!t.textContent?.trim()));
+    for (const text of texts) {
+      const old = originals.current.get(text);
+      if (old && text.data === old.shown) text.data = old.source;
+      else originals.current.set(text, { source: text.data, shown: text.data });
     }
-    const width = (right - left) / unit, height = (bottom - top) / unit;
-    const scale = Math.min(1, (box.w - 8) / width, (box.h - 8) / height);
+    for (const node of nodes) {
+      const old = fontStyles.current.get(node);
+      if (old && node.style.fontSize === old.shown) node.style.fontSize = old.source;
+      else fontStyles.current.set(node, { source: node.style.fontSize, shown: node.style.fontSize });
+    }
+    const fonts = nodes.map(node => parseFloat(getComputedStyle(node).fontSize));
+    let left = r.left, top = r.top, width = box.w, height = box.h, scale = 1;
+    const measure = () => {
+      left = r.left; top = r.top;
+      let right = r.right, bottom = r.bottom;
+      const include = (b: DOMRect) => {
+        if (!b.width || !b.height) return;
+        left = Math.min(left, b.left); top = Math.min(top, b.top);
+        right = Math.max(right, b.right); bottom = Math.max(bottom, b.bottom);
+      };
+      for (const node of nodes) {
+        include(node.getBoundingClientRect());
+        for (const text of node.childNodes) if (text.nodeType === Node.TEXT_NODE && text.textContent?.trim()) {
+          const range = document.createRange(); range.selectNodeContents(text);
+          for (const rect of range.getClientRects()) include(rect);
+        }
+      }
+      width = (right - left) / unit; height = (bottom - top) / unit;
+      scale = Math.min(1, (box.w - 8) / width, (box.h - 8) / height);
+    };
+    measure();
+    // 由外往内设置绝对字号，避免父子继承把最小字号重复放大。
+    for (let pass = 0; pass < 4; pass++) {
+      for (const [i, node] of nodes.entries()) node.style.fontSize = `${Math.max(fonts[i]!, 21 / scale)}px`;
+      measure();
+    }
+    // 极长说明不再继续缩小。按实际测量截短最长文字，保留省略号与完整title。
+    for (let pass = 0; pass < 80 && nodes.some(node => [...node.childNodes].some(t => t.nodeType === Node.TEXT_NODE && t.textContent?.trim()) && parseFloat(getComputedStyle(node).fontSize) * scale < 20.5); pass++) {
+      const longest = [...texts].sort((a, b) => (b.textContent?.length ?? 0) - (a.textContent?.length ?? 0))[0];
+      if (!longest || [...(longest.textContent ?? '')].length < 3) break;
+      const parent = longest.parentElement;
+      if (parent && !parent.title) parent.title = longest.textContent ?? '';
+      longest.textContent = [...(longest.textContent ?? '')].slice(0, -2).join('') + '…';
+      measure();
+    }
+    for (const text of texts) {
+      const old = originals.current.get(text);
+      if (old) old.shown = text.data;
+    }
+    for (const node of nodes) {
+      const old = fontStyles.current.get(node);
+      if (old) old.shown = node.style.fontSize;
+    }
     const x = (box.w - width * scale) / 2 - (left - r.left) / unit * scale;
     const y = (box.h - height * scale) / 2 - (top - r.top) / unit * scale;
     el.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-  }, [item, box.w, box.h, now]);
+  }, [item, box.w, box.h, layoutTick]);
   return <div className="draw-fit" ref={ref}>{children}</div>;
 }
 

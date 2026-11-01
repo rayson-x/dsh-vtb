@@ -1,7 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { StageController } from '../src/host/controller';
 import { validateBridge } from '../src/host/filler';
-import { liveCrew } from '../src/host/crew/live';
 import { mergeCrew, type LightingHistory } from '../src/host/crew';
 import { initialState } from '../src/stage/protocol';
 import { parseCues } from '../src/stage/cues';
@@ -56,52 +55,15 @@ it('粒子与混合特效共用一分钟额度，实际执行不会因跨段和�
   expect(fire('splash').ok).toBe(true);
   stage.stop();
 });
-it('翻页后的下一段 graphics 得到画布空了和互动补说明的状态', async () => {
-  vi.useFakeTimers();
-  const requests: any[] = [];
-  vi.stubGlobal('fetch', vi.fn(async (_url, init) => { requests.push(JSON.parse(init.body)); return new Response(JSON.stringify({ choices: [{ message: { content: '[]' } }] })); }));
-  const stage = new StageController({ tickHz: 0 });
-  liveCrew(stage, async () => 'test-key', () => {});
-  stage.apply(parseCues('[[draw a text 原主题]]').cues[0]!.cmd);
-  stage.apply(parseCues('[[page wipe]]').cues[0]!.cmd);
-  stage.enqueue('接下来这一段有新的主题与需要解释的要点。', { ms: 1000 });
-  await vi.advanceTimersByTimeAsync(20);
-  const graphics = requests.find(r => r.messages[0].content.includes('画面'));
-  expect(graphics.messages[0].content).toContain('画布空了');
-  expect(graphics.messages[0].content).toContain('互动道具');
-  expect(JSON.parse(graphics.messages[1].content).state.items).toEqual([]);
-  stage.stop();
-});
-it('画布稀疏时模型的第二条说明不能拖到段尾，两个信息点在开场补齐', async () => {
-  vi.useFakeTimers();
-  vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
-    const request = JSON.parse(init.body);
-    const content = request.messages[0].content.includes('画面包装') ? '[{"at":0,"cue":"[[draw g1_1 text 主题 size=m]]"},{"at":20,"cue":"[[draw g1_2 list 要点一 | 要点二]]"}]' : '[]';
-    return new Response(JSON.stringify({ choices: [{ message: { content } }] }));
-  }));
-  const stage = new StageController({ tickHz: 0 });
-  stage.enqueue('前一段还在说。', { ms: 2000 });
-  liveCrew(stage, async () => 'test-key', () => {});
-  stage.enqueue('这是一段足够长的主题说明，后面还有需要解释的两个要点。', { ms: 12000 });
-  await vi.advanceTimersByTimeAsync(3000);
-  expect(stage.state.draw.items).toHaveLength(2);
-  stage.stop();
-});
-it('互动揭晓会重新展开，画面车道的翻页与说明必须排在揭晓之后', async () => {
+it('限频只管灯光车道：额度用完后主人/控制台手动放的特效照放', () => {
   vi.useFakeTimers();
   const stage = new StageController({ tickHz: 0 });
-  stage.apply(parseCues('[[draw a poll 你选哪一个 | 甲 | 乙]]').cues[0]!.cmd);
-  stage.enqueue('前一段还在说。', { ms: 2000 });
-  vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
-    const request = JSON.parse(init.body);
-    const content = request.messages[0].content.includes('画面包装') ? '[{"at":0,"cue":"[[page]]"},{"at":20,"cue":"[[draw g1_1 text 选择背后的原因 size=m]]"},{"at":24,"cue":"[[draw g1_2 list 先看条件 | 再想后果]]"}]' : '[]';
-    return new Response(JSON.stringify({ choices: [{ message: { content } }] }));
-  }));
-  liveCrew(stage, async () => 'test-key', () => {});
-  stage.enqueue('投票收一下[[result a]]，看完结果继续解释为什么要这样选。', { ms: 12000 });
-  await vi.advanceTimersByTimeAsync(6500);
-  expect(stage.state.draw.items.find(x => x.id === 'a')?.docked).toBeTruthy();
-  expect(stage.state.draw.items.filter(x => x.kind !== 'poll').map(x => x.text)).toContain('选择背后的原因');
+  expect(stage.apply({ type: 'vfx', name: 'prim:flash', lane: 'lighting' }).ok).toBe(true);
+  vi.advanceTimersByTime(10000);
+  expect(stage.apply({ type: 'vfx', name: 'prim:dark', lane: 'lighting' }).ok).toBe(true);
+  vi.advanceTimersByTime(10000);
+  expect(stage.apply({ type: 'vfx', name: 'prim:static', lane: 'lighting' }).ok).toBe(false);
+  expect(stage.apply({ type: 'vfx', name: 'prim:static' }).ok).toBe(true);
   stage.stop();
 });
 it('关闭车道后主持人的 table 写法用现有列表承载，不丢正文或把标记念出来', () => {
@@ -116,25 +78,4 @@ it('主持人把旧引用素材类型写进 draw 时，用现有卡片保留引�
   expect(parsed.errors).toEqual([]);
   expect(parsed.text).toBe('接着讲。');
   expect(parsed.cues[0]?.cmd).toMatchObject({ type: 'draw', kind: 'card', text: '原话保持不变', note: '来源说明' });
-});
-it('稀疏画布空答会重试，结果迟于开口时补到未念到的位置，不能全被丢弃', async () => {
-  vi.useFakeTimers();
-  let calls = 0;
-  vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
-    const request = JSON.parse(init.body);
-    let content = '[]';
-    if (request.messages[0].content.includes('画面包装')) {
-      calls++;
-      await new Promise(r => setTimeout(r, 250));
-      if (calls > 1) content = '[{"at":0,"cue":"[[draw g1_1 text 新主题 size=m]]"},{"at":0,"cue":"[[draw g1_2 list 要点甲 | 要点乙]]"}]';
-    }
-    return new Response(JSON.stringify({ choices: [{ message: { content } }] }));
-  }));
-  const stage = new StageController({ tickHz: 0, voice: { synthesize: async text => { await new Promise(r => setTimeout(r, 100)); return { ms: [...text].length*200, starts: [...text].map((_,i)=>i*200), file:'voice',url:'/voice/test' }; } } });
-  liveCrew(stage, async () => 'test-key', () => {});
-  stage.enqueue('这是一段足够长的主题说明，后面还有需要解释的两个要点。');
-  await vi.advanceTimersByTimeAsync(1800);
-  expect(calls).toBe(2);
-  expect(stage.state.draw.items).toHaveLength(2);
-  stage.stop();
 });

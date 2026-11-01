@@ -4,6 +4,7 @@
  * 大脑重启不影响画面。两个入口打包时共用这个模块（同一进程、同一份实例）。
  */
 
+import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Desk } from './desk';
@@ -28,7 +29,7 @@ export const liveInput = new RemoteInput(stage);
 export const show: { sessionId?: string; direction?: string } = {};
 
 /** 前台和后台之间的桌子（见 desk.ts） */
-export const desk = new Desk(Date.now, (card) => stage.setTopicCard(card));
+export const desk = new Desk(Date.now, (card) => { stage.setTopicCard(card); stage.publishBoard('blackboard.topic', { id: desk.topic?.task.id ?? '', card }); }, randomUUID().slice(0, 8));
 
 /** 她最近说过的话（去掉标记），补料时带给后台；清空记忆时一起清 */
 export const said: string[] = [];

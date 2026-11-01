@@ -64,14 +64,29 @@ export class Desk {
   topic: Topic | undefined;
   readonly topics: string[] = [];
 
+  private topicStarter: ((ask: string) => void) | undefined;
+  requestedUntil = 0;
+  private requestedTopics = new Set<string>();
+  setTopicStarter(start: (ask: string) => void): () => void {
+    this.topicStarter = start;
+    return () => { if (this.topicStarter === start) this.topicStarter = undefined; };
+  }
+  /** 换题请求直接叫醒编导，不等主持人把回应和工具串行做完。 */
+  requestTopic(ask: string, key?: string): boolean {
+    if (!this.topicStarter || (key && this.requestedTopics.has(key))) return false;
+    if (key) this.requestedTopics.add(key);
+    this.requestedUntil = this.now() + 90_000;
+    this.topicStarter(ask);
+    return true;
+  }
   private cardPoints: string[] = [];
-  constructor(private readonly now: () => number = Date.now, private readonly publish?: (card: { title: string; hook?: string; points?: string[] } | undefined) => void) {}
+  constructor(private readonly now: () => number = Date.now, private readonly publish?: (card: { title: string; hook?: string; points?: string[] } | undefined) => void, private readonly instance = '') {}
   private publishTopic(): void {
     this.publish?.(this.topic ? { title: this.topic.title ?? this.topic.task.ask, hook: this.topic.task.ask, points: this.cardPoints.slice(-5) } : undefined);
   }
 
   open(kind: TaskKind, ask: string): Task {
-    const task: Task = { id: `t${++this.seq}`, kind, ask, startedAt: this.now(), status: 'running', progress: [] };
+    const task: Task = { id: `t${++this.seq}${this.instance ? '-' + this.instance : ''}`, kind, ask, startedAt: this.now(), status: 'running', progress: [] };
     this.tasks.set(task.id, task);
     return task;
   }
@@ -151,6 +166,8 @@ export class Desk {
 
   /** 清空：在查的全撤、聊过的话题和素材都不要了（主人「清空她的记忆」时） */
   reset(): void {
+    this.requestedUntil = 0;
+    this.requestedTopics.clear();
     for (const t of this.tasks.values()) if (t.status === 'running') t.status = 'cancelled';
     this.topic = undefined;
     this.cardPoints = [];
@@ -226,7 +243,8 @@ export class OrderBook {
     if (!/请|讲|举|想听|想看|能不能|能否|可以|要|帮|来个|说说|解释|聊聊|慢|快|换|继续|别|停|再|把|求|给我/.test(want)) return;
     const updating = key ? this.entries.find((e) => e.key === key && e.status === 'pending') : undefined;
     if (updating) { updating.want = want; updating.gift = gift; return; }
-    if (this.entries.some((e) => e.who === who && e.want === want && Math.abs(e.at - at) <= 15_000)) return;
+    const paired = this.entries.find((e) => e.who === who && e.want === want && Math.abs(e.at - at) <= 15_000);
+    if (paired) { if (gift) paired.gift = gift; if (key) paired.key = key; return; }
     this.entries.push({ id: `o${++this.seq}`, who, gift, want, at, ...(key ? { key } : {}), status: 'pending' });
   }
   close(id: string, status: 'done' | 'decline', spoken: string): string | undefined {
@@ -234,11 +252,11 @@ export class OrderBook {
     if (!e || e.status !== 'pending') return `点单 ${id} 不存在或已经关闭`;
     if (!spoken.includes(e.who)) return `关闭 ${id} 前要在这句里点名「${e.who}」`;
     const lastSentence = spoken.trim().match(/[^。！？!?]+[。！？!?]*$/)?.[0] ?? spoken;
-    if (status === 'done' && /马上|稍后|待会|这就|接下来|等会|我来|我会|给你(?:编|讲)/.test(lastSentence)) return `点单 ${id} 还没兑现：承诺要做不算已经讲出来，讲完内容再关闭`;
+    if (status === 'done' && /马上|稍后|待会|这就(?!是)|接下来|等会|我来|我会|给你(?:编|讲)/.test(lastSentence)) return `点单 ${id} 还没兑现：承诺要做不算已经讲出来，讲完内容再关闭`;
     e.status = status;
   }
   pending(): string {
     const rows = this.entries.filter((e) => e.status === 'pending');
-    return rows.length ? `【未兑现点单】请尽快编进当前内容。排队不算兑现，只有观众听到内容后才关闭；兑现那句点名并在句末写 [[done 编号]]；婉拒用 [[decline 编号]]。\n${rows.map((e) => `${e.id} ${e.who}；送了 ${e.gift || '（主人交代）'}；要求：${e.want}；时间：${new Date(e.at).toISOString()}`).join('\n')}` : '';
+    return rows.length ? `【未兑现点单】请尽快编进当前内容。排队不算兑现，只有观众听到内容后才关闭；兑现那句点名并在句末写 [[done 编号]]；婉拒用 [[decline 编号]]。\n${rows.map((e) => `${e.id} ${e.who}；送了 ${e.gift || (e.who === '主人' ? '（主人交代）' : '（观众点题）')}；要求：${e.want}；时间：${new Date(e.at).toISOString()}`).join('\n')}` : '';
   }
 }

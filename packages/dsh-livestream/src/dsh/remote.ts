@@ -6,6 +6,8 @@
  * 说话、取快报这些要舞台回结果的走异步调用。断了自动重连；连上时舞台会把这一场的情况（方向、她说过的话）交过来。
  */
 
+import { randomUUID } from 'node:crypto';
+import type { BoardSnapshot, PlanEdit } from '../host/blackboard';
 import { parseCues } from '../stage/cues';
 import { initialState, type Command, type Mood, type StageState, type Tone } from '../stage/protocol';
 import { reduce } from '../stage/reducer';
@@ -20,9 +22,16 @@ export class RemoteStage {
   state: StageState = initialState();
   private speech: Speech = { at: Date.now(), remainingMs: 0, pending: 0, synthMs: 3_000, stats: { lines: 0, spokenMs: 0, gaps: [] }, news: false, urgent: false, worthBreak: false, quiet: true };
   private settled = new Map<string, (r: SpeakResult) => void>();
+  // 旧舞台没有 receipt；只暂存有限个先于 HTTP 到达的完成回执。
+  private earlySettled = new Map<string, SpeakResult>();
   private connected = false;
   private topicCard: { title: string; hook?: string; points?: string[] } | null = null;
   private topicUpdates: Promise<unknown> = Promise.resolve();
+  blackboard: Readonly<BoardSnapshot> | undefined;
+  private cueErrors: string[] = [];
+  private latest = new Map<string, { key: string; delivery: { method: string; args: Record<string, unknown> } }>();
+  private deliveries = new Map<string, { method: string; args: Record<string, unknown> }>();
+  private deliveryQueue: Promise<unknown> = Promise.resolve();
   private stopped = false;
   private hello: ((h: { show: ShowRecord; said: string[] }) => void)[] = [];
   private abort: AbortController | undefined;
@@ -74,6 +83,7 @@ export class RemoteStage {
       // 断线时还没念完的话不会再有结果了，当被打断
       for (const finish of this.settled.values()) finish('interrupted');
       this.settled.clear();
+      this.earlySettled.clear();
       if (!this.stopped) await new Promise((r) => setTimeout(r, 1_000));
     }
   }
@@ -81,20 +91,28 @@ export class RemoteStage {
   private receive(m: BridgeMessage): void {
     switch (m.type) {
       case 'hello':
+        for (const { key, delivery } of this.latest.values()) this.sendDelivery(key, delivery);
+        for (const [key, delivery] of this.deliveries) this.sendDelivery(key, delivery);
         this.setTopicCard(this.topicCard ?? undefined);
         this.speech = m.speech;
         for (const h of this.hello) h({ show: m.show, said: m.said });
         break;
+      case 'blackboard': this.blackboard = m.board; break;
       case 'state':
         this.state = m.state;
         break;
       case 'speech':
         this.speech = m.speech;
         break;
-      case 'settled':
-        this.settled.get(m.id)?.(m.result);
-        this.settled.delete(m.id);
+      case 'settled': {
+        const finish = this.settled.get(m.receipt ?? m.id);
+        if (finish) finish(m.result);
+        else if (!m.receipt) {
+          this.earlySettled.set(m.id, m.result);
+          if (this.earlySettled.size > 128) this.earlySettled.delete(this.earlySettled.keys().next().value!);
+        }
         break;
+      }
     }
   }
 
@@ -131,9 +149,26 @@ export class RemoteStage {
     if (!this.connected) return { errors: ['舞台没连上，这段没念出去'], done: Promise.resolve('interrupted') };
     // 排队以后的结果按编号等舞台推过来；推过来之前先把这段算进嘴里，免得马上又写一段
     this.speech = { ...this.speech, at: Date.now(), pending: this.speech.pending + 1, remainingMs: this.remainingMs() + [...parsed.text].length * 230 };
-    const done = this.call<{ id: string; errors: string[] }>('enqueue', { text, options })
-      .then(({ id }) => new Promise<SpeakResult>((resolve) => this.settled.set(id, resolve)))
-      .catch(() => 'interrupted' as const);
+    // SSE 完成事件可能先于 HTTP 回执；请求发出前先登记关联号。
+    const receipt = randomUUID();
+    let segment: string | undefined;
+    const completion = new Promise<SpeakResult>(resolve => this.settled.set(receipt, result => {
+      this.settled.delete(receipt);
+      if (segment) this.settled.delete(segment);
+      resolve(result);
+    }));
+    const done = this.call<{ id: string; errors: string[] }>('enqueue', { text, options, receipt })
+      .then(({ id, errors }) => {
+        this.cueErrors.push(...errors); segment = id;
+        const finish = this.settled.get(receipt), early = this.earlySettled.get(id);
+        this.earlySettled.delete(id);
+        if (finish) {
+          if (early !== undefined) finish(early);
+          else this.settled.set(id, finish);
+        }
+        return completion;
+      })
+      .catch((error) => { this.settled.delete(receipt); this.cueErrors.push(error instanceof Error ? error.message : String(error)); return 'interrupted' as const; });
     return { errors: parsed.errors, done };
   }
 
@@ -201,7 +236,7 @@ export class RemoteStage {
   }
 
   takeCueErrors(): Promise<string[]> {
-    return this.call<string[]>('takeCueErrors').catch(() => []);
+    return this.call<string[]>('takeCueErrors').then(errors => [...errors, ...this.cueErrors.splice(0)]).catch(() => this.cueErrors.splice(0));
   }
 
   /** 舞台替她垫过的话（嘴替、大脑不在时） */
@@ -210,7 +245,25 @@ export class RemoteStage {
   }
 
   putVisual(visual: Visual): void {
+    this.publishBoard('blackboard.material', { id: visual.id, description: 'title' in visual && visual.title ? visual.title : visual.kind, data: visual });
     void this.call('visual.put', { id: visual.id, visual }).catch(() => undefined);
+  }
+
+  publishBoard(method: string, args: Record<string, unknown>): void {
+    const key = randomUUID(); const delivery = { method, args: { ...args, key } };
+    if (method === 'blackboard.topic' || method === 'blackboard.material') {
+      const identity = `${method}:${method === 'blackboard.topic' ? '' : args.id}`;
+      const previous = this.latest.get(identity);
+      if (previous) this.deliveries.delete(previous.key);
+      this.latest.set(identity, { key, delivery });
+    }
+    this.deliveries.set(key, delivery); this.sendDelivery(key, delivery);
+  }
+  private sendDelivery(key: string, delivery: { method: string; args: Record<string, unknown> }): void {
+    this.deliveryQueue = this.deliveryQueue.then(() => this.call(delivery.method, delivery.args)).then(() => { this.deliveries.delete(key); }).catch(() => undefined);
+  }
+  editPlan(topic: string, edit: PlanEdit): Promise<string> {
+    return this.call<string>('blackboard.edit', { key: randomUUID(), topic, edit });
   }
 
   setTopicCard(card: { title: string; hook?: string; points?: string[] } | undefined): void {

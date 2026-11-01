@@ -287,7 +287,7 @@ function Timer({ item, box, now }: { item: Item; box: Box; now: number }) {
       <svg width={r * 2 + 20} height={r * 2 + 20}>
         <circle className="track" cx={r + 10} cy={r + 10} r={r} />
         <circle className="left" cx={r + 10} cy={r + 10} r={r} pathLength={100} style={{ strokeDashoffset: 100 - pct * 100 }} />
-        <text x={r + 10} y={r + 22} textAnchor="middle" key={sec} style={fitRing(r - 8, left === 0 ? '到!' : String(sec))}>{left === 0 ? '到!' : sec}</text>
+        <text x={r + 10} y={r + 22} textAnchor="middle" style={fitRing(r - 8, left === 0 ? '到!' : String(sec))}>{left === 0 ? '到!' : sec}</text>
       </svg>
       {item.note && <p>{item.note}</p>}
     </div>
@@ -409,15 +409,21 @@ export function ItemBody({ item, box, now }: { item: Item; box: Box; now: number
           <div className="face back">{item.note ?? ''}</div>
         </div>
       );
-    case 'list':
+    case 'list': {
+      // 密集清单截短内容，不把八行说明一起缩成小字；全文留在每行title里。
+      const limit = item.text || item.rows?.some(r => r.note) ? 3 : 4;
+      const dense = (item.rows?.length ?? 0) > limit;
+      const short = (s: string, n: number) => [...s].length > n ? [...s].slice(0, n - 1).join('') + '…' : s;
+      const rows = (item.rows ?? []).slice(0, limit);
       return (
         <div className="draw-listbox">
           {item.text && <h3>{item.text}</h3>}
           <ul className="draw-list">
-            {(item.rows ?? []).map((r, i) => <li key={r.label + i} style={{ animationDelay: `${i * 220}ms` }}><b>{r.label}</b>{r.note && <span>{r.note}</span>}</li>)}
+            {rows.map((r, i) => <li key={r.label + i} title={`${r.label}${r.note ? '：' + r.note : ''}${dense && i === rows.length - 1 ? `（另有${item.rows!.length - limit}项）` : ''}`} style={{ animationDelay: `${i * 220}ms` }}><b>{dense ? short(r.label, 8) + (i === rows.length - 1 ? '…' : '') : r.label}</b>{r.note && <span>{dense ? short(r.note, 8) : r.note}</span>}</li>)}
           </ul>
         </div>
       );
+    }
     case 'versus': {
       const [a, b] = item.rows ?? [];
       return (

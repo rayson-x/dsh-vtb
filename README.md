@@ -1,85 +1,67 @@
 # aivtb
 
-自用 AI 直播项目。DSH 是唯一的大脑；`packages/dsh-livestream` 是 DSH 插件，提供直播舞台（OBS 浏览器源）和 Agent 控制舞台的工具。
+AI 虚拟主播「大肥鱼」的本地直播舞台。DSH 负责主持和后台编导，`packages/dsh-livestream` 提供控制台、语音队列、共享黑板、独立画面导演和 OBS 浏览器源。
 
-旧实现（平台输入、TTS、Live2D、记忆、Studio）已清掉，打包在 `../aivtb-legacy-2026-10-30.tgz`。
+## 开播
 
-## 舞台
+项目使用本机 DSH 的 `live` 配置，并需将本插件加入该配置。`.dsh/` 是本机状态，不随仓库提交。
 
-1920×1080，同一套叠层在两个场景间切换，不另做界面：
-
-- **杂谈**：人物坐在左边的大舷窗前，工位缩成桌上的一台显示器，弹幕在右栏，口播字幕在人下面
-- **看片**：工位铺满主画面，人物缩到右下，弹幕留在原地
-
-视觉是「水下的小船舱」：她是鲸鱼女仆，所以房间在海里。舷窗是全场唯一抢眼的东西（窗外有光斑，隔很久游过一头鲸），其余都安静。配色从角色身上取：深海蓝做底、鲸蓝（`--whale`）做强调、海沫绿表示完成和进度、草莓粉只给开播和礼物。展示字用得意黑（Smiley Sans，OFL；`node packages/dsh-livestream/scripts/fetch-font.mjs` 下载到 `assets/fonts/`，构建时拷进 `lib/`，没有就退回系统黑体），正文用系统黑体，时间码等宽。字幕不加底框，白字描深蓝边。
-
-图层从下到上：背景、工位、装饰、人物、弹幕框、礼物。工位里有片子（没有地址时画一段假片子）、播放进度条（播放头、旗、选区、切点、特效块、放大一窗）、细看、B-roll、代码条、状态牌和四种工位模式（看片、剪辑、写代码、写特效）。右栏有任务角和弹幕。
-
-人物层默认是 Live2D（`packages/dsh-livestream/assets/characters/deepseek-live2d/`，vendor 脚本从 `/characters/` 按需加载，不打进舞台包）。装不上，或地址带 `?avatar=svg`，就退回 SVG 占位。嘴型每帧读 `mouth()`；表情按 `avatar.mood` 映射到模型（开心兴奋、感叹号、呆呆眼、悲伤）。
-
-转场：Agent 只说软切或硬切，导播选 cut、slide、fade、wipe。工位和人物换场景时不卸载，只做 transform，所以不闪白。切镜头和 B-roll 共用频率上限，主人可以锁镜头。
-
-路径、链接、哈希上屏前一律脱敏；给 Agent 的只是一份薄情报（`src/stage/brief.ts`）。
-
-## 开播（日常用这个）
-
-```sh
-npm run console        # 打开 http://127.0.0.1:3800/ ：直播控制台
-```
-
-控制台常开，大脑（DSH）由它管：点「开播」启动 DSH（`live` 配置，读根目录 `.env`），点「下播」关掉；关控制台进程也会把大脑一起关掉，不会在后台偷偷花钱。开播后在控制台选课件开讲、跟她说话（告诉她 / 打断她），下面「她的输入输出」一条条显示她收到什么、怎么想、调了哪个工具、工具回了什么、每一步用了多少 token。OBS 浏览器源仍然开舞台页 `http://127.0.0.1:3900/`。不用 DSH 自己的客户端。
-
-## 运行
+使用 Node.js 24 或更新版本：
 
 ```sh
 npm ci
-npm --prefix packages/dsh-livestream install
-node packages/dsh-livestream/scripts/fetch-font.mjs   # 展示字体，可选
-npm run stage          # 单独起舞台：http://127.0.0.1:3900/ ，调试台 /control
-npm run stage:demo     # 起来就循环跑一轮假情报演示
-npm run stage:voice    # 单独起舞台，并读取根目录 .env（ElevenLabs）
-npm run plugin:test
+npm --prefix packages/dsh-livestream ci
+npm run console
+```
+
+打开控制台 `http://127.0.0.1:3800/`，设置本场方向后点「开播」。控制台管理大脑进程；「下播」停止大脑，关闭控制台也会清理它启动的子进程。舞台页为 `http://127.0.0.1:3900/`，可作为 OBS 的浏览器源；大脑内部控制口为 3920。
+
+根目录 `.env` 存放本机凭据，不提交到仓库。画面导演使用 `DEEPSEEK_API_KEY`；语音使用 `ELEVENLABS_API_KEY`、`ELEVENLABS_VOICE_ID`，可选 `ELEVENLABS_MODEL_ID`。DSH 的凭据也可由其凭据服务提供。没有语音凭据或合成失败时会退回估时字幕，这不等同于真实语音播放。
+
+如果本机通过环境变量配置 HTTP 代理，可对控制台进程启用 Node 的环境代理支持，并让本机端口直连：
+
+```sh
+NODE_USE_ENV_PROXY=1 NO_PROXY=localhost,127.0.0.1,::1 npm run console
+```
+
+这里使用已有代理配置，不设置系统代理。
+
+## 舞台团队
+
+- **主持人**负责说话、表情和互动内容。普通讲述按节目单最上面的点展开；重要新消息先短回应，再接回原来的话。主持人不能用台词直接控制说明画面、灯光和布景。
+- **编导与黑板**维护当前话题、节目单、素材架、观众要求和历史归档。点题与礼物附言进入点单，由编导决定插入位置与理由；实际念完并点名后才关单。换题保留旧题未讲的安排，删点需说明理由。
+- **说话轨**保存排队、正在念、挂起、已念和撤回的段落，以及真实 TTS 逐字时标。软打断、插队、改稿和接回会同步更新锚点。
+- **画面导演**独立读取说话轨、黑板和画布，持续编辑组件的进场、效果与退场。组件可以跨多段话保留；未执行的计划可改，已执行回执保留。锚点所依赖的话被撤回或改掉时，相关未执行计划作废。
+
+画面不是入队时给每段台词配好的一组装饰。导演由队列变化、话题和素材变化、画布变化及巡场唤醒；事件本身不会直接变成预设画面。运行时校验车道权限、互动保护、排版预算和灯光频率。
+
+控制台的「舞台团队」关闭后停止画面计划，只保留当前主题；再次开启交回画面导演。当前阶段互动道具仍由主持人发起。画面通告回传、完整互动请求交接，以及布景、灯光和音响各自的独立岗位循环仍是后续工作。
+
+## 画面与声音
+
+舞台为 1920×1080，支持海底书房与午夜怪谈布景、说明组件、互动挂件、基础灯光效果和 Live2D 人物。角色与大型素材不进仓库；没有角色资源时使用 SVG 占位。
+
+可选展示字体：
+
+```sh
+node packages/dsh-livestream/scripts/fetch-font.mjs
+```
+
+语音缓存在插件的 `.cache/voice/`。声音从舞台页播放，控制台不代替舞台采音；浏览器首次打开时需允许声音。
+
+## 开发与验证
+
+```sh
 npm run plugin:check
-```
-
-在 DSH 里用：
-
-```sh
+npm run plugin:test
 npm run plugin:build
-npm run dsh -- web --no-open --host 127.0.0.1 --port 3080
+npm run stage          # 独立开发舞台，默认 3900
+npm run stage:demo     # 本地演示
+npm run stage:voice    # 读取根目录 .env 的独立语音舞台
 ```
 
-DSH 起来后舞台在 `http://127.0.0.1:3900/`。新建会话时选「直播舞台」模式，她就能用这些工具：`speak`、`stage_scene`、`stage_work`、`stage_avatar`、`clip_control`、`timeline`、`look_closer`、`code_strip`、`fx_block`、`task_corner`、`broll`、`graphic`、`graphic_clear`、`stage_brief`。
+程序入口在 `src/host/stagehost.ts`，说话与画面轨在 `src/host/{timeline,track}.ts`，导演在 `src/host/crew/director.ts`，共享黑板在 `src/host/blackboard.ts`。控制台的 `/tracks` 可读取双轨快照。
 
-平台弹幕、礼物和主人插话，暂时通过 `POST /command` 下 `danmaku` / `alert` / `interrupt` 指令（见 `src/stage/protocol.ts`）。
+`scripts/merged-qa/README.md` 说明统一真实语音验收：同一产品版本连续三轮，每轮六分钟团队开启、一分钟关闭，同时检查点单、换题、真实逐字进场、跨段退场、改轨、打断与最简退路。截图使用 ego-browser；原始取证数据、联系表和时间轴由脚本生成，不作为测试答案提交。
 
-## 包装
-
-`graphic` 按名字上一段动画（标题、通知、划重点、进度、留言），`graphic_clear` 撤下。字段是短中文，带 * 的必填；同一位置新的会顶掉旧的，同时最多三段。调试台「包装」一排按钮用示例上屏。舞台按自己的时钟逐帧 seek，中途打开也落在同一帧，到点淡出。
-
-素材不进仓库。从隔壁效果库导入（HyperFrames，Apache-2.0）：
-
-```sh
-npm run stage:graphics
-```
-
-默认读 `../reelmorph-agent/acceptance/effects`，也可以把目录当参数传给 `node packages/dsh-livestream/scripts/import-graphics.mjs`。许可在导入后的 `packages/dsh-livestream/assets/graphics/LICENSE`。
-
-## 讲课
-
-`lessons/<名字>.md` 是课件：`#` 标题，`>` 一句简介，每个 `##` 是一节（要点、事实和出处、画面建议），「可能被问到的问题」这类节是附录，不进节目单。开播前写好、审过；直播时她只讲课件里的事实。
-
-在「直播舞台」模式里跟她说「打开课件 cat-righting 开始上课」。她用 `lesson_open` 开课（右栏出节目单，工位变黑板），一节节讲，`lesson_next` 翻节，有人提问先 `lesson_lookup` 查课件再答。
-
-- `speak` 一次交一段，排进说话队列就返回（队里剩不到 9 秒才回来），所以她总比嘴快一段，不冷场。
-- 舞台动作写在台词里：`[[board 标题]]`、`[[point 要点]]`、`[[graphic 名字 字段=值]]`、`[[scene watch]]`、`[[mood happy]]` 等，念到那个字时按 ElevenLabs 的逐字时间下指令（见 `src/stage/cues.ts`）。
-- 她闲着时（嘴停了、几秒没调工具），插件推一条【直播间】消息给她：有新弹幕就带上，课没讲完就让她接着讲。
-- `GET /state` 里的 `speech.gaps` 是每两段之间空了多久（毫秒）。
-
-## 出声
-
-`speak` 先用 ElevenLabs 合成（`ELEVENLABS_API_KEY`、`ELEVENLABS_VOICE_ID`，可选 `ELEVENLABS_MODEL_ID`）。mp3 缓存在 `packages/dsh-livestream/.cache/voice/`，舞台页按真实时长出声，并用音量驱动嘴型。没配密钥或合成失败就按字数估时长，只亮字幕。调试台不出声；OBS 从舞台页 `/` 的浏览器源采音。
-
-## 还没接
-
-抖音和 B 站输入、Show 注意力、记忆、Studio、云上 Bridge。
+基础特效和画布的截图检查分别在 `scripts/fx-qa/` 与 `scripts/ui-qa/`。测试端口与日常控制台分开，避免把测试节目送进正在使用的舞台。

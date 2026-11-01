@@ -238,7 +238,7 @@ export class LiveInput {
   }
 
   /** 放行：把攒下的事件打分、挑几条、其余合并成一份快报给她；什么都没有返回空串 */
-  take(ctx: Omit<GateContext, 'regard'>): { text: string; urgent: boolean; gifts?: ShowEvent[] } {
+  take(ctx: Omit<GateContext, 'regard'>): { text: string; urgent: boolean; gifts?: ShowEvent[]; requests?: ShowEvent[] } {
     const now = this.now();
     const fresh = this.pending;
     this.pending = [];
@@ -256,7 +256,7 @@ export class LiveInput {
     if (!events.length && !crowd && !visit) return { text: '', urgent: false };
     const d = digest(events, { ...ctx, regard: (source, key) => this.people.get(`${source}:${key}`) }, this.lastPicked, now);
     if (crowd) d.merged.push(crowd);
-    return { text: [visit, render(d, seconds)].filter(Boolean).join('\n'), urgent: d.urgent, gifts: events.filter((e) => e.kind === 'gift' && e.text) };
+    return { text: [visit, render(d, seconds)].filter(Boolean).join('\n'), urgent: d.urgent, gifts: events.filter((e) => e.kind === 'gift' && e.text), requests: events.filter(e => ['message', 'gift', 'superchat'].includes(e.kind) && /讲讲|说说|聊聊|换.{0,5}话题|能不能|想听|请|举.{0,6}例/.test(e.text ?? '')) };
   }
 
   /** 接的是别人的直播间时告诉她：在看谁、在播什么，这些弹幕是那边观众发给那边主播的 */

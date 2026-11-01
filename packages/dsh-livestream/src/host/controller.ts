@@ -11,6 +11,7 @@ import { captionClash } from '../stage/caption';
 import { parseCues, type Cue } from '../stage/cues';
 import { initialState, MAX_RATE, MIN_RATE, type Accent, type Command, type Mood, type StageState, type Tone } from '../stage/protocol';
 import type { Voice } from './voice';
+import { SpeechTimeline, type SpeechPart } from './timeline';
 import { lightingLimit, rememberLighting, type LightingHistory } from './crew';
 
 export type Listener = (state: StageState, now: number) => void;
@@ -38,9 +39,12 @@ interface Line {
   joined?: boolean;
   /** 软打断时挂起的：等她回完插的话再接着念 */
   held?: boolean;
-  crew?: { batch: object; locate: (at: number) => number | undefined };
+  trackKey: object;
+  positions: (number | undefined)[];
   acknowledgement?: boolean;
   priority?: boolean;
+  /** 来自主持人入口：只允许互动、表情和点单标记。 */
+  host?: boolean;
   /** 合成时给的前后文 */
   context?: { before?: string; after?: string };
 }
@@ -89,8 +93,6 @@ function cueMs(at: number, line: Line): number {
   return Math.max(0, Math.min(t, ms - 80));
 }
 
-export interface DecorationInput { id: string; text: string; before: string[]; after: string[]; tone?: Tone; state: StageState }
-
 export interface ControllerOptions {
   now?: () => number;
   /** 每秒检查几次到点的东西；0 不自动检查（测试里手动 tick） */
@@ -123,10 +125,9 @@ export class StageController {
   private current = initialState();
   private readonly listeners = new Set<Listener>();
   private queue: Line[] = [];
-  private playing: { line: Line; startedAt: number; timers: ReturnType<typeof setTimeout>[] } | null = null;
+  private playing: { line: Line; startedAt: number; timers: ReturnType<typeof setTimeout>[]; cut?: number } | null = null;
   private cueErrors: string[] = [];
-  /** 舞台团队异步配动作，不依赖模型，也不阻塞语音。 */
-  private decorator: ((input: DecorationInput) => Promise<Cue[]>) | undefined;
+  readonly timeline = new SpeechTimeline();
   /** 两段之间正在换气 */
   private breathing: ReturnType<typeof setTimeout> | undefined;
   /** 上一段念的话（换气长短看它） */
@@ -157,10 +158,6 @@ export class StageController {
     this.voice = voice;
   }
 
-  setDecorator(decorator: ((input: DecorationInput) => Promise<Cue[]>) | undefined): void {
-    this.decorator = decorator;
-  }
-
   private bridge: ((reply: string, original: string) => Promise<string | undefined>) | undefined;
   private closing: ((id: string, status: 'done' | 'decline', spoken: string) => string | undefined) | undefined;
   private releasing = false;
@@ -187,19 +184,8 @@ export class StageController {
     if (this.acknowledging === epoch) this.acknowledging = undefined;
     if (!text || epoch !== this.holdEpoch || !this.holdUntil || this.replying) return;
     this.thanked = /谢谢|感谢|多谢|谢啦|谢了|谢你/.test(text) ? text : '';
-    this.enqueue(text, { next: true, acknowledgement: true, rate: 1.15 });
+    this.enqueue(text, { next: true, acknowledgement: true, rate: 1.15, host: true });
     return text;
-  }
-
-  /** 故障回退立即清掉待执行的岗位动作，主持人标记照常。 */
-  clearCrewCues(): void {
-    for (const line of [...this.queue, ...(this.playing ? [this.playing.line] : [])]) {
-      line.cues = line.cues.filter((c) => !c.cmd.lane || c.cmd.lane === 'host');
-    }
-  }
-
-  setLogger(log: (message: string) => void): void {
-    this.log = log;
   }
 
   get state(): StageState {
@@ -241,7 +227,8 @@ export class StageController {
       if (clash) return { ok: false, error: clash };
     }
     const now = this.now();
-    if (cmd.type === 'vfx') {
+    // 限频只管灯光车道（它放得太勤会抢戏）；主人、控制台手动放的照放，但记进历史，灯光车道知道刚放过
+    if (cmd.type === 'vfx' && cmd.lane === 'lighting') {
       const error = lightingLimit(this.lightingHistory, this.current.set, cmd.name, now);
       if (error) return { ok: false, error };
     }
@@ -267,7 +254,7 @@ export class StageController {
    * 返回的 done 在这段念完（done）或被打断（interrupted）时兑现；标记写错的理由在 errors 里。
    */
   /** 排一段话。next：插到队头（念完正在念的这段就说，后面排着的照念），用来先回观众 */
-  enqueue(input: string, options: { mood?: Mood; tone?: Tone; rate?: number; ms?: number; signal?: AbortSignal; next?: boolean; acknowledgement?: boolean; at?: number } = {}): { id: string; errors: string[]; done: Promise<SpeakResult> } {
+  enqueue(input: string, options: { mood?: Mood; tone?: Tone; rate?: number; ms?: number; signal?: AbortSignal; next?: boolean; acknowledgement?: boolean; at?: number; host?: boolean } = {}): { id: string; errors: string[]; done: Promise<SpeakResult> } {
     let deduped = false;
     if (!options.acknowledgement && this.thanked && this.holdUntil) {
       // 标记保留在正文前；只摘掉句首谢礼分句，不碰正文里的谢谢。
@@ -277,6 +264,17 @@ export class StageController {
       if (parseCues(input).text.trim()) this.thanked = '';
     }
     const parsed = parseCues(input);
+    if (options.host) {
+      parsed.cues = parsed.cues.filter(cue => {
+        const cmd = cue.cmd;
+        const allowed = ['avatar','emote','result','ans','judge','rank'].includes(cmd.type)
+          || cmd.type === 'mark' && /^(?:order:(done|decline):o\d+|beat:done:b[1-9]\d*)$/.test(cmd.label)
+          || cmd.type === 'draw' && ['poll','tier','score','guess','soup','timer','wall'].includes(cmd.kind);
+        if (!allowed) parsed.errors.push(`主持人不能下${cmd.type}舞台标记；画面交给导演，只保留正文、互动、表情与点单`);
+        return allowed;
+      });
+      if (/\[\[意图(?:\s|\])/.test(input)) parsed.errors.push('主持人不写画面意图标记，画面由导演独立安排');
+    }
     if (deduped) parsed.errors.push('接话员已致谢，已去掉开头致谢句；正文保留');
     const id = this.nextId('say');
     if (!parsed.text) return { id, errors: [...parsed.errors, '没有要念的字'], done: Promise.resolve('interrupted') };
@@ -287,7 +285,6 @@ export class StageController {
     const sizes = synthed && options.tone !== 'reveal' && (options.next || this.remainingMs() < synthGuess(chars.length)) ? splitForStart(parsed.text) : [chars.length];
     const lines: Line[] = [];
     const dones: Promise<SpeakResult>[] = [];
-    const batch = {};
     let from = 0;
     for (const [i, size] of sizes.entries()) {
       const text = chars.slice(from, from + size).join('');
@@ -298,8 +295,9 @@ export class StageController {
       const lineDone = new Promise<SpeakResult>((resolve) => (finish = resolve));
       const start = from;
       const line: Line = {
-        crew: { batch, locate: (at) => at >= start && (i === sizes.length - 1 ? at <= start + size : at < start + size) ? at - start : undefined },
+        trackKey: {}, positions: Array.from({ length: size }, (_, j) => start + j),
         id: i ? `${id}-${i + 1}` : id, text, cues, accents,
+        ...(options.host ? { host: true } : {}),
         ...(options.acknowledgement ? { acknowledgement: true } : {}),
         ...(options.next ? { priority: true } : {}),
         ...(this.holdUntil && !options.next ? { held: true } : {}),
@@ -332,33 +330,7 @@ export class StageController {
       if (!options.acknowledgement) while (this.queue[at] && !this.queue[at]!.held && (this.queue[at]!.acknowledgement || this.queue[at]!.priority)) at++;
       this.queue.splice(at, 0, ...lines);
     } else this.queue.push(...lines);
-    // 一整段和语音同时起跑；返回时按仍存活的字位置分给各截，迟到只丢已经念过的动作。
-    const decorate = this.decorator;
-    if (decorate && !options.acknowledgement) {
-      const index = this.queue.indexOf(lines[0]!);
-      const before = [...this.recentLines, ...this.queue.slice(0, index).map((l) => l.text)].slice(-2);
-      const after = this.queue.slice(index + lines.length, index + lines.length + 2).map((l) => l.text);
-      void decorate({ id, text: input, before, after, tone: options.tone, state: this.current }).then((cues) => {
-        if (this.decorator !== decorate) return;
-        for (const cue of cues) {
-          const candidates = [...(this.playing ? [this.playing.line] : []), ...this.queue];
-          for (const line of candidates) {
-            if (line.settled || line.crew?.batch !== batch) continue;
-            const at = line.crew.locate(cue.at);
-            if (at === undefined) continue;
-            const mapped = { ...cue, at };
-            const playing = this.playing;
-            if (playing?.line === line) {
-              const delay = cueMs(at, line) - (this.now() - playing.startedAt);
-              if (delay <= 0) { this.log(`车道迟到 ${JSON.stringify({ id, at: cue.at, lane: cue.cmd.lane })}`); break; }
-              playing.timers.push(setTimeout(() => this.fireCue(line, mapped), delay));
-            }
-            line.cues.push(mapped);
-            break;
-          }
-        }
-      }, () => undefined);
-    }
+    this.publishTimeline('enqueue');
     for (const line of lines) this.synth(line, synthed);
     this.pump();
     return { id, errors: parsed.errors, done };
@@ -378,12 +350,14 @@ export class StageController {
         // 按语速换算：音频放快了，时长和每个字的时刻都跟着缩
         const ms = Number.isFinite(speech.ms) && speech.ms > 0 ? speech.ms / line.rate : line.estimate;
         line.clip = { ms, url: speech.url, ...(speech.starts ? { starts: speech.starts.map((t) => t / line.rate) } : {}) };
+        this.publishTimeline('synth');
         this.pump();
       },
       (err: unknown) => {
         if (line.settled || abort.signal.aborted) return;
         this.log(`语音合成失败，按字数估时：${scrub(err)}`);
         line.clip = { ms: line.estimate };
+        this.publishTimeline('synth');
         this.pump();
       },
     );
@@ -463,6 +437,7 @@ export class StageController {
     if (wait > 0) {
       this.breathing = setTimeout(() => {
         this.breathing = undefined;
+        this.publishTimeline('synth');
         this.pump();
       }, wait);
       return;
@@ -492,7 +467,9 @@ export class StageController {
     if (this.stats.lastEnd !== undefined) this.stats.gaps.push(Math.max(0, now - this.stats.lastEnd - breath));
     const timers = line.cues.map((cue) => setTimeout(() => this.fireCue(line, cue), cueMs(cue.at, line)));
     timers.push(setTimeout(() => {
+      this.timeline.finish(line.trackKey, [...line.text].length, 'done');
       this.playing = null;
+      this.publishTimeline('done');
       this.stats.lines++;
       this.stats.spokenMs += line.clip!.ms;
       this.stats.lastEnd = this.now();
@@ -501,16 +478,15 @@ export class StageController {
       this.pump();
     }, line.clip.ms));
     this.playing = { line, startedAt: now, timers };
+    this.publishTimeline('speaking');
   }
 
   private fireCue(line: Line, cue: Cue): void {
-    if (cue.cmd.lane && cue.cmd.lane !== 'host' && !line.cues.includes(cue)) return;
     const priorSpoken = this.spokenById.get(baseId(line.id)) ?? line.text;
     const prefix = priorSpoken.slice(0, -line.text.length);
     const match = cue.cmd.type === 'mark' ? /^order:(done|decline):(o\d+)$/.exec(cue.cmd.label) : null;
     const error = match ? this.closing?.(match[2]!, match[1] as 'done' | 'decline', prefix + [...line.text].slice(0, cue.at).join('')) ?? (this.closing ? undefined : '点单簿尚未连接') : undefined;
     const r = match ? (error ? { ok: false, error } : { ok: true }) : this.apply(cue.cmd);
-    if (cue.cmd.lane && cue.cmd.lane !== 'host') this.log(`车道动作 ${JSON.stringify({ id: line.id, at: cue.at, lane: cue.cmd.lane, type: cue.cmd.type, ok: r.ok, ...(!r.ok ? { error: r.error } : {}) })}`);
     if (!r.ok) this.cueErrors.push(`${cue.raw}：${r.error}`);
   }
 
@@ -542,13 +518,13 @@ export class StageController {
   }
 
   /** 改排着的一段：原地换成新的话（语气、语速沿用），重新合成；返回新编号 */
-  revise(id: string, input: string): { id: string; errors: string[] } | undefined {
+  revise(id: string, input: string): { id: string; errors: string[]; done: Promise<SpeakResult> } | undefined {
     const at = this.queue.findIndex((l) => baseId(l.id) === id);
     if (at < 0) return undefined;
     const old = this.queue[at]!;
     this.retract(id);
-    const q = this.enqueue(input, { ...(old.mood ? { mood: old.mood } : {}), ...(old.tone ? { tone: old.tone } : {}), ...(old.rate !== 1 ? { rate: old.rate } : {}), at });
-    return { id: q.id, errors: q.errors };
+    const q = this.enqueue(input, { ...(old.mood ? { mood: old.mood } : {}), ...(old.tone ? { tone: old.tone } : {}), ...(old.rate !== 1 ? { rate: old.rate } : {}), ...(old.host ? { host: true } : {}), at });
+    return q;
   }
 
   /** 把排着的一段提到最前面（念完正在念的就说它）；返回成没成 */
@@ -560,6 +536,7 @@ export class StageController {
     while (this.queue[at]?.joined && !this.queue[at]?.held) at++;
     while (this.queue[at]?.acknowledgement) at++;
     this.queue.splice(at, 0, ...lines);
+    this.publishTimeline('hoist');
     this.pump();
     return true;
   }
@@ -574,6 +551,7 @@ export class StageController {
     }
     this.queue = this.queue.filter((l) => l !== line);
     this.settle(line, 'interrupted');
+    this.publishTimeline('retract');
   }
 
   private settle(line: Line, result: SpeakResult): void {
@@ -599,6 +577,7 @@ export class StageController {
     if (this.holdTimer) clearTimeout(this.holdTimer);
     this.holdTimer = setTimeout(() => this.release(), HOLD_MS);
     this.holdTimer.unref?.();
+    this.publishTimeline('held');
     const p = this.playing;
     if (!p) return;
     const line = p.line;
@@ -606,6 +585,8 @@ export class StageController {
     const charMs = (i: number) => line.clip!.starts?.[i] ?? i / chars.length * line.clip!.ms;
     const end = this.softEnd();
     if (end >= chars.length) return;
+    p.cut = end;
+    this.publishTimeline('cut-planned');
     p.timers.push(setTimeout(() => this.cutAt(line, end), Math.max(0, p.startedAt + charMs(end) - this.now())));
   }
 
@@ -634,6 +615,7 @@ export class StageController {
   private cutAt(line: Line, from: number): void {
     if (this.playing?.line !== line) return;
     for (const t of this.playing.timers) clearTimeout(t);
+    this.timeline.finish(line.trackKey, from, 'done');
     this.playing = null;
     const now = this.now();
     this.stats.lastEnd = now;
@@ -645,7 +627,7 @@ export class StageController {
     const text = chars.slice(from).join('');
     const size = chars.length - from;
     const rest: Line = {
-      ...line, ...(line.crew ? { crew: { batch: line.crew.batch, locate: (at: number) => { const local = line.crew!.locate(at); return local !== undefined && local >= from ? local - from : undefined; } } } : {}), text, held: true, joined: false, clip: undefined, abort: new AbortController(),
+      ...line, trackKey: {}, positions: line.positions.slice(from), text, held: true, joined: false, clip: undefined, abort: new AbortController(),
       cues: line.cues.filter((c) => c.at >= from).map((c) => ({ ...c, at: c.at - from })),
       accents: line.accents.filter((a) => a.to > from).map((a) => ({ from: Math.max(0, a.from - from), to: Math.min(size, a.to - from) })),
       estimate: speechMs(text) / line.rate,
@@ -655,6 +637,7 @@ export class StageController {
     // 挂起的话最前面（她已经插了话的话，排在她的话后面）
     const at = this.queue.findIndex((l) => l.held);
     this.queue.splice(at < 0 ? this.queue.length : at, 0, rest);
+    this.publishTimeline('cut');
     this.synth(rest, !!line.clip?.url);
     this.pump();
   }
@@ -676,6 +659,7 @@ export class StageController {
       this.replying = false;
       this.releasing = false;
       for (const l of this.queue) l.held = false;
+      this.publishTimeline('resume');
       this.pump();
     };
     if (!first || !this.bridge || !this.replyText) { finish(); return; }
@@ -710,22 +694,19 @@ export class StageController {
         first.finish = (result) => { finishFirst(result); for (const part of parts.slice(1)) this.settle(part, result); };
         first.abort.abort();
         first.abort = new AbortController();
-        const locations = parts.map((part) => ({ locate: part.crew?.locate, size: [...part.text].length }));
+        const positions = parts.flatMap(part => part.positions);
+        const oldChars = [...original], newChars = [...text];
+        let tail = 0;
+        while (tail < oldChars.length && tail < newChars.length && oldChars.at(-tail - 1) === newChars.at(-tail - 1)) tail++;
+        // 改写掉的字不迁移锚点；只保留实际仍会念出的相同尾部。
         const remap = (at: number) => rewritePosition(at, original, text);
-        if (first.crew) first.crew = { batch: first.crew.batch, locate: (at) => {
-          let offset = 0;
-          for (const part of locations) {
-            const local = part.locate?.(at);
-            if (local !== undefined) return remap(offset + local);
-            offset += part.size;
-          }
-          return undefined;
-        } };
+        first.positions = [...Array<undefined>(newChars.length - tail).fill(undefined), ...positions.slice(oldChars.length - tail)];
         first.text = text + source.slice(original.length);
         first.cues = first.cues.map((c) => ({ ...c, at: remap(c.at) }));
         first.accents = first.accents.filter((a) => a.from >= [...original].length).map((a) => ({ from: a.from + delta, to: a.to + delta }));
         first.clip = undefined;
         first.estimate = speechMs(first.text) / first.rate;
+        this.publishTimeline('rewrite');
         this.synth(first, !!this.voice);
       }
       finish();
@@ -749,6 +730,9 @@ export class StageController {
       for (const t of this.playing.timers) clearTimeout(t);
       unsaid.push(this.playing.line.text);
       const line = this.playing.line;
+      const elapsed = this.now() - this.playing.startedAt;
+      const count = line.clip?.starts ? line.clip.starts.filter(t => t < elapsed).length : Math.floor(elapsed / line.clip!.ms * [...line.text].length);
+      this.timeline.finish(line.trackKey, count, 'retracted');
       this.playing = null;
       this.settle(line, 'interrupted');
     }
@@ -756,6 +740,7 @@ export class StageController {
       unsaid.push(line.text);
       this.settle(line, 'interrupted');
     }
+    this.publishTimeline('interrupt');
     if (unsaid.length) this.unsaid = unsaid;
     return unsaid;
   }
@@ -763,6 +748,24 @@ export class StageController {
   /** 上次被打断时没念出来的话（告诉她观众没听到哪些），取走即清空 */
   takeUnsaid(): string[] {
     return this.unsaid.splice(0);
+  }
+
+  /** 每次队列或时钟变更发布；预测不用于执行，只有开念时钟可触发字锚点。 */
+  private publishTimeline(reason: string): void {
+    let expected = this.now();
+    const active: SpeechPart[] = [];
+    for (const line of [...(this.playing ? [this.playing.line] : []), ...this.queue]) {
+      const playing = this.playing?.line === line ? this.playing : undefined;
+      const duration = line.clip?.ms ?? line.estimate;
+      active.push({ key: line.trackKey, segment: baseId(line.id), text: line.text, positions: line.positions,
+        status: playing ? 'speaking' : line.held ? 'held' : 'queued', duration,
+        ...(line.clip?.starts ? { starts: line.clip.starts } : {}),
+        ...(this.voice && line.clip && !line.clip.url ? { muted: true } : {}),
+        ...(playing?.cut !== undefined ? { limit: playing.cut } : {}),
+        ...(playing ? { startedAt: playing.startedAt } : !line.held ? { expectedAt: expected } : {}) });
+      expected = (playing?.startedAt ?? expected) + duration + (line.joined ? 0 : BREATH_MS);
+    }
+    this.timeline.update(active, reason);
   }
 
   private nextId(prefix: string): string {

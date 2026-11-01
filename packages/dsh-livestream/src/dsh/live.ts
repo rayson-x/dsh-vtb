@@ -119,6 +119,11 @@ export function createLive(ctx: HostContext): LiveHost & { resume(said: string[]
       if (!agent) throw new Error('她还没开场，先点开讲');
       wake.at = Date.now();
       await stage.call('orders.add', { who: '主人', want: words });
+      if (/换.{0,8}(?:话题|方向)|换.{0,3}聊/.test(words)) {
+        const board = await stage.call<import('../host/blackboard').BoardSnapshot>('blackboard.read');
+        const order = board.orders.find(o => o.who === '主人' && o.want === words && o.status === 'pending');
+        desk.requestTopic(words, order?.id);
+      }
       if (cut) {
         const note = `【主人】${words}`;
         // 先让她闭嘴，再插进她这一轮的下一步

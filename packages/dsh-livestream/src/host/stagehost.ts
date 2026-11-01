@@ -15,11 +15,12 @@ import { INTERJECTIONS, smallTalk, quickLine, validateBridge } from './filler';
 import { LiveInput } from './input';
 import { Sessions, sessionId } from './sessions';
 import { loadEffects } from './load-effects';
-import { liveCrew, type TopicCard } from './crew/live';
+import { pictureDirector, type TopicCard } from './crew/director';
 import type { AudienceChoice, LiveHost, LiveStatus } from './live';
 import { StageServer } from './server';
 import type { TraceItem } from '../dsh/trace';
-import { OrderBook } from '../dsh/desk';
+import { Blackboard, type BoardSnapshot, type PlanEdit } from './blackboard';
+import { parseCues } from '../stage/cues';
 import { TraceHub } from './tracehub';
 import { ElevenLabsVoice } from './voice';
 import type { Command, Mood, Tone } from '../stage/protocol';
@@ -78,7 +79,8 @@ export type BridgeMessage =
   | { type: 'hello'; show: ShowRecord; speech: Speech; said: string[] }
   | { type: 'state'; state: StageController['state']; now: number }
   | { type: 'speech'; speech: Speech }
-  | { type: 'settled'; id: string; result: 'done' | 'interrupted' };
+  | { type: 'blackboard'; board: BoardSnapshot }
+  | { type: 'settled'; id: string; receipt?: string; result: 'done' | 'interrupted' };
 
 /** 嘴替：一次冷场里第几句在空了多久时垫（现成的一句，再现编的）；直播间安静时等久一点，像真人一样停一停 */
 const FILL_AT_MS = [1_500, 3_000, 4_000] as const;
@@ -100,6 +102,7 @@ export interface StageHost {
   server: StageServer;
   stage: StageController;
   input: LiveInput;
+  blackboard: Blackboard;
   trace: TraceHub;
   show: ShowRecord;
   /** 大脑连着没有 */
@@ -116,14 +119,12 @@ export function createStageHost(o: StageHostOptions): StageHost {
   const trace = new TraceHub();
   const input = new LiveInput((cmd) => stage.apply(cmd));
   const show: ShowRecord = { live: false };
-  const orders = new OrderBook();
+  const blackboard = new Blackboard();
+  const orders = blackboard.orders;
+  const beatErrors: string[] = [];
   const record = (title: string, body: string) => trace.push([{ seq: -1, time: Date.now(), kind: 'auto', title, body }]);
-  stage.setLogger((message) => {
-    if (message.startsWith('车道')) record(message.split(' ')[0]!, message.slice(message.indexOf(' ') + 1));
-    else log(message);
-  });
   stage.setOrderCloser((id, status, spoken) => {
-    const error = orders.close(id, status, spoken);
+    const error = blackboard.closeOrder(id, status, spoken);
     record(error ? '点单关闭失败' : `点单关闭 ${id} ${status}`, error ?? spoken);
     return error;
   });
@@ -149,7 +150,16 @@ export function createStageHost(o: StageHostOptions): StageHost {
 
   // 后台交来的素材：[[show 编号]] 靠它解析；没上过的给自动配画面挑
   const visuals = new Map<string, Visual>();
+  const beatSpeech = new Map<string, string>();
+  const beatOwners = new Map<string, string>();
   stage.setResolver((cmd) => {
+    if (cmd.type === 'mark' && cmd.label.startsWith('beat:done:')) {
+      const id = cmd.label.slice('beat:done:'.length);
+      const error = blackboard.done(id, beatSpeech.get(id) ?? '');
+      record(error ? '节目点关闭失败' : `节目点关闭 ${id}`, error ?? beatSpeech.get(id) ?? '');
+      if (error) beatErrors.push(error);
+      return { type: 'status', label: stage.state.status };
+    }
     if (cmd.type !== 'show' || cmd.visual || !cmd.id) return cmd;
     const visual = visuals.get(cmd.id);
     if (!visual) return cmd;
@@ -157,7 +167,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
     return { ...cmd, visual, ...(url ? { url } : {}) };
   });
 
-  const crew = liveCrew(stage, () => o.secret('DEEPSEEK_API_KEY'), record);
+  const crew = pictureDirector(stage, () => o.secret('DEEPSEEK_API_KEY'), record, blackboard);
 
   // 她念过的话（嘴替、大脑回来时用）
   const said: string[] = [];
@@ -198,6 +208,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
 
   // ---------- 桥：大脑连过来 ----------
   const clients = new Set<ServerResponse>();
+  const offBoard = blackboard.subscribe(board => { record('舞台黑板', JSON.stringify(board)); send({ type: 'blackboard', board }); });
   let goneAt: number | undefined;
   const send = (m: BridgeMessage) => {
     const line = `data: ${JSON.stringify(m)}\n\n`;
@@ -239,7 +250,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
   let away: { since: number; steps: number; lastSayAt: number; noticeAt: number } | undefined;
   const say = (line: string, tone: Tone = 'aside', mood?: Mood) => {
     lastEnqueueAt = Date.now();
-    stage.enqueue(line, { next: true, acknowledgement: true, tone, ...(mood ? { mood } : {}) });
+    stage.enqueue(line, { next: true, acknowledgement: true, host: true, tone, ...(mood ? { mood } : {}) });
     filled.push(line);
   };
   const talk = (extra: { away?: boolean } = {}) => {
@@ -289,6 +300,10 @@ export function createStageHost(o: StageHostOptions): StageHost {
     // 大脑在：她想事、等接口时嘴空了，按 FILL_AT_MS 垫
     const quiet = stage.silentMs();
     const at = input.chatQuietMs() > QUIET_MS ? FILL_AT_QUIET_MS : FILL_AT_MS;
+    // 现编垫话还没回来时也要兜住冷场；这些短句已预合成，不再等快模型。
+    if (clients.size && quiet !== undefined && quiet >= 3_500 && now - lastFallbackAt >= 6_000 && !stage.waitingAcknowledgement()) {
+      lastFallbackAt = now; say(INTERJECTIONS[fallbackIndex++ % INTERJECTIONS.length]!); return;
+    }
     if (!clients.size || filling || quiet === undefined || quiet < at[Math.min(fills, at.length - 1)]! || now - lastEnqueueAt < at[0]) return;
     if (stage.waitingAcknowledgement() && quiet < 4_000) return;
     fills++;
@@ -299,12 +314,51 @@ export function createStageHost(o: StageHostOptions): StageHost {
   }, 250);
   fillTimer.unref?.();
 
+  /** 入队和改稿共用节目点校验；完成回调只释放自己仍拥有的锁。 */
+  const queueSpeech = (text: string, replacing?: string, options: Parameters<StageController['enqueue']>[1] = {}, receipt?: string) => {
+    if (replacing !== undefined && !stage.lineup().some(line => line.id === replacing)) return null;
+    const parsed = parseCues(text);
+    const ids = parsed.cues.flatMap(c => c.cmd.type === 'mark' && c.cmd.label.startsWith('beat:done:') ? [c.cmd.label.slice('beat:done:'.length)] : []);
+    if (ids.length > 1) throw new Error('每段只能结一个节目点，请拆开讲；本段没有排播');
+    if (!parsed.text.trim()) throw new Error('没有要念的字，本段没有排播');
+    const id = ids[0];
+    const previousBeat = replacing !== undefined ? [...beatOwners].find(([, owner]) => owner === replacing)?.[0] : undefined;
+    if (previousBeat && id !== previousBeat) throw new Error(`修订须保留 [[beat done ${previousBeat}]]；换节目点请先撤回原稿`);
+    const transferring = id !== undefined && replacing !== undefined && beatOwners.get(id) === replacing;
+    if (id) {
+      if (transferring) {
+        const board = blackboard.read(), beat = board.beats.find(b => b.id === id && b.status === 'pending');
+        if (!beat) throw new Error(`节目点 ${id} 不存在或已经结点`);
+        const order = beat.order ? board.orders.find(o => o.id === beat.order) : undefined;
+        if (beat.order && (!order || order.status !== 'pending' || !parsed.text.includes(order.who))) throw new Error('兑现节目点时必须点名点单人');
+      } else {
+        const error = blackboard.reserve(id, parsed.text);
+        if (error) throw new Error(error);
+      }
+    }
+    const q = replacing !== undefined ? stage.revise(replacing, text) : stage.enqueue(text, { ...options, host: true });
+    if (!q) { if (id && !transferring) blackboard.release(id); return null; }
+    if (id) { beatOwners.set(id, q.id); beatSpeech.set(id, parsed.text); }
+    void q.done.then(result => {
+      if (id && beatOwners.get(id) === q.id) {
+        beatOwners.delete(id); beatSpeech.delete(id); blackboard.release(id);
+      }
+      send({ type: 'settled', id: q.id, result, ...(receipt ? { receipt } : {}) });
+    });
+    return { id: q.id, errors: q.errors };
+  };
+
   /** 大脑调用 */
   const call = (method: string, args: Record<string, any>): unknown => {
     switch (method) {
+      case 'blackboard.read': return blackboard.read();
+      case 'blackboard.line': return blackboard.line();
+      case 'blackboard.topic': blackboard.update(String(args.key), () => blackboard.topic(String(args.id), args.card)); return true;
+      case 'blackboard.material': blackboard.update(String(args.key), () => blackboard.material(String(args.id), String(args.description), args.data)); return true;
+      case 'blackboard.edit': blackboard.update(String(args.key), () => blackboard.edit(String(args.topic), args.edit as PlanEdit)); return blackboard.line();
       case 'crew.topic': crew.setTopic(args.card as TopicCard | undefined); return true;
       case 'orders.pending': return orders.pending();
-      case 'orders.add': orders.add(String(args.who), String(args.gift ?? ''), String(args.want)); return orders.pending();
+      case 'orders.add': orders.add(String(args.who), String(args.gift ?? ''), String(args.want)); blackboard.changed(); return orders.pending();
       case 'speech.break': {
         const news = String(args.news ?? '');
         stage.apply({ type: 'interrupt', soft: true });
@@ -327,9 +381,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
       case 'enqueue': {
         lastEnqueueAt = Date.now();
         fills = 0;
-        const q = stage.enqueue(String(args.text ?? ''), args.options ?? {});
-        void q.done.then((result) => send({ type: 'settled', id: q.id, result }));
-        return { id: q.id, errors: q.errors };
+        return queueSpeech(String(args.text ?? ''), undefined, args.options, typeof args.receipt === 'string' ? args.receipt : undefined);
       }
       case 'takeUnsaid':
         return stage.takeUnsaid();
@@ -337,19 +389,18 @@ export function createStageHost(o: StageHostOptions): StageHost {
         return stage.lineup();
       case 'speech.retract':
         return stage.retract(String(args.id)) ?? null;
-      case 'speech.revise': {
-        const q = stage.revise(String(args.id), String(args.text ?? ''));
-        return q ?? null;
-      }
+      case 'speech.revise':
+        return queueSpeech(String(args.text ?? ''), String(args.id));
       case 'speech.hoist':
         return stage.hoist(String(args.id));
       case 'takeCueErrors':
-        return stage.takeCueErrors();
+        return [...stage.takeCueErrors(), ...beatErrors.splice(0)];
       case 'takeFilled':
         return filled.splice(0);
       case 'input.take': {
         const result = input.take(args.ctx);
-        for (const g of result.gifts ?? []) orders.add(g.actor?.name ?? '观众', `${g.label ?? '礼物'}×${g.count ?? 1}`, g.text!, g.at, JSON.stringify([g.source, g.room, g.actor?.key, g.at, g.label]));
+        for (const g of result.requests ?? []) orders.add(g.actor?.name ?? '观众', g.kind === 'gift' ? `${g.label ?? '礼物'}×${g.count ?? 1}` : '', g.text!, g.at, JSON.stringify([g.source, g.room, g.actor?.key, g.at, g.label]));
+        if (result.requests?.length) blackboard.changed();
         return { text: [result.text, result.text ? orders.pending() : ''].filter(Boolean).join('\n'), urgent: result.urgent };
       }
       case 'input.audience':
@@ -366,6 +417,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
         return true;
       case 'visual.put':
         visuals.set(String(args.id), args.visual as Visual);
+        blackboard.visual(args.visual as Visual); blackboard.changed();
         return true;
       case 'show.set':
         for (const key of ['live', 'direction', 'topic'] as const) if (args[key] !== undefined) (show as any)[key] = args[key];
@@ -377,6 +429,10 @@ export function createStageHost(o: StageHostOptions): StageHost {
   };
 
   const extra = async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> => {
+    if (req.method === 'GET' && url.pathname === '/tracks') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ now: stage.now(), speech: stage.timeline.snapshot().map(({ key: _key, ...p }) => p), visual: crew.track.snapshot() })); return true;
+    }
     if (url.pathname === '/crew') {
       if (req.method === 'POST') {
         const chunks: Buffer[] = [];
@@ -399,6 +455,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
         away = undefined;
       }
       res.write(`data: ${JSON.stringify({ type: 'hello', show, speech: speech(), said: said.slice(-6) } satisfies BridgeMessage)}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'blackboard', board: blackboard.read() } satisfies BridgeMessage)}\n\n`);
       res.write(`data: ${JSON.stringify({ type: 'state', state: stage.state, now: Date.now() } satisfies BridgeMessage)}\n\n`);
       const ping = setInterval(() => res.write(': ping\n\n'), 15_000);
       res.on('close', () => {
@@ -414,7 +471,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
       let body: { method?: string; args?: Record<string, unknown> };
       try { body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); } catch { body = {}; /* 坏的 JSON 当没给 */ }
       try {
-        const value = call(String(body.method ?? ''), (body.args ?? {}) as Record<string, any>);
+        const value = await call(String(body.method ?? ''), (body.args ?? {}) as Record<string, any>);
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ ok: true, value }));
       } catch (err) {
@@ -528,6 +585,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
     },
     /** 清空她的记忆：舞台这边的记录、画面上的东西清掉（观众簿看勾没勾），再让大脑换新会话重新开场 */
     async reset(audience) {
+      blackboard.reset();
       said.length = 0;
       filled.length = 0;
       show.topic = undefined;
@@ -550,10 +608,12 @@ export function createStageHost(o: StageHostOptions): StageHost {
   stage.prewarm([...INTERJECTIONS, ...BRB]);
 
   return {
-    server, stage, input, trace, show,
+    server, stage, input, trace, show, blackboard,
     brainPresent: () => clients.size > 0,
     close() {
+      crew.stop();
       offState();
+      offBoard();
       clearInterval(speechTimer);
       clearInterval(fillTimer);
       clearInterval(retireTimer);

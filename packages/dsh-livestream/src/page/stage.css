@@ -1046,7 +1046,7 @@ body { font-family: var(--sans); color: var(--pearl); -webkit-font-smoothing: an
 .draw-wall { position: relative; max-width: 100%; box-sizing: border-box; padding: 20px 30px 18px; border-radius: 30px 30px 30px 8px; background: var(--canvas-panel); box-shadow: 0 0 0 3px var(--canvas-ink), 0 10px 0 var(--canvas-shadow); color: var(--canvas-ink); }
 .draw-wall q { display: block; font: 46px/1.25 var(--display); quotes: '「' '」'; }
 .draw-wall cite { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 22px; font-style: normal; font-weight: 700; color: var(--canvas-muted); }
-.wall-pf { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; font-size: 14px; color: var(--canvas-on-accent); background: var(--canvas-accent); }
+.wall-pf { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; font-size: 18px; color: var(--canvas-on-accent); background: var(--canvas-accent); }
 .wall-pf.douyin { background: var(--canvas-mark); }
 .wall-pf.bilibili { background: var(--canvas-mark); }
 

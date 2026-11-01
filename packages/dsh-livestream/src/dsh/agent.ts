@@ -5,6 +5,7 @@
  * 每个工具做完回一份薄情报（舞台现在大概什么样），不回整包状态。被拒绝时回理由，她照着改。
  */
 
+import type { PlanEdit } from '../host/blackboard';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { appendFile, mkdir } from 'node:fs/promises';
@@ -13,8 +14,6 @@ import { installModelSelection } from '@deepseek-ai/dsh-agent';
 import { defineTool, type ParameterSchemaSpec } from '@deepseek-ai/dsh-tools';
 import { brief } from '../stage/brief';
 import { clockNow } from './clock';
-import { setHelp } from '../stage/sets';
-import { DRAW_HELP } from '../stage/draw/cue';
 import { CUE_HELP, parseCues } from '../stage/cues';
 import { ELEMENT_IDS, LAYOUT_NAMES, type Box, type ElementId, type LayoutName } from '../stage/canvas';
 import { STAGE_REGIONS, layoutText, type StageRegion } from '../stage/regions';
@@ -65,7 +64,7 @@ const WORKER_PRESET = 'dsh-livestream-worker';
 const WORKER_REASONING = 'low';
 const WORKER_TIMEOUT_MS = 180_000;
 /** 查多久就该交：到点提醒后台别再搜了，用手上的资料马上交（话题：起步卡 / 补一批） */
-const WORKER_BUDGET_MS = { start: 20_000, cards: 30_000, answer: 25_000, visual: 25_000 } as const;
+const WORKER_BUDGET_MS = { start: 8_000, cards: 30_000, answer: 25_000, visual: 25_000 } as const;
 /** 她说了这么久（毫秒）就给话题补一批料 */
 const REFILL_SPOKEN_MS = 45_000;
 /** 一个话题后台最多跟多久；连着几批没交上就算这个话题查不下去了 */
@@ -112,42 +111,6 @@ function bad(message: string): string {
   return `${message}\n\n${state()}`;
 }
 
-/** 弹幕收件箱：上次告诉她以后新来的 */
-/** 直播间快报：平台事件经过放行（打分、挑几条、其余合并）后给她 */
-let lastRoomBreakAt = 0;
-async function roomNews(): Promise<string> {
-  const worthBreak = liveInput.hasBreak() || liveInput.hasUrgent();
-  const st = stage.state;
-  const r = st.rundown;
-  const topic = [desk.topic?.title ?? '', r && r.at >= 0 ? r.steps[r.at] : ''].join(' ');
-  const text = (await liveInput.take({ mode: 'chat', topic, names: ['大肥鱼', '肥鱼', '主播', 'DeepSeek', 'ds娘'] })).text;
-  // 有人提问：闲聊直接接；要用事实的，查到的资料里有就答，没有先回一句再派去查，别凭记忆答
-  let interruption = '';
-  if (text && worthBreak && Date.now() - lastRoomBreakAt >= BREAK_GAP_MS) {
-    lastRoomBreakAt = Date.now();
-    const checkpoint = await stage.call<string>('speech.break', { news: text });
-    wake.at = Date.now();
-    interruption = `\n${checkpoint}\n当前话题：${desk.topic?.title ?? show.direction ?? '未定'}\n${HELD_NOTE}`;
-  }
-  const report = text + interruption;
-  return text && text.includes('［提问') ? `${report}\n（有人问你：闲聊、梗、看法直接接；要用到事实（年份、数字、研究结论）的，查到的资料里有就照着答，没有就先回一句「我查一下」再 research kind=answer。）` : report;
-}
-
-const seen = new Set<string>();
-function inboxWaiting(): boolean {
-  return stage.state.danmaku.some((d) => !seen.has(d.id) && (d.platform === 'owner' || d.platform === 'sim'));
-}
-
-function inbox(): string {
-  // 平台（抖音、B 站）的弹幕走放行快报，这里只管主人和测试弹幕
-  const fresh = stage.state.danmaku.filter((d) => !seen.has(d.id) && (d.platform === 'owner' || d.platform === 'sim'));
-  for (const d of fresh) seen.add(d.id);
-  if (!fresh.length) return '';
-  const pf = { douyin: '抖音', bilibili: 'B站', tiktok: 'TikTok', owner: '主人', sim: '测试' } as const;
-  return `新弹幕：\n${fresh.map((d) => `- ${d.id} ${pf[d.platform]}·${d.user}：${d.text}`).join('\n')}`;
-}
-
-
 export interface Config {
   /** 她的性格文件：soul/<名字>.md，作为人设里的 {{soul}} */
   soul?: string;
@@ -155,23 +118,30 @@ export interface Config {
   role?: 'performer' | 'worker';
 }
 
-/** 后台交来的文字里的 ```visual``` 块：收进桌上（编号加任务前缀免得撞），正文里换成一行「[[show 编号]] 标题」 */
+/** 旧素材回执里的上屏写法不再教给主持人；事实正文与素材编号保留。 */
+function speakerNotes(text: string): string {
+  return text.replace(/\[\[show\s+([^\]]+)\]\]/g, '（素材编号 $1，由画面导演管理）')
+    .replace(/\[\[(?:draw|graphic|room|fx|sound|page|erase|set|do|place|layout|look)\b[^\]]*\]\]/g, '（舞台安排由画面导演处理）');
+}
+
+/** 后台交来的文字里的 ```visual``` 块：收进桌上（编号加任务前缀免得撞），正文里换成素材编号与标题，由画面导演管理 */
 function takeVisuals(task: Task, text: string): { text: string; error?: string } {
-  const { visuals, errors } = parseVisualBlocks(text);
+  let generated = 0;
+  const batch = desk.topic?.task === task ? desk.topic.batches + 1 : 1;
+  const normalized = text.replace(/^```visual[ \t]+(\S+)[ \t]*$/gm, (_, kind: string) => '```visual ' + kind + ' auto' + batch + '-' + (++generated));
+  const { visuals, errors } = parseVisualBlocks(normalized);
   if (errors.length) return { text, error: `素材块写错了：${errors.join('；')}` };
   for (const v of visuals) {
-    if (v.kind === 'image') return { text, error: '不能交图片素材（图片要核实许可）' };
     if (v.kind === 'scene' && !v.src.startsWith('@')) return { text, error: `代码场景只能用通用场景库里的（src: @名字.html）：${v.id}` };
   }
   let i = 0;
-  const out = text.replace(/```visual\s+(\S+)\s+(\S+)\s*\n[\s\S]*?```/g, () => {
+  const out = normalized.replace(/```visual\s+(\S+)\s+(\S+)\s*\n[\s\S]*?```/g, () => {
     const v = visuals[i++]!;
     const id = `${task.id}-${v.id}`;
     desk.visuals.set(id, { ...v, id });
     // 舞台那边登记上，[[show 编号]] 才找得到
     stage.putVisual({ ...v, id });
-    const controls = v.kind === 'scene' && v.controls ? `（${v.controls}）` : '';
-    return `素材 [[show ${id}]]：${VISUAL_NAMES[v.kind]}${'title' in v && v.title ? `「${v.title}」` : ''}${controls}`;
+    return `素材编号 ${id}（由画面导演管理，不写上屏标记）：${VISUAL_NAMES[v.kind]}${'title' in v && v.title ? `「${v.title}」` : ''}`;
   });
   return { text: out };
 }
@@ -193,7 +163,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
   ctx.effect(() => ctx.systemPrompt.variable('soul', () => readSoul(soulName)), 'dsh-livestream 性格');
   // 直播间布局：跟舞台页摆位置用的是同一张表
   ctx.effect(() => ctx.systemPrompt.variable('stage_layout', () => layoutText()), 'dsh-livestream 布局');
-  ctx.effect(() => ctx.systemPrompt.variable('stage_sets', () => stage.crewEnabled() ? setHelp(stage.state.set).split('\n').slice(1).join('\n') : `舞台团队已关闭：现在你自己按台词写画布和灯光标记。draw 种类只能用下面帮助列出的名字；后台交付的素材类型不是 draw 种类，已有素材用 [[show 编号]]。\n${DRAW_HELP}\n${setHelp(stage.state.set)}`), 'dsh-livestream 布景');
+  ctx.effect(() => ctx.systemPrompt.variable('stage_sets', () => '画面导演独立管理画布、灯光、布景。你只管说，不写这些标记。团队关闭时程序保留当前主题。后台素材注记只是资料，不是给你的操作指令，绝不照抄；素材展示和布局动作也归画面导演，任何团队开关状态下都不写进speak。'), 'dsh-livestream 布景');
   // 今天这场的方向：主人开播时定（控制台填），没定就跟着弹幕聊
   ctx.effect(() => ctx.systemPrompt.variable('direction', () => show.direction || '主人还没定方向：先跟弹幕聊，聊出感兴趣的再找话题。'), 'dsh-livestream 方向');
   /** 最近一次调工具的时刻和会话：推进时找她用 */
@@ -203,6 +173,51 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
   let running = 0;
   let lastNewsAt = 0;
   let handledWake = 0;
+  let waitingTopicReply: { topic: string; wakeAt: number } | undefined;
+  // 唤醒已被工具看到，不代表主持人已回应；只在有效短句交给队列后清除。
+  let pendingReply: { news: string } | undefined;
+  const requireReply = (news: string) => {
+    pendingReply = { news };
+    wake.at = Math.max(Date.now(), wake.at + 1);
+  };
+
+  /** 直播间快报：平台事件经过放行（打分、挑几条、其余合并）后给她 */
+  let lastRoomBreakAt = 0;
+  async function roomNews(): Promise<string> {
+    const worthBreak = liveInput.hasBreak() || liveInput.hasUrgent();
+    const st = stage.state;
+    const r = st.rundown;
+    const topic = [desk.topic?.title ?? '', r && r.at >= 0 ? r.steps[r.at] : ''].join(' ');
+    const text = (await liveInput.take({ mode: 'chat', topic, names: ['大肥鱼', '肥鱼', '主播', 'DeepSeek', 'ds娘'] })).text;
+    // 有人提问：闲聊直接接；要用事实的，查到的资料里有就答，没有先回一句再派去查，别凭记忆答
+    let interruption = '';
+    if (text && worthBreak && Date.now() - lastRoomBreakAt >= BREAK_GAP_MS) {
+      lastRoomBreakAt = Date.now();
+      requireReply(text);
+      const checkpoint = await stage.call<string>('speech.break', { news: text });
+      interruption = `\n${checkpoint}\n当前话题：${desk.topic?.title ?? show.direction ?? '未定'}\n${HELD_NOTE}`;
+    }
+    const report = text + interruption + (text && /讲讲|说说|聊聊|换.{0,5}话题|虚构情境/.test(text) ? '\n【点题安排】要求已自动交编导。你现在的短回应必须点名，并明确说出相对位置（眼前这点讲完就讲 / 下一点 / 先换题收尾），不能只说收到、记下、留着；具体改单到后再告诉观众位置与理由。' : '');
+    return text && text.includes('［提问') ? `${report}\n（有人问你：闲聊、梗、看法直接接；要用到事实（年份、数字、研究结论）的，查到的资料里有就照着答，没有就先回一句「我查一下」再 research kind=answer。）` : report;
+  }
+
+  /** 弹幕收件箱：上次告诉她以后新来的 */
+  const seen = new Set<string>();
+  function inboxWaiting(): boolean {
+    return stage.state.danmaku.some((d) => !seen.has(d.id) && (d.platform === 'owner' || d.platform === 'sim'));
+  }
+
+  function inbox(): string {
+    // 平台（抖音、B 站）的弹幕走放行快报，这里只管主人和测试弹幕
+    const fresh = stage.state.danmaku.filter((d) => !seen.has(d.id) && (d.platform === 'owner' || d.platform === 'sim'));
+    for (const d of fresh) seen.add(d.id);
+    if (!fresh.length) return '';
+    const pf = { douyin: '抖音', bilibili: 'B站', tiktok: 'TikTok', owner: '主人', sim: '测试' } as const;
+    const news = `新弹幕：\n${fresh.map((d) => `- ${d.id} ${pf[d.platform]}·${d.user}：${d.text}`).join('\n')}`;
+    requireReply(news);
+    return news;
+  }
+
   const register = (tool: { name: string; description: string; parameters: ParameterSchemaSpec; run: (args: any, exec: any) => string | Promise<string> }) =>
     EDIT_TOOLS.has(tool.name) ? undefined : ctx.effect(() => ctx.tools.register(defineTool({
       name: tool.name,
@@ -220,7 +235,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
           const result = await tool.run(args, exec);
           // 台上的她：查到的资料、直播间快报跟着任何一个工具的回执到，不用只等 speak（嘴排满时她会去调别的）
           if (config.role === 'worker' || tool.name === 'speak') return result;
-          const news = [inbox(), await roomNews(), desk.take()].filter(Boolean).join('\n');
+          const news = [inbox(), await roomNews(), speakerNotes(desk.take()), await stage.call<string>('blackboard.line')].filter(Boolean).join('\n');
           return news ? `${result}\n\n${news}` : result;
         } finally {
           running--;
@@ -305,17 +320,37 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
     });
 
     register({
+      name: 'plan_update',
+      description: '编导立即改当前话题节目单。先处理点题再查资料，十秒内给安排。观众点题放在眼前这个点之后，马上或讲完当前点后兑现；只有观众明确要求稍后，才可以排到资料后面。任何写兑现某人点单的点必须带有效 pending 点单编号，已关闭要求不要重开。读取黑板，保留被挤后的点；add 每项写 text、material（素材架编号）、reason、order（点单编号）、position（now/after-current/later）；remove 写 id 和 reason；move 写 id、position、reason。已有素材够讲就引用，不捏造事实。换话题要求先安排收尾，主持人开新话题；未兑现点单在新话题继续安排。',
+      parameters: { edit: { oneOf: [{ type: 'string' }, { type: 'object', additionalProperties: true }], required: true, description: 'JSON 对象，含 add/remove/move 数组' } },
+      async run(args, exec) {
+        const task = mine(exec);
+        if (!task || desk.topic?.task !== task) return '话题已经换了';
+        try {
+          const edit = (typeof args.edit === 'string' ? JSON.parse(args.edit) : args.edit) as PlanEdit;
+          const board = await stage.call<import('../host/blackboard').BoardSnapshot>('blackboard.read');
+          const material = board.materials.filter(m => m.id.startsWith(task.id + '-')).at(-1)?.id;
+          for (const a of edit.add ?? []) if (!a.material && material) a.material = material;
+          const result = await stage.editPlan(task.id, edit);
+          desk.deliver(task, 'progress', result);
+          return result;
+        }
+        catch (e) { return `节目单没改成：${e instanceof Error ? e.message : String(e)}`; }
+      },
+    });
+    register({
       name: 'deliver',
       description: '把东西交给主播。kind：'
         + 'start 话题的起步卡（要填 title：话题名）——钩子一句、直觉以为什么、两三条带出处的事实，够她开口就行；'
         + 'cards 给话题补一批素材（3–5 条：事实、故事、数字、类比，能配画面就配一个）；'
         + 'answer 查到的答案（一句话结论 + 带出处的事实）；visual 给她挑的画面；progress 报一句进度（她会拿去跟观众聊）；fail 查不到或做不成，说清为什么。\n'
         + '事实一条一行「- 事实（出处：网站或机构名, 网址）」，只写网页里真的读到的；不是事实的（钩子、类比、问观众的话）写成「资料：……」。'
-        + '画面写法：```visual 类型 编号``` 素材块（类型：' + VISUAL_KINDS.filter((k) => k !== 'image').join('、') + '；代码场景 src 只能是 @名字.html），'
-        + '或者现成的特效标记 [[graphic id 字段=值]]（id 用 graphic_search / graphic_pick 搜到的）。她照抄就能用，所以要写对。交完一批就停下等她叫你。',
+        + '画面写法：```visual 类型 编号``` 素材块（类型：' + VISUAL_KINDS.join('、') + '；代码场景 src 只能是 @名字.html），'
+        + '素材交给画面导演安排，给主持人的资料只含事实、来源和素材编号，不教她写上屏或特效标记。交完一批就停下等她叫你。',
       parameters: {
         kind: { type: 'string', enum: ['start', 'cards', 'answer', 'visual', 'progress', 'fail'], required: true },
         text: { type: 'string', required: true, description: '交的内容' },
+        plan: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'object', additionalProperties: true } }], description: 'start/cards 必填：JSON 数组，3–5 个接下来讲的点，每项 text（讲什么）、reason（为何放这里）、material（可省，默认这批资料编号）、order（有关联点单时填）。保留现有点，不重复已讲点。' },
         title: { type: 'string', description: '话题名（交 start 时必填，短，观众一看就懂）' },
       },
       async run(args, exec) {
@@ -341,7 +376,13 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
         const unsourced = facts.filter((l) => !/出处|来源|https?:\/\//.test(l));
         const problems: string[] = [];
         if (unsourced.length) problems.push(`这些「- 」行没写出处：是事实就补上出处；不是事实就改成「资料：……」开头，或者删掉：\n${unsourced.slice(0, 8).join('\n')}`);
-        if (kind !== 'visual' && !facts.length) problems.push('至少要有一条带出处的事实（「- 事实（出处：网站, 网址）」）');
+        if (kind !== 'visual' && !facts.length && !(kind === 'start' && /资料[：:]/.test(raw))) problems.push('至少要有一条带出处的事实（「- 事实（出处：网站, 网址）」）');
+        let plan: { text: string; reason: string; material?: string; order?: string }[] = [];
+        if (topic) {
+          try { plan = typeof args.plan === 'string' ? JSON.parse(args.plan) : args.plan; } catch { return 'start/cards 要带 plan：3–5 个点的 JSON 数组'; }
+          if (!Array.isArray(plan) || plan.length < 3 || plan.length > 5 || plan.some(p => !p.text?.trim() || !p.reason?.trim())) return '节目单要有3–5个点，每点一句 text 和 reason';
+          if (plan.some(p => p.order !== undefined && (typeof p.order !== 'string' || !/^o[1-9]\d*$/.test(p.order)))) return 'order 只填关联点单的编号（o 开头），不是节目点的排序；没关联点单就不要填 order';
+        }
         const taken = takeVisuals(task, raw);
         if (taken.error) problems.push(`${taken.error}（写法见提示里的速查）`);
         if (problems.length) return `没收，一次改好再交：\n${problems.join('\n\n')}`;
@@ -355,6 +396,14 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
           }
           await mkdir(TOPICS, { recursive: true });
           await appendFile(join(TOPICS, `${task.id}-${new Date().toISOString().slice(0, 10)}.md`), `${kind === 'start' ? `# ${title}\n\n` : ''}${raw}\n\n`);
+        }
+        // 每批原始资料也是可供画面导演取用的数据；先落素材架再引用。
+        const material = `${task.id}-batch${(topic?.batches ?? 0) + 1}`;
+        await stage.call('blackboard.material', { key: randomUUID(), id: material, description: raw.replace(/```[\s\S]*?```/g, '').slice(0, 100), data: { text: raw, kind } });
+        if (topic) {
+          // name 的发布走有序队列；此调用确保首次节目单之前话题已经到舞台。
+          await stage.call('blackboard.topic', { key: randomUUID(), id: task.id, card: { title: topic.title ?? task.ask, hook: task.ask } });
+          await stage.editPlan(task.id, { add: plan.map(p => ({ ...p, material: p.material || material, position: 'later' as const })) });
         }
         desk.deliver(task, kind, taken.text, stage.speechStats().spokenMs);
         // 查资料的状态牌收掉
@@ -379,7 +428,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
       const chatting = desk.topic?.batches ? desk.topic : undefined;
       lastNudgeAt = t;
       void (async () => {
-        const news = [inbox(), await roomNews(), desk.take()].filter(Boolean).join('\n');
+        const news = [inbox(), await roomNews(), speakerNotes(desk.take()), await stage.call<string>('blackboard.line')].filter(Boolean).join('\n');
         if (!chatting && !news) return;
         const lines = ['【直播间】'];
         if (news) lines.push(news);
@@ -410,7 +459,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
         const ownerNews = inbox();
         const news = [ownerNews, await roomNews()].filter(Boolean).join('\n');
         if (!news) return;
-        lastBreakAt = wake.at = Date.now();
+        lastBreakAt = Date.now();
         const checkpoint = ownerNews ? await stage.call<string>('speech.break', { news: ownerNews }) : '';
         await push(`【直播间·马上回】\n${news}${checkpoint ? `\n${checkpoint}\n${HELD_NOTE}` : ''}`);
       })().catch(() => undefined).finally(() => { busy = false; });
@@ -421,16 +470,17 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
 
   register({
     name: 'speak',
-    description: '向观众公开讲话的唯一入口。一次交一小段（平常二至四句口语，每句尽量不超过20字，最多 300 字；马上回时先只交一句短回应，内容再分小段往下讲），写进嘴里（说话队列）就回来，嘴自己念，你接着做别的：'
+    description: '节目单已到时，普通讲述每段讲完最上面的一个点，并在段末写 [[beat done 编号]]；关联点单也可用 [[done o编号]]。漏标记的普通讲述不会排播。next=true 的短回应可以不结点，别把短回应当兑现。\n向观众公开讲话的唯一入口。一次交一小段（平常二至四句口语，每句尽量不超过20字，最多 300 字；马上回时先只交一句短回应，内容再分小段往下讲），写进嘴里（说话队列）就回来，嘴自己念，你接着做别的：'
       + '要查资料、找素材，先 speak 一句回应观众，再去调工具（查资料、挑画面派给后台：research），查的时候嘴还在说（同一步里一起调也行）。队里攒得太多时才会等一会儿；有新弹幕或后台交东西会提前回来。'
       + '要先回观众、不想等排着的话念完，传 next=true：念完正在念的这段就说这句，排着的接着念。'
-      + '嘴比手慢：工具是马上生效的，跟某个字对齐的动作写成台词里的标记，念到那个字时发生：\n' + CUE_HELP + '\n'
+      + '你负责说话；只保留互动道具、表情与点单写法：\n' + CUE_HELP + '\n'
       + '字幕会自己演：你只管标语气（tone）和重音——要强调的词用 *星号* 包起来（一段一两处），念到时字幕上那个词会放大变色，里面有数字会滚上去；'
       + '想做个表情就写 [[emote laugh]]（笑出声，还有 shock、cry、love、think、fire、clap、sweat、star、question、party……也可以直接写一个 emoji），点到为止，一段最多一个。tone=reveal（揭晓、反转）的句子会跳到画面中间砸出来，只有 24 个字以内才砸——揭晓那句单独成段、说短，铺垫和解释放到前后段。别把台词再写到画布上。'
       + '例：「结果呢？*这个数*，后来查下来，*一个都对不上*。」标记和星号都不念出来。'
+      + '节目单到了，每段按最上面的点讲，讲完句末 [[beat done b编号]]；观众点题自动交给编导，先短回应并说出收到的安排（编导没回就说先讲完眼前这个点，已交编导排在后面；改单回来再报实际位置），兑现时点名。不要把安排当兑现；没收到改单时说已交编导安排，不虚报位置。主人换话题时一段内收尾，research kind=topic 开新话题，用 speech_queue 撤掉旧话题挂起的台词。\n'
       + '要等这段念完再做别的（比如要切走），传 wait=true。不要念路径、报告、代码或工具结果。',
     parameters: {
-      text: { type: 'string', required: true, description: '给观众听的一段话，可带 [[标记]]，最多 300 字（不算标记）' },
+      text: { type: 'string', required: true, description: '给观众听的一段话，只可带互动、表情与点单标记，最多300字' },
       mood: { type: 'string', description: `念这段时的表情（${MOODS.join(' ')}），默认跟着语气；写成语气名也认` },
       pace: { type: 'string', enum: Object.keys(PACES), description: '语速：slow 慢一点（讲关键、讲难懂的、等观众跟上）、normal、fast 快一点（带过、吐槽、气氛热的时候）。不给就跟着语气走' },
       tone: { type: 'string', enum: TONES, description: '这段的语气：plain 平常（默认）、excited 兴奋、reveal 揭晓反转（短句最有劲）、serious 认真、aside 小声嘀咕、question 提问、quote 念原话' },
@@ -445,13 +495,32 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
       const given = String(args.mood ?? '');
       const mood = (MOODS.includes(given as Mood) ? (given as Mood) : TONES.includes(given as Tone) ? TONE_MOOD[given as Tone] : undefined) ?? (tone ? TONE_MOOD[tone] : undefined);
       const pace = (PACES as Record<string, number>)[String(args.pace)] ?? (tone ? TONE_PACE[tone] : undefined);
+      const parsed = parseCues(text);
+      const plain = parsed.text;
+      if (!plain.trim()) return '没排上：没有要念的字';
+      const reply = pendingReply;
+      if (reply && (!args.next || [...plain].length > 45)) {
+        return `没排播：最新急件尚未由你短回应。先自己写一句 speak next=true（45字以内）直接回应，收到成功回执后再排普通节目。\n${reply.news}`;
+      }
+      const waitingTopic = desk.topic && !desk.topic.batches ? desk.topic : undefined;
+      if (waitingTopic) {
+        if (waitingTopicReply?.topic === waitingTopic.task.id && wake.at <= waitingTopicReply.wakeAt) return '没排播：这次换题已经短回应过了，等编导起步卡；不要重复收尾、另写无节目点的过场或念节目规则。';
+        if (!args.next || [...plain].length > 45) return '没排播：编导起步卡还没到，先只用一次 speak next=true 短回应（45字以内）说清安排，别先讲没有节目点的内容。';
+      }
+      const point = stage.blackboard?.beats.find(b => b.status === 'pending' && !b.queued);
+      const hasEnding = parsed.cues.some(c => c.cmd.type === 'mark' && /^(?:beat:done:|order:(?:done|decline):)/.test(c.cmd.label));
+      if (point && !hasEnding && !(args.next && [...plain].length <= 45)) {
+        return `没排播：普通讲述要按节目单完成一个点，并在段末写 [[beat done ${point.id}]]。这一段观众还没听到，改好标记再交，不要跳点；若只回应观众，用 next=true 先短说安排。\n${await stage.call<string>('blackboard.line')}`;
+      }
       const queued = stage.enqueue(text, { ...(mood ? { mood } : {}), ...(tone ? { tone } : {}), ...(pace && pace !== 1 ? { rate: pace } : {}), ...(args.next ? { next: true } : {}) });
-      const plain = parseCues(text).text;
+      if (queued.errors.some(e => e === '没有要念的字' || e.includes('舞台没连上'))) return `没排上：${queued.errors.join('；')}`;
+      // 只有实际交给队列才消费本次回应机会；空稿或已知断桥允许修正重试。
+      if (reply === pendingReply) pendingReply = undefined;
+      if (waitingTopic) waitingTopicReply = { topic: waitingTopic.task.id, wakeAt: wake.at };
       if (plain) {
         said.push(plain);
         if (said.length > 8) said.shift();
       }
-      if (queued.errors.some((e) => e === '没有要念的字')) return `没排上：${queued.errors.join('；')}`;
       const signal: AbortSignal | undefined = exec?.signal;
       // 嘴没攒满就马上回；攒满了等到念下去一些。等的时候有新弹幕就提前回来让她看（最多隔几秒一次）
       let result: string | undefined;
@@ -476,26 +545,21 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
         const left = Math.round(stage.remainingMs() / 1000);
         notes.push(args.wait && result === 'done' ? '这段念完了。' : `排上了，嘴里还有约 ${left} 秒的话。${
           left * 1000 > full() ? '这段排上了，不过嘴里已经排得够多：下一段先缓缓，先处理回执里的事（查到的资料、弹幕）；要回观众就用 next=true 插到前面。别为了等资料去反复看舞台，资料到了会跟着任何一个工具的回执来。'
-          : left * 1000 > lead() ? '要查什么、摆什么现在去做，嘴不会停；没别的事就接着写下一段。'
+          : left * 1000 > lead() ? '要查什么现在去做，画面交给导演，嘴不会停；没别的事就接着写下一段。'
           : stage.isQuiet() ? '嘴快空了。直播间这会儿安静，不用急着接：可以停一下、等等弹幕，有想说的再说。' : '嘴快空了，接着写下一段。'}`);
       }
       const errors = [...queued.errors, ...(await stage.takeCueErrors())];
-      // 上了代码场景却没驱动：画面停在初始状态，跟她说的对不上（实测「机身上密密麻麻的孔」配着「还没标弹孔」）
-      const cues = parseCues(text).cues;
-      const scenes = cues.map((c) => (c.cmd.type === 'show' && c.cmd.id ? desk.visuals.get(c.cmd.id) : undefined)).filter((v): v is Extract<Visual, { kind: 'scene' }> => v?.kind === 'scene');
-      if (scenes.length && !cues.some((c) => c.cmd.type === 'drive')) {
-        notes.push(`你上了代码场景「${scenes.map((v) => v.title ?? v.id).join('、')}」但没驱动它，画面停在初始状态，跟你说的可能对不上。讲到对应的那句时写上动作：${scenes.map((v) => v.controls ?? '（看素材说明）').join('；')}（[[set 参数=值]] [[do 动作]]）。`);
-      }
       if (errors.length) notes.push(`标记有问题（没生效）：${errors.join('；')}`);
       const news = inbox();
       if (news) notes.push(news);
       const room = await roomNews();
       if (room) notes.push(room);
-      const back = desk.take();
+      const back = speakerNotes(desk.take());
       if (back) notes.push(back);
       // 嘴里排着的（有两段以上才列）：她可以撤、改、提前（speech_queue）
       const lineup = (await stage.lineup()).filter((l) => !l.playing);
       if (lineup.length >= 2) notes.push(`嘴里排着（按顺序）：${lineup.map((l) => `${l.id}「${l.text.length > 18 ? `${l.text.slice(0, 18)}…` : l.text}」`).join(' → ')}。说过时了、跟弹幕对不上，用 speech_queue 撤掉或改掉。`);
+      notes.unshift(await stage.call<string>('blackboard.line'));
       const orders = await stage.call<string>('orders.pending');
       if (orders) notes.push(orders);
       notes.push(`现在 ${clockNow()}。`);
@@ -778,11 +842,20 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
   const note = (text: string) => Object.freeze({ id: randomUUID(), role: 'user', content: [{ type: 'text', text }], source: { kind: 'dsh-livestream-desk' } });
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   /** 台上现在的情况：给后台的派活和补料都带上 */
+  // 改单只需短状态和素材目录，避免把每批原文反复塞进快任务，拖慢点题。
+  const boardContext = (board = stage.blackboard) => board ? {
+    topic: board.topic,
+    beats: board.beats.map(({ id, text, reason, status, order, queued }) => ({ id, text, reason, status, order, queued })),
+    orders: board.orders,
+    materials: board.materials.map(({ id, description }) => ({ id, description })),
+    archives: board.archives.slice(-2).map(({ title, summary }) => ({ title, summary })),
+  } : undefined;
   const scene = (): string[] => {
     const st = stage.state;
     const recent = st.danmaku.slice(-6).map((d) => `${d.user}：${d.text}`);
     const shown = st.draw.items.filter((x) => x.kind !== 'link' && x.kind !== 'group').map((x) => `${x.id}(${x.kind}${x.text ? ` ${x.text.slice(0, 12)}` : ''})`);
     return [
+      ...(stage.blackboard ? [`当前黑板（pending 点单优先，已关单不重开；素材原文留在架上）：${JSON.stringify(boardContext())}`] : []),
       ...(show.direction ? [`今天这场直播的方向：${show.direction}`] : []),
       ...(said.length ? [`她最近说的：\n${said.slice(-5).map((t) => `- ${t.slice(0, 120)}`).join('\n')}`] : []),
       ...(shown.length ? [`画面上：${shown.join('、')}`] : []),
@@ -827,12 +900,13 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
     const agent = await spawn(task);
     let waiting: { kind: 'start' | 'cards'; at: number; batches: number; nudged: boolean } | undefined;
     let misses = 0;
+    const requested = new Set<string>();
     const ask = (kind: 'start' | 'cards', text: string) => {
       agent.followup(note(text));
       waiting = { kind, at: Date.now(), batches: topic.batches, nudged: false };
     };
     ask('start', [
-      `【主播派活 ${task.id}】跟一个话题。先交起步卡（deliver start，带 title），之后她讲的时候会叫你补料（deliver cards）。`,
+      `【主播派活 ${task.id}】跟一个话题。必须先在10秒内出节目单，不用等搜索：用对话里已有的事实，或者用「资料：」标明假设/虚构情境出起步卡；没有现成事实就先不讲事实，联网核实后再补，绝不编数字和结论。先交起步卡（deliver start，带 title 和 plan，plan 为3–5点的JSON数组，每点 text/reason，material 不填默认这批资料；不用搜齐所有资料才交），之后她讲的时候会叫你补料（deliver cards）。`,
       `她说：${task.ask}`,
       ...scene(),
     ].join('\n'));
@@ -840,6 +914,15 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
       await sleep(500);
       if (task.status !== 'running' || desk.topic !== topic) break;
       if (Date.now() - task.startedAt > TOPIC_LIFETIME_MS) break;
+      const board = stage.blackboard;
+      const requests = board?.orders.filter(o => o.status === 'pending' && !board.beats.some(b => b.order === o.id && b.status !== 'deleted') && !requested.has(o.id + o.want)) ?? [];
+      if (requests.length && topic.batches > 0 && board?.topic?.id === task.id && board.materials.length) {
+        const switching = requests.find(o => /换.{0,8}(?:话题|方向)|换.{0,3}聊/.test(o.want));
+        if (switching && !task.ask.includes(switching.want) && desk.requestTopic(switching.want, switching.id)) break;
+        for (const o of requests) requested.add(o.id + o.want);
+        const text = note(`【编导马上改单】点题在当前点之后兑现，只有观众明确要求稍后才可排到资料后。已关闭点单不要重新安排，显式兑现点必须带有效 order 编号。下面要求自动进单。现在先调用 plan_update，别等补料或搜网页：${JSON.stringify(requests)}\n当前黑板：${JSON.stringify(boardContext(board))}\n插到合适位置并给理由，被挤的保留；要换话题先给收尾安排。`);
+        if (agent.status === 'idle') agent.followup(text); else agent.steer?.(text);
+      }
       if (waiting) {
         const elapsed = Date.now() - waiting.at;
         if (topic.batches > waiting.batches) {
@@ -864,7 +947,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
       if (agent.status === 'idle' && (topic.wants.length || talked >= REFILL_SPOKEN_MS)) {
         const wants = topic.wants.splice(0);
         ask('cards', [
-          `【主播】话题「${topic.title ?? ''}」补一批料（deliver cards，3–5 条，别重复已经交过的）。`,
+          `【主播】话题「${topic.title ?? ''}」补一批料（deliver cards 带 plan，3–5 条，别重复黑板里已排或已讲过的点）。当前黑板：${JSON.stringify(boardContext())}`,
           ...(wants.length ? [`她点名要：${wants.join('；')}`] : ['她没点名，你看她讲到哪了，补接下来用得上的：新的事实、故事、数字、能演出来的画面。']),
           ...scene(),
         ].join('\n'));
@@ -874,18 +957,23 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
     settle();
   };
 
+  ctx.effect(() => desk.setTopicStarter((ask) => {
+    const topic = desk.openTopic(ask, stage.speechStats().spokenMs);
+    void follow(topic).catch((err: unknown) => desk.deliver(topic.task, 'fail', err instanceof Error ? err.message : '派不出去'));
+  }), '编导自动接换题要求');
+
   register({
     name: 'research',
     description: '查资料、挑画面，派出去马上回来、不用等。kind：'
       + 'topic 换一个话题聊（主人让你自己找题、观众点了题、上一个聊完了）：很快先交来一张起步卡（话题名、钩子、两三条事实），够你开口，之后你讲着它会自己一批批补料；'
       + 'more 给正在聊的话题要料（想往哪个方向讲、缺什么故事数字画面）；answer 查一个观众的问题；visual 挑一个复杂画面（代码场景、特效库、要查数据才画得出来的图）。'
       + 'ask 写清楚要什么：观众原话、你想讲的角度、想演出来的那个机制或数字。查的时候你接着讲或跟观众聊（可以说一句「我查一下」），没拿到的事实别讲。'
-      + '查到的出现在说话回执的【你查的资料】里：事实照着讲（用你自己的话）；素材用 [[show 编号]] 上屏，代码场景再用 [[set]] [[do]] 驱动；特效标记照抄进台词。answer、visual 最多同时 ' + MAX_RUNNING + ' 件。',
+      + '查到的出现在说话回执的【你查的资料】里：事实照着讲（用你自己的话）；素材由画面导演安排上屏，不把画面、灯光、布景或特效标记写进台词。answer、visual 最多同时 ' + MAX_RUNNING + ' 件。',
     parameters: {
       kind: { type: 'string', enum: [...RESEARCH_KINDS], required: true },
       ask: { type: 'string', required: true, description: '要查什么，越具体越好' },
     },
-    run(args) {
+    async run(args) {
       const kind = String(args.kind ?? '') as typeof RESEARCH_KINDS[number];
       if (!RESEARCH_KINDS.includes(kind)) return `kind 只能是 ${RESEARCH_KINDS.join('、')}`;
       const ask = String(args.ask ?? '').trim();
@@ -896,6 +984,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
         return `记下了，「${desk.topic.title ?? '这个话题'}」下一批料会往这个方向补。`;
       }
       if (kind === 'topic') {
+        if (Date.now() < desk.requestedUntil && desk.topic) return `编导已经自动开了新话题，不用重复派活。${await stage.call<string>('blackboard.line')}`;
         // 换话题：旧话题的后台撤掉
         const topic = desk.openTopic(ask, stage.speechStats().spokenMs);
         void follow(topic).catch((err: unknown) => desk.deliver(topic.task, 'fail', err instanceof Error ? err.message : '派不出去'));
@@ -923,7 +1012,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
   register({
     name: 'stage_place',
     description: '摆直播间画布（1920×1080）：整套换摆法（layout），或者挪一个元素（el）——给区域名 at，或者给 x、y、w、h 里的几项；hide 藏起、show 亮出；look 转你的视线。'
-      + '元素：avatar（你自己）、workspace（主画面：片子、翻资料）、subtitle（字幕）、side（右栏）、onair（角标）、alerts（礼物提示）。说话时更顺手的是台词里写 [[place …]] [[layout …]] [[look …]]。',
+      + '元素：avatar（你自己）、workspace（主画面：片子、翻资料）、subtitle（字幕）、side（右栏）、onair（角标）、alerts（礼物提示）。直播画面由画面导演管理，主持人不把布局动作写进台词。',
     parameters: {
       layout: { type: 'string', enum: LAYOUT_NAMES, description: '整套换摆法' },
       el: { type: 'string', enum: ELEMENT_IDS, description: '要挪的元素' },

@@ -27,5 +27,32 @@ export function measureOverlap() {
     }
     if (outside.length) overflow.push({ id, box: rect(box), children: outside });
   }
-  return { pairs, overflow, count: items.length };
+  // 附加只读文字测量；原有几何判断不变。
+  const normalize = text => text.normalize('NFKC').replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase();
+  const visible = el => {
+    for (let x = el; x; x = x.parentElement) {
+      const s = getComputedStyle(x);
+      if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0) return false;
+    }
+    return true;
+  };
+  const content = items.map(({ el, id }) => ({ id, text: normalize(el.querySelector('.draw-ink, .draw-number > b')?.textContent ?? el.textContent ?? '') }));
+  const duplicates = [];
+  for (let i = 0; i < content.length; i++) for (const b of content.slice(i + 1)) {
+    const a = content[i];
+    if (a.text && b.text && (a.text === b.text || Math.min(a.text.length, b.text.length) >= 3 && Math.abs(a.text.length - b.text.length) <= 2 && (a.text.includes(b.text) || b.text.includes(a.text)))) duplicates.push({ a: a.id, b: b.id, text: a.text });
+  }
+  const smallText = [];
+  for (const { el, id } of items) for (const node of el.querySelectorAll('*')) {
+    if (!visible(node) || ![...node.childNodes].some(t => t.nodeType === Node.TEXT_NODE && t.textContent?.trim())) continue;
+    let scale = 1;
+    for (let ancestor = node; ancestor && !ancestor.classList.contains('stage-frame'); ancestor = ancestor.parentElement) {
+      const matrix = new DOMMatrix(getComputedStyle(ancestor).transform);
+      scale *= Math.hypot(matrix.a, matrix.b);
+    }
+    const fontSize = Math.min(parseFloat(getComputedStyle(node).fontSize), parseFloat(getComputedStyle(node).fontSize) * scale);
+    if (fontSize < 18) smallText.push({ id, text: node.textContent, fontSize });
+  }
+  const titles = items.filter(({ el }) => el.querySelector('.size-xl')).map(({ el, id }) => ({ id, text: el.textContent }));
+  return { pairs, overflow, count: items.length, duplicates, smallText, titles };
 }
