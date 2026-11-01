@@ -2,6 +2,10 @@
 
 AI 虚拟主播「大肥鱼」的本地直播舞台。DSH 负责主持和后台编导，`packages/dsh-livestream` 提供控制台、语音队列、共享黑板、独立画面导演和 OBS 浏览器源。
 
+## 本仓库的 scene-host 不是 P2 验收
+
+`packages/scene-host` 只是脚手架和端口接线。**P2 运行验收没有通过。** 连续 100 次 live patch 保实例、真实 Remotion / HyperFrames 播放器和 Chromium 绘制仍然阻塞。详见 `packages/scene-host/README.md`。
+
 ## 开播
 
 项目使用本机 DSH 的 `live` 配置，并需将本插件加入该配置。`.dsh/` 是本机状态，不随仓库提交。
