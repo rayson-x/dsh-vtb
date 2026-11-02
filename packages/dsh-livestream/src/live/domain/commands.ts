@@ -83,14 +83,16 @@ export type ShowCommand =
       type: 'switchDirection';
       authorizationId: string;
       strategy: 'soft' | 'hard';
-      next: { commitment: string; coreQuestion: string } | { transition: true };
+      next: { directionId?: string; commitment: string; coreQuestion: string } | { transition: true };
     }
   | { type: 'requestInteraction'; requestId: string; text: string }
   | { type: 'offerSpeech'; partId: string; text: string; plannedBeatRef?: string }
   | { type: 'progressSpeech'; partId: string; mediaTimeMs: number; audioRef: string }
   | { type: 'noteLiveCapabilities'; instanceId: string; supportsInPlaceInputUpdate: boolean }
-  | { type: 'receiptScenePatch'; instanceId: string; codeVersion: string; inputsRevision: number; inputs: Record<string, unknown> }
-  | { type: 'receiptSceneLifecycle'; instanceId: string; lifecycle: 'holding' | 'taken' | 'retired' | 'disposed' }
+  | { type: 'receiptScenePatch'; operationId:string; observedAtShowTime?:number; frame?:number; instanceId: string; codeVersion: string; inputsRevision: number; inputs: Record<string, unknown> }
+  | { type: 'receiptScenePatchFailed';instanceId:string;operationId:string;reason:string }
+  | { type: 'receiptSceneLifecycle'; instanceId: string; lifecycle: 'prepared' | 'holding' | 'taken' | 'retired' | 'disposed';frame?:number;observedAtShowTime?:number }
+  | { type: 'rejectSpeech'; partId: string; reason: string }
   | { type: 'acceptSpeech'; partId: string }
   | { type: 'queueSpeech'; partId: string }
   | { type: 'startSpeech'; partId: string }
@@ -121,7 +123,7 @@ export type ShowCommand =
   | { type: 'noteSdkSignal'; instanceId: string; signal: SdkReadySignal }
   | { type: 'notePromiseResolved'; instanceId: string }
   | { type: 'take'; instanceId: string; outcome?: TakeOutcome }
-  | { type: 'updateInputs'; instanceId: string; inputsRevision: number; inputs: Record<string, unknown> }
+  | { type: 'updateInputs'; instanceId: string; inputsRevision: number; inputs: Record<string, unknown>; proposalIds?: string[]; cueId?:string }
   | { type: 'holdScene'; instanceId: string }
   | { type: 'resumeScene'; instanceId: string }
   | { type: 'retireScene'; instanceId: string }

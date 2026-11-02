@@ -67,6 +67,7 @@ export interface AudienceProposal {
   speechPartIds: string[];
   /** 兑现必须指向实际播出记录。没有这条就不能 presented。 */
   fulfillment?: { playbackEventId: string };
+  presentation?: { sceneInstanceId: string; inputsRevision: number; operationId: string };
 }
 
 export interface EditorialProposal {
@@ -90,6 +91,8 @@ export interface ProductionTask {
   /** 任务自身的提交版本，不是产物的代码版本。 */
   version: number;
   goal: string;
+  /** Explicit future-direction affinity; never grants permission to air. */
+  intendedDirectionId?: string;
   directionEpoch: number;
   priority: number;
   inputs: string[];
@@ -164,6 +167,7 @@ export interface SpeechPart {
   state: SpeechPartState;
   audioRef?: string;
   abortRequested?: boolean;
+  rejectionReason?: string;
   plannedBeatRef?: string;
   alignment: { mode: AlignmentMode; starts?: number[] };
   playback?: { startedAtShowTime?: ShowTimeMs; endedAtShowTime?: ShowTimeMs };
@@ -210,6 +214,10 @@ export interface PlaybackEvent {
   partId?: string;
   cueId?: string;
   assetVersionId?: string;
+  inputsRevision?: number;
+  frame?:number;
+  observedAtShowTime?:number;
+  operation?:'take'|'patch';
   /** 旧实例的迟到回执。不得写进新实例。 */
   orphan?: boolean;
   disposition?: 'completed' | 'aborted' | 'failed';
@@ -243,6 +251,7 @@ export interface SceneInstance {
   assetVersionId: string;
   codeVersion: string;
   inputsRevision: number;
+  pendingInputs?: { operationId: string; inputsRevision: number; inputs: Record<string, unknown>; proposalIds: string[] };
   inputs: Record<string, unknown>;
   surface: SceneSurface;
   lifecycle: SceneLifecycle;
@@ -250,6 +259,8 @@ export interface SceneInstance {
   sdkSignals: SdkReadinessSignals;
   /** Promise 完成只说明调用返回，不写成首帧。 */
   promiseResolved: boolean;
+  closedAtShowTime?:number;
+  playbackSamples?:{kind:'take'|'hold'|'resume';frame:number;showTime:number}[];
   takenSequence?: number;
   /** 域级订阅计数。dispose 必须归零。不是 GPU 泄漏实测。 */
   subscriptions: number;

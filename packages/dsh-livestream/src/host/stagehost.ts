@@ -171,9 +171,10 @@ export function createStageHost(o: StageHostOptions): StageHost {
     return { ...cmd, visual, ...(url ? { url } : {}) };
   });
 
-  let harnessMode: 'legacy' | 'v2' = 'legacy';
+  let harnessMode: 'legacy' | 'v2' = process.env.AIVTB_HARNESS==='v2'?'v2':'legacy';
   let harnessSceneUrl: string | undefined;
   const crew = pictureDirector(stage, () => o.secret('DEEPSEEK_API_KEY'), record, blackboard);
+  if(harnessMode==='v2')crew.setEnabled(false);
 
   // 她念过的话（嘴替、大脑回来时用）
   const said: string[] = [];
@@ -358,8 +359,9 @@ export function createStageHost(o: StageHostOptions): StageHost {
   /** 大脑调用 */
   const call = (method: string, args: Record<string, any>): unknown => {
     switch (method) {
-      case 'harness.inputs': return {journalId:inputJournalId,oldest:harnessInputs[0]?.sequence??0,latest:inputSequence,events:harnessInputs.filter(e=>e.sequence>Number(args.after??0)).slice(0,200)};
+      case 'harness.inputs': return {journalId:inputJournalId,oldest:harnessInputs[0]?.sequence??0,latest:inputSequence,events:harnessInputs.filter(e=>e.sequence>Number(args.journalId&&args.journalId!==inputJournalId?0:args.after??0)).slice(0,200)};
       case 'harness.mode': {
+        if(harnessMode==='v2'&&args.mode==='legacy')throw new Error('Stop v2 and restart the console in legacy mode before releasing programme control');
         if (args.mode !== 'legacy' && args.mode !== 'v2') throw new Error('Invalid harness mode');
         if (args.mode === 'v2') {
           const url = new URL(String(args.sceneUrl));
@@ -369,7 +371,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
           for(const command of [{type:'erase'},{type:'ungraphic'},{type:'unshow'},{type:'board',clear:true},{type:'rundown',clear:true},{type:'research',done:true}] as Command[])stage.apply(command);
         }
         harnessMode = args.mode;
-        return { mode: harnessMode, sceneUrl: harnessSceneUrl };
+        return { mode: harnessMode, sceneUrl: harnessSceneUrl, protocol:1 };
       }
       case 'blackboard.read': return blackboard.read();
       case 'blackboard.line': return blackboard.line();

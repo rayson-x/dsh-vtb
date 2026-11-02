@@ -1,10 +1,22 @@
 /** Append-only local WAL. Facts are fsynced before an execution may leave this process. */
-import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, truncateSync, writeSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  truncateSync,
+  writeSync,
+} from 'node:fs';
 import { dirname } from 'node:path';
 import { MemoryEventLog, type EventDraft, type EventLogPort, type CommittedExecution } from '../events/log';
 import type { DomainEvent } from '../domain/entities';
 
-type Row = { kind: 'event'; event: DomainEvent } | { kind: 'commit'; record: CommittedExecution } | { kind: 'archive'; through: number };
+type Row =
+  | { kind: 'event'; event: DomainEvent }
+  | { kind: 'commit'; record: CommittedExecution }
+  | { kind: 'archive'; through: number };
 export class FileEventLog implements EventLogPort {
   private readonly memory = new MemoryEventLog();
   private readonly fd: number;
@@ -15,7 +27,11 @@ export class FileEventLog implements EventLogPort {
       const lastNewline = bytes.lastIndexOf(10);
       // A process crash can leave an incomplete final record. Never append after that fragment.
       if (lastNewline + 1 < bytes.length) truncateSync(path, lastNewline + 1);
-      for (const line of bytes.subarray(0, lastNewline + 1).toString('utf8').split('\n').filter(Boolean)) {
+      for (const line of bytes
+        .subarray(0, lastNewline + 1)
+        .toString('utf8')
+        .split('\n')
+        .filter(Boolean)) {
         const row = JSON.parse(line) as Row;
         if (row.kind === 'event') {
           if (row.event.sequence !== this.memory.peekNext()) throw new Error('WAL sequence gap');
@@ -41,17 +57,36 @@ export class FileEventLog implements EventLogPort {
     return this.memory.append(draft);
   }
   markCommitted(record: CommittedExecution) {
-    if (this.memory.committed().some(r => r.kind === record.kind && r.id === record.id)) return;
+    if (this.memory.committed().some((r) => r.kind === record.kind && r.id === record.id)) return;
     this.persist({ kind: 'commit', record });
     this.memory.markCommitted(record);
   }
-  archiveThrough(through: number) { this.persist({ kind: 'archive', through }); return this.memory.archiveThrough(through); }
-  peekNext() { return this.memory.peekNext(); }
-  has(id: string) { return this.memory.has(id); }
-  get(id: string) { return this.memory.get(id); }
-  active() { return this.memory.active(); }
-  historyPage(after: number, limit: number) { return this.memory.historyPage(after, limit); }
-  committed() { return this.memory.committed(); }
-  snapshot() { return this.memory.snapshot(); }
-  close() { closeSync(this.fd); }
+  archiveThrough(through: number) {
+    this.persist({ kind: 'archive', through });
+    return this.memory.archiveThrough(through);
+  }
+  peekNext() {
+    return this.memory.peekNext();
+  }
+  has(id: string) {
+    return this.memory.has(id);
+  }
+  get(id: string) {
+    return this.memory.get(id);
+  }
+  active() {
+    return this.memory.active();
+  }
+  historyPage(after: number, limit: number) {
+    return this.memory.historyPage(after, limit);
+  }
+  committed() {
+    return this.memory.committed();
+  }
+  snapshot() {
+    return this.memory.snapshot();
+  }
+  close() {
+    closeSync(this.fd);
+  }
 }

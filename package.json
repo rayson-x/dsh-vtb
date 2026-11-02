@@ -28,7 +28,11 @@
     "input:tiktok": "node scripts/input-tiktok.mjs",
     "harness:sdk": "node scripts/sdk-source.mjs",
     "harness:build": "npm --prefix packages/scene-host run build && npm --prefix packages/dsh-livestream run build",
-    "harness:console": "AIVTB_HARNESS=v2 node packages/dsh-livestream/lib/console.js"
+    "harness:console": "AIVTB_HARNESS=v2 node packages/dsh-livestream/lib/console.js",
+    "harness:sim": "node scripts/harness-sim.mjs",
+    "harness:sim:check": "node packages/dsh-livestream/scripts/harness-sim-check.mjs",
+    "harness:film:export": "node scripts/harness-film-export.mjs",
+    "harness:film:capture": "node packages/dsh-livestream/scripts/harness-film-capture.mjs"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.2.1-rc.2"

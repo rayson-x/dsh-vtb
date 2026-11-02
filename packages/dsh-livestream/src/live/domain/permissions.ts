@@ -103,6 +103,7 @@ export function roleAllows(role: Role, tool: DomainTool): boolean {
     if (AGENT_TOOL_SET[role].has(tool)) return true;
   }
   switch (tool) {
+    case 'updateInputs': return role==='director'||role==='runtime';
     case 'reviewAudienceProposal':
       return role === 'editorial' || role === 'runtime';
     case 'issueSwitchAuthorization':
@@ -169,12 +170,14 @@ export function toolFor(command: ShowCommand): DomainTool {
     case 'editSpeech':
     case 'yieldSpeech':
       return 'yieldSpeech';
+    case 'rejectSpeech':
     case 'acceptSpeech':
     case 'queueSpeech':
     case 'startSpeech':
       return 'scheduleSpeech';
     case 'progressSpeech':
     case 'noteLiveCapabilities':
+    case 'receiptScenePatchFailed':
     case 'receiptScenePatch':
     case 'receiptSceneLifecycle':
     case 'receiptSpeech':

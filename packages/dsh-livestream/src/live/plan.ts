@@ -51,6 +51,11 @@ const PROPOSAL_NEXT: Record<ProposalStatus, readonly ProposalStatus[]> = {
 export function planCommand(command: CommandEnvelope, ctx: PlanContext): Plan {
   const payload = command.payload;
   switch (payload.type) {
+    case 'rejectSpeech': {
+      const part=speechOf(ctx.state,payload.partId);if(!part||!SPEECH_OPEN.has(part.state))return fail('ILLEGAL_TRANSITION','Only unstarted speech can be rejected');
+      const locked=targetIs(command,'speechPart',part.partId)??requireEpoch(ctx.state,command);if(locked)return locked;
+      return succeed('show.command',[{op:'speech',part:reviseSpeech(part,{state:'rejected',rejectionReason:payload.reason})},...invalidateCueFacts(ctx,cuesBrokenBySpeech(Object.values(ctx.state.cues),part.partId,0,'tail'),'Speech admission failed before playback')]);
+    }
     case 'progressSpeech': {
       const part = speechOf(ctx.state, payload.partId);
       if (!part || part.state !== 'playing') return fail('ILLEGAL_TRANSITION', 'Progress requires playing audio');
@@ -62,16 +67,31 @@ export function planCommand(command: CommandEnvelope, ctx: PlanContext): Plan {
       return succeed('execution.receipt', [{ op: 'speech', part: reviseSpeech(part, { spokenChars }) }]);
     }
     case 'noteLiveCapabilities':
+    case 'receiptScenePatchFailed':
     case 'receiptScenePatch':
     case 'receiptSceneLifecycle': {
       const scene = ctx.state.scenes[payload.instanceId];
       if (!scene) return fail('UNKNOWN_TARGET', 'Unknown scene');
-      const locked = targetIs(command, 'sceneInstance', scene.instanceId) ?? requireEpoch(ctx.state, command) ?? requireSceneEpoch(ctx.state, scene);
+      const terminal=payload.type==='receiptSceneLifecycle'&&['retired','disposed'].includes(payload.lifecycle);
+      const locked = targetIs(command, 'sceneInstance', scene.instanceId) ?? requireEpoch(ctx.state, command) ?? (terminal?null:requireSceneEpoch(ctx.state, scene));
       if (locked) return locked;
       if (payload.type === 'noteLiveCapabilities') return succeed('execution.receipt', [{ op: 'scene', scene: { ...scene, revision: scene.revision + 1, supportsInPlaceInputUpdate: payload.supportsInPlaceInputUpdate, requiresStandbyRebuild: !payload.supportsInPlaceInputUpdate } }]);
-      if (payload.type === 'receiptSceneLifecycle') return succeed('execution.receipt', [{ op: 'scene', scene: { ...scene, revision: scene.revision + 1, lifecycle: payload.lifecycle, surface: payload.lifecycle === 'disposed' ? 'disposed' : payload.lifecycle === 'retired' ? 'retired' : scene.surface, subscriptions: payload.lifecycle === 'disposed' ? 0 : scene.subscriptions } }]);
+      if (payload.type === 'receiptSceneLifecycle') {
+        const facts:KernelFact[]=[{ op: 'scene', scene: { ...scene, revision: scene.revision + 1, lifecycle: payload.lifecycle, pendingInputs:['retired','disposed'].includes(payload.lifecycle)?undefined:scene.pendingInputs,...(['retired','disposed'].includes(payload.lifecycle)&&Number.isFinite(payload.observedAtShowTime)?{closedAtShowTime:payload.observedAtShowTime}:{}), ...(Number.isSafeInteger(payload.frame)&&payload.frame!>=0&&['holding','taken'].includes(payload.lifecycle)?{playbackSamples:[...(scene.playbackSamples??[]),{kind:payload.lifecycle==='holding'?'hold' as const:'resume' as const,frame:payload.frame!,showTime:payload.observedAtShowTime??ctx.now}]}:{}), surface: payload.lifecycle === 'disposed' ? 'disposed' : payload.lifecycle === 'retired' ? 'retired' : scene.surface, subscriptions: payload.lifecycle === 'disposed' ? 0 : scene.subscriptions } }];
+        if(['disposed','retired'].includes(payload.lifecycle)&&ctx.state.project.channel.programSceneInstanceId===scene.instanceId)facts.push({op:'project',project:{...ctx.state.project,revision:ctx.state.project.revision+1,channel:{mode:'neutral',persistentLayers:[...ctx.state.project.channel.persistentLayers]}}});
+        if(['retired','disposed'].includes(payload.lifecycle))facts.push(...invalidateCueFacts(ctx,Object.values(ctx.state.cues).filter(c=>c.sceneInstanceId===scene.instanceId&&['future','dispatched'].includes(c.status)),'Target scene retired; remaining actions cannot run'));
+        return succeed('execution.receipt',facts);
+      }
+      const pending=scene.pendingInputs;
+      if(!pending||pending.operationId!==payload.operationId)return fail('REVISION_CONFLICT','Patch receipt has no matching reserved operation');
+      if(payload.type==='receiptScenePatchFailed')return succeed('execution.receipt',[{op:'scene',scene:{...scene,revision:scene.revision+1,pendingInputs:undefined,supportsInPlaceInputUpdate:false,requiresStandbyRebuild:true}}]);
+      if(pending.inputsRevision!==payload.inputsRevision||JSON.stringify(pending.inputs)!==JSON.stringify(payload.inputs))return fail('REVISION_CONFLICT','Patch receipt does not match reserved inputs');
       if (scene.codeVersion !== payload.codeVersion || payload.inputsRevision <= scene.inputsRevision) return fail('REVISION_CONFLICT', 'Stale patch receipt');
-      return succeed('execution.receipt', [{ op: 'scene', scene: { ...scene, revision: scene.revision + 1, inputsRevision: payload.inputsRevision, inputs: structuredClone(payload.inputs) } }]);
+      const facts:KernelFact[]=[{op:'scene',scene:{...scene,revision:scene.revision+1,inputsRevision:payload.inputsRevision,pendingInputs:undefined,inputs:structuredClone(payload.inputs)}}];
+      const evidenceId=`pb-patch-${scene.instanceId}-${payload.inputsRevision}`;
+      facts.push({op:'playback',event:{id:evidenceId,kind:scene.surface==='program'?'painted':'applied',showTime:payload.observedAtShowTime??ctx.now,directionEpoch:scene.directionEpoch,sceneInstanceId:scene.instanceId,assetVersionId:scene.assetVersionId,inputsRevision:payload.inputsRevision,operation:'patch',frame:payload.frame}});
+      for(const proposal of Object.values(ctx.state.proposals))if(proposal.directionEpoch===ctx.state.project.currentEpoch&&proposal.status==='creating'&&proposal.presentation?.sceneInstanceId===scene.instanceId&&proposal.presentation.inputsRevision===payload.inputsRevision&&proposal.presentation.operationId===payload.operationId)facts.push({op:'proposal',proposal:{...proposal,status:'ready',revision:proposal.revision+1}});
+      return succeed('execution.receipt',facts);
     }
     case 'ingestAudience':
       return planIngest(command, payload, ctx);
@@ -214,12 +234,13 @@ function planProposalStatus(
     const evidence = payload.evidencePlaybackId
       ? ctx.state.playback.find((item) => item.id === payload.evidencePlaybackId)
       : undefined;
-    if (!evidence || evidence.orphan || evidence.kind === 'failed' || evidence.disposition === 'aborted' || evidence.disposition === 'failed') return fail('FULFILLMENT_UNPROVEN', '没有实际播出回执，不能记成已兑现');
+    if (!evidence || evidence.orphan || evidence.kind !== 'painted' || evidence.disposition === 'aborted' || evidence.disposition === 'failed') return fail('FULFILLMENT_UNPROVEN', '没有实际播出回执，不能记成已兑现');
     const linked = proposal.taskIds.some((taskId) => {
       const task = ctx.state.tasks[taskId];
       return !!evidence.assetVersionId && !!task?.assetVersionIds.includes(evidence.assetVersionId);
     });
-    if (!linked) {
+    const patchLinked=!!proposal.presentation&&proposal.presentation.sceneInstanceId===evidence.sceneInstanceId&&proposal.presentation.inputsRevision===evidence.inputsRevision;
+    if (!linked&&!patchLinked) {
       return fail('FULFILLMENT_UNPROVEN', '回执没有指到这则提议的产物版本');
     }
     next.fulfillment = { playbackEventId: evidence.id };
@@ -256,7 +277,9 @@ function planRequestProduction(
   const stale = requireEpoch(ctx.state, command) ?? targetIs(command, 'productionTask', payload.task.id);
   if (stale) return stale;
   if (ctx.state.tasks[payload.task.id]) return fail('REVISION_CONFLICT', '任务编号已存在');
-  const task = openTask(payload.task, ctx.state.project.currentEpoch);
+  const intended=payload.task.intendedDirectionId?ctx.state.directions[payload.task.intendedDirectionId]:undefined;
+  if(payload.task.intendedDirectionId&&(!intended||!['preparing','active'].includes(intended.status)))return fail('UNKNOWN_TARGET','Production target direction is unavailable');
+  const task = openTask(payload.task, ctx.state.project.currentEpoch,!intended||intended.id===ctx.state.project.currentDirectionId);
   const facts: KernelFact[] = [{ op: 'task', task }];
   if (payload.proposalId) {
     const proposal = ctx.state.proposals[payload.proposalId];
@@ -409,6 +432,8 @@ function planSwitch(command: CommandEnvelope, payload: Extract<ShowCommand, { ty
   if (hard && auth.kind !== 'master-hard') return fail('NOT_AUTHORIZED', '强切需要 master 强切授权');
   if (!hard && auth.kind === 'master-hard') return fail('NOT_AUTHORIZED', '该授权是强切，不能当成软切消耗');
 
+  const selected='transition' in payload.next?undefined:payload.next.directionId?ctx.state.directions[payload.next.directionId]:undefined;
+  if(!('transition' in payload.next)&&payload.next.directionId&&(!selected||selected.status!=='preparing'||selected.commitment!==payload.next.commitment))return fail('NOT_AUTHORIZED','Selected future direction does not match the prepared commitment');
   const fromEpoch = ctx.state.project.currentEpoch;
   const toEpoch = fromEpoch + 1;
   const facts: KernelFact[] = [{ op: 'authorization', authorization: { ...auth, consumed: true } }];
@@ -457,13 +482,15 @@ function planSwitch(command: CommandEnvelope, payload: Extract<ShowCommand, { ty
 
   for (const task of Object.values(ctx.state.tasks)) {
     if (task.directionEpoch !== fromEpoch) continue;
-    facts.push({ op: 'task', task: closeTaskForEpoch(task) });
+    facts.push({ op: 'task', task: selected&&task.intendedDirectionId===selected.id&&!task.cancelled ? {...task,directionEpoch:toEpoch,liveEligible:true,revision:task.revision+1} : closeTaskForEpoch(task) });
   }
 
   const deferred: string[] = [];
   for (const proposal of Object.values(ctx.state.proposals)) {
     if (proposal.directionEpoch !== fromEpoch) continue;
     if (proposal.status === 'presented' || proposal.status === 'cancelled') continue;
+    const adopted=selected&&proposal.taskIds.map(id=>ctx.state.tasks[id]).filter(task=>task?.intendedDirectionId===selected.id&&!task.cancelled);
+    if(adopted&&adopted.length){facts.push({op:'proposal',proposal:{...proposal,directionEpoch:toEpoch,status:adopted.some(task=>task.status==='ready')?'ready':'creating',revision:proposal.revision+1}});continue;}
     deferred.push(proposal.id);
     facts.push({ op: 'proposal', proposal: { ...proposal, status: 'deferred', revision: proposal.revision + 1 } });
   }
@@ -479,8 +506,8 @@ function planSwitch(command: CommandEnvelope, payload: Extract<ShowCommand, { ty
     }
   }
 
-  const nextId = `dir-${toEpoch}`;
-  if (ctx.state.directions[nextId]) return fail('REVISION_CONFLICT', '下一方向编号已存在');
+  const nextId = selected?.id??`dir-${toEpoch}`;
+  if (!selected&&ctx.state.directions[nextId]) return fail('REVISION_CONFLICT', '下一方向编号已存在');
   const opening = 'transition' in payload.next
     ? { commitment: '过渡', coreQuestion: '', status: 'transition' as const }
     : { commitment: payload.next.commitment, coreQuestion: payload.next.coreQuestion, status: 'active' as const };
@@ -498,14 +525,14 @@ function planSwitch(command: CommandEnvelope, payload: Extract<ShowCommand, { ty
     direction: {
       id: nextId,
       epoch: toEpoch,
-      revision: 1,
+      revision: (selected?.revision??0)+1,
       commitment: opening.commitment,
       coreQuestion: opening.coreQuestion,
-      boundaries: [],
+      boundaries: selected?.boundaries??[],
       outcomes: [],
-      knownMaterials: [],
-      openQuestions: [],
-      contentPool: [],
+      knownMaterials: selected?.knownMaterials??[],
+      openQuestions: selected?.openQuestions??[],
+      contentPool: selected?.contentPool??[],
       status: opening.status,
       live: true,
     },
@@ -866,6 +893,7 @@ function planReadiness(command: CommandEnvelope, payload: Extract<ShowCommand, {
   if (!scene) return fail('UNKNOWN_TARGET', '没有这个场景实例');
   const locked = targetIs(command, 'sceneInstance', scene.instanceId) ?? requireSceneEpoch(ctx.state, scene);
   if (locked) return locked;
+  if(['retired','disposed'].includes(scene.lifecycle))return fail('ILLEGAL_TRANSITION','Retired scenes cannot become ready');
   const observation = payload.observation;
   const next: SceneInstance = {
     ...scene,
@@ -913,6 +941,7 @@ function planTake(command: CommandEnvelope, payload: Extract<ShowCommand, { type
   if (!scene) return fail('UNKNOWN_TARGET', '没有这个场景实例');
   const locked = targetIs(command, 'sceneInstance', scene.instanceId);
   if (locked) return locked;
+  if (['retired','disposed'].includes(scene.lifecycle)) return fail('ILLEGAL_TRANSITION','Retired scenes cannot be taken');
   if (scene.takenSequence !== undefined) return fail('TOO_LATE', 'take 已提交');
   if (scene.directionEpoch !== ctx.state.project.currentEpoch) return fail('STALE_DIRECTION', '场景属于旧方向');
   const owner = Object.values(ctx.state.tasks).find((task) => task.assetVersionIds.includes(scene.assetVersionId));
@@ -944,10 +973,21 @@ function planUpdateInputs(command: CommandEnvelope, payload: Extract<ShowCommand
   const locked = requireEpoch(ctx.state, command) ?? targetIs(command, 'sceneInstance', scene.instanceId);
   if (locked) return locked;
   if (scene.directionEpoch !== ctx.state.project.currentEpoch) return fail('STALE_DIRECTION', '不能更新旧方向场景');
+  if(ctx.role==='runtime'){const cue=payload.cueId?ctx.state.cues[payload.cueId]:undefined;if(!cue||cue.status!=='dispatched'||cue.sceneInstanceId!==scene.instanceId||JSON.stringify(cue.payload)!==JSON.stringify(payload.inputs))return fail('NOT_AUTHORIZED','Runtime patch requires a committed matching cue');}
+  if(scene.pendingInputs)return fail('REVISION_CONFLICT','Another patch operation is pending');
   if (!scene.supportsInPlaceInputUpdate) return fail('UNSUPPORTED_LIVE_PATCH', 'Scene requires standby rebuild');
   if (!Number.isSafeInteger(payload.inputsRevision) || payload.inputsRevision <= scene.inputsRevision) return fail('REVISION_CONFLICT', 'Stale input revision');
-  // Intent only. Actual input values enter state through a matching runtime acknowledgement.
-  return succeed('show.command', []);
+  const facts:KernelFact[]=[];
+  if(payload.proposalIds&&!Array.isArray(payload.proposalIds))return fail('ILLEGAL_TRANSITION','proposalIds must be an array');
+  for(const id of payload.proposalIds??[]){
+    const proposal=ctx.state.proposals[id];
+    if(!proposal||proposal.directionEpoch!==ctx.state.project.currentEpoch||['presented','cancelled'].includes(proposal.status))return fail('UNKNOWN_TARGET','Proposal is unavailable for this live patch');
+    if(scene.surface!=='program')return fail('SCENE_NOT_READY','A preview patch cannot fulfill an audience proposal');
+    facts.push({op:'proposal',proposal:{...proposal,status:'creating',presentation:{sceneInstanceId:scene.instanceId,inputsRevision:payload.inputsRevision,operationId:command.commandId},revision:proposal.revision+1}});
+  }
+  facts.push({op:'scene',scene:{...scene,revision:scene.revision+1,pendingInputs:{operationId:command.commandId,inputsRevision:payload.inputsRevision,inputs:structuredClone(payload.inputs),proposalIds:[...new Set(payload.proposalIds??[])]}}});
+  // Reserve before dispatch; two operations can never own the same live input version.
+  return succeed('show.command', facts);
 }
 
 function planPerformerCue(command: CommandEnvelope, payload: Extract<ShowCommand, { type: 'sendPerformerCue' }>, ctx: PlanContext): Plan {
@@ -1006,7 +1046,7 @@ function planRecordPlayback(
   }
   const event: PlaybackEvent = {
     ...receipt,
-    showTime: ctx.now,
+    showTime: receipt.observedAtShowTime??ctx.now,
     directionEpoch: scene?.directionEpoch ?? ctx.state.project.currentEpoch,
     ...(orphan ? { orphan: true } : {}),
   };
@@ -1024,7 +1064,7 @@ function planRecordPlayback(
     }
     facts.push({
       op: 'scene',
-      scene: { ...scene, surface: 'program', lifecycle: 'taken', audioAllowed: true, revision: scene.revision + 1 },
+      scene: { ...scene, surface: 'program', lifecycle: 'taken', audioAllowed: true, revision: scene.revision + 1,...(Number.isSafeInteger(receipt.frame)?{playbackSamples:[...(scene.playbackSamples??[]),{kind:'take' as const,frame:receipt.frame!,showTime:event.showTime}]}:{}) },
     });
     facts.push({
       op: 'project',

@@ -9,6 +9,7 @@ import type { AssetVersion, ProductionTask } from '../domain/entities';
 export function openTask(
   task: Omit<ProductionTask, 'revision' | 'version' | 'cancelled' | 'liveEligible' | 'status' | 'assetVersionIds' | 'directionEpoch'>,
   directionEpoch: number,
+  liveEligible = true,
 ): ProductionTask {
   return {
     ...task,
@@ -16,7 +17,7 @@ export function openTask(
     version: 1,
     directionEpoch,
     cancelled: false,
-    liveEligible: true,
+    liveEligible,
     status: 'open',
     assetVersionIds: [],
   };
@@ -28,13 +29,14 @@ export function publishOntoTask(
   currentEpoch: number,
 ): { task: ProductionTask; asset: AssetVersion } {
   const stored: AssetVersion = { ...asset, revision: 1 };
-  const eligible = task.directionEpoch === currentEpoch && !task.cancelled;
+  const validEpoch = task.directionEpoch === currentEpoch && !task.cancelled;
+  const eligible = validEpoch && task.liveEligible;
   const next: ProductionTask = {
     ...task,
     assetVersionIds: [...task.assetVersionIds, stored.id],
     version: task.version + 1,
     liveEligible: eligible,
-    status: eligible ? 'ready' : task.status === 'cancelled' ? 'cancelled' : 'archived',
+    status: (eligible||(validEpoch&&!!task.intendedDirectionId)) ? 'ready' : task.status === 'cancelled' ? 'cancelled' : 'archived',
     revision: task.revision + 1,
   };
   return { task: next, asset: stored };
