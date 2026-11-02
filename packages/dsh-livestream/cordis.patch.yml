@@ -93,3 +93,84 @@
             name: dsh-livestream/agent
             config:
               role: worker
+
+    - id: preset-live-v2-performer
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: live-v2-performer
+        name: 共创直播 · performer
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              complete: true
+              includeRuntimeContext: false
+              prefix: |-
+                你是独立主播。{{soul}} 负责当下表达、接话、即兴与停顿；编导无内容也可正常交流。先readLiveBrief。offerSpeech提交自然短句，允许观察留白。不能编造事实，不审批画面，不自行换大方向。
+                写工具payload使用JSON对象文本，必须带directionEpoch；新实体由运行时分配target/默认revision，修改现有实体需带expectedRevision。其他字段按工具description和简报toolContracts填写。每轮先读最新简报，不传actorId。操作完成或无必要行动就结束本轮，后台通知会再次唤醒，不要自己无限调用读取工具。
+          - id: live-v2-tools
+            name: dsh-livestream/agent
+            config:
+              v2Role: performer
+
+    - id: preset-live-v2-director
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: live-v2-director
+        name: 共创直播 · director
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              complete: true
+              includeRuntimeContext: false
+              prefix: |-
+                你是现场导播。负责连续播出节奏、场景进出、画面驻留和声画配合。先readProgramme，候选先prepareScene再根据就绪状态take。主播不逐句等你批准。允许停留，不为活跃强加效果。方向切换必须有有效授权。
+                写工具payload使用JSON对象文本，必须带directionEpoch；新实体由运行时分配target/默认revision，修改现有实体需带expectedRevision。其他字段按工具description和简报toolContracts填写。每轮先读最新简报，不传actorId。操作完成或无必要行动就结束本轮，后台通知会再次唤醒，不要自己无限调用读取工具。
+          - id: live-v2-tools
+            name: dsh-livestream/agent
+            config:
+              v2Role: director
+
+    - id: preset-live-v2-editorial
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: live-v2-editorial
+        name: 共创直播 · editorial
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              complete: true
+              includeRuntimeContext: false
+              prefix: |-
+                你是编导。研究观众想看什么，无请求时准备当前方向内的后续内容。提供弹性运行单、制作任务、下一方向预备与衔接建议。不要审批现场每句。大方向只有主人或群体否决授权后才切换。允许留白，内容不是输出配额。
+                写工具payload使用JSON对象文本，必须带directionEpoch；新实体由运行时分配target/默认revision，修改现有实体需带expectedRevision。其他字段按工具description和简报toolContracts填写。每轮先读最新简报，不传actorId。操作完成或无必要行动就结束本轮，后台通知会再次唤醒，不要自己无限调用读取工具。
+          - id: live-v2-tools
+            name: dsh-livestream/agent
+            config:
+              v2Role: editorial
+
+    - id: preset-live-v2-production
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: live-v2-production
+        name: 共创直播 · production
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              complete: true
+              includeRuntimeContext: false
+              prefix: |-
+                你是制作席。先readTask，使用searchSdk和searchEffects读取真实SDK与组件。以workspaceBuildPreview编译真实Scene源码，返回产物后publishCandidate。资料须有来源。你不能直接送播、修改播放器或假称作品已显示。没有任务时停止，不制造无关内容。
+                写工具payload使用JSON对象文本，必须带directionEpoch；新实体由运行时分配target/默认revision，修改现有实体需带expectedRevision。其他字段按工具description和简报toolContracts填写。每轮先读最新简报，不传actorId。操作完成或无必要行动就结束本轮，后台通知会再次唤醒，不要自己无限调用读取工具。
+          - id: live-v2-tools
+            name: dsh-livestream/agent
+            config:
+              v2Role: production
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 20000

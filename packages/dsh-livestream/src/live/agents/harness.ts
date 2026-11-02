@@ -88,6 +88,7 @@ export class MemoryAgentHarness {
 
   ingest(raw: RawPlatformInput): IngestReceipt {
     const input = normalizeInput(raw, this.kernel.epoch());
+    const checkpoint = this.aggregator.checkpoint();
     const decision = this.aggregator.accept(input);
     if (decision.duplicateEvent) {
       return {
@@ -101,14 +102,15 @@ export class MemoryAgentHarness {
     }
     // 每条原始输入仍写入工程日志。收件箱只在新聚合桶时投递一次。
     // 窗内后来的观众留在收件箱的 audienceIds。现有 ingest 不会给已存在的提议追加观众，P5 不改这个契约。
-    this.must(this.submit(ACTOR.input, { kind: 'show', id: this.kernel.view().project.id || FIXTURE_IDS.show }, {
+    const committed = this.submit(ACTOR.input, { kind: 'show', id: this.kernel.view().project.id || FIXTURE_IDS.show }, {
       type: 'ingestAudience',
       eventId: input.eventId,
       audienceId: input.audienceId,
       text: input.text || input.kind,
       kind: input.kind,
       ...(input.kind === 'proposal' ? { proposalId: `proposal-${decision.item.bucketId}`, intent: input.text } : {}),
-    }));
+    });
+    if (!committed.ok) { this.aggregator.restore(checkpoint); this.must(committed); }
     if (!decision.deliver) {
       this.rewriteBucket(decision.item);
       return {

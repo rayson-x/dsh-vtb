@@ -59,8 +59,8 @@ export function classifyInput(kind: AudienceInputRecord['kind'], urgent: boolean
 }
 
 function bucketKey(input: NormalizedInput): string {
-  if (input.kind === 'silence' || input.kind === 'debate') return `bg:${input.kind}`;
-  return `${input.kind}:${input.text.toLowerCase()}`;
+  if (input.kind === 'silence' || input.kind === 'debate') return `${input.directionEpoch}:bg:${input.kind}`;
+  return `${input.directionEpoch}:${input.urgent ? 'urgent' : 'normal'}:${input.kind}:${input.text.toLowerCase()}`;
 }
 
 export class InputAggregator {
@@ -106,6 +106,9 @@ export class InputAggregator {
     this.buckets.push({ key, item });
     return { item, deliver: true, merged: false, duplicateEvent: false };
   }
+
+  checkpoint(): { buckets: Bucket[]; seen: string[] } { return { buckets: structuredClone(this.buckets), seen: [...this.seen] }; }
+  restore(snapshot: { buckets: Bucket[]; seen: string[] }): void { this.buckets.splice(0, this.buckets.length, ...snapshot.buckets); this.seen.clear(); for (const id of snapshot.seen) this.seen.add(id); }
 
   private findOpen(key: string, receivedAt: number): Bucket | undefined {
     for (let index = this.buckets.length - 1; index >= 0; index -= 1) {

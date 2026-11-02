@@ -19,7 +19,7 @@ await build({
   target: 'node22',
   sourcemap: true,
   // DSH 宿主提供
-  external: ['@deepseek-ai/*'],
+  external: ['@deepseek-ai/*', 'ws'],
 });
 
 await build({

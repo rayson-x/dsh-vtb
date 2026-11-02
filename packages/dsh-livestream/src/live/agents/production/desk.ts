@@ -186,10 +186,9 @@ export class ProductionDesk {
     if (!decision.ok) return { ok: false, reason: decision.reason };
     const view = this.harness.kernel.view();
     const task = view.tasks[input.taskId];
-    const onAir = view.project.channel.mode === 'program'
-      || Object.values(view.scenes).some((scene) => scene.surface === 'program' || scene.lifecycle === 'taken');
-    const audienceSeen = view.playback.length > 0
-      || Object.values(view.proposals).some((proposal) => proposal.status === 'presented');
+    const assetIds = new Set(task?.assetVersionIds ?? []);
+    const onAir = Object.values(view.scenes).some(scene => assetIds.has(scene.assetVersionId) && scene.surface === 'program');
+    const audienceSeen = view.playback.some(event => !event.orphan && event.kind === 'painted' && !!event.assetVersionId && assetIds.has(event.assetVersionId));
     const epochOpen = !!task
       && task.status === 'ready'
       && task.assetVersionIds.length > 0

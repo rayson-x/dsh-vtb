@@ -2,8 +2,8 @@
  * React 边界。计划 §1.1、§2.3、§6.1。
  *
  * 控制台和旧外壳留在 packages/dsh-livestream，React 18.3.1。
- * 场景宿主将来单独构建，目标是 React 19.3.0。本脚手架不安装 React，
- * 也不渲染组件。跨边界只走 JSON 消息，不传元素、函数或 hooks。
+ * 场景宿主单独构建并使用 React 19.3.0。浏览器实现位于 browser/；
+ * 本文件只描述跨边界消息，不传递组件实例。跨边界只走 JSON 消息，不传元素、函数或 hooks。
  */
 
 export const REACT_BOUNDARY = {
@@ -16,7 +16,7 @@ export const REACT_BOUNDARY = {
     package: 'react',
     version: '19.3.0',
     location: 'packages/scene-host',
-    installed: false as const,
+    installed: true as const,
     remotionPeer: '@remotion/player@4.0.535',
   },
   rules: [

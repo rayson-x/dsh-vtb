@@ -22,6 +22,11 @@ export const TOOL_PERMISSIONS = {
     'updateInputs',
     'take',
     'sendPerformerCue',
+    'bindCue',
+    'holdScene',
+    'resumeScene',
+    'retireScene',
+    'disposeScene',
   ],
   performer: [
     'readLiveBrief',
@@ -168,6 +173,10 @@ export function toolFor(command: ShowCommand): DomainTool {
     case 'queueSpeech':
     case 'startSpeech':
       return 'scheduleSpeech';
+    case 'progressSpeech':
+    case 'noteLiveCapabilities':
+    case 'receiptScenePatch':
+    case 'receiptSceneLifecycle':
     case 'receiptSpeech':
     case 'recordPlayback':
       return 'recordPlayback';

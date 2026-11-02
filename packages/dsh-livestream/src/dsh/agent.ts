@@ -5,6 +5,8 @@
  * 每个工具做完回一份薄情报（舞台现在大概什么样），不回整包状态。被拒绝时回理由，她照着改。
  */
 
+import { applyRoleAgent } from '../live/runtime/agent-plugin';
+import type { AgentRole } from '../live/domain/codes';
 import type { PlanEdit } from '../host/blackboard';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -112,6 +114,7 @@ function bad(message: string): string {
 }
 
 export interface Config {
+  v2Role?: AgentRole;
   /** 她的性格文件：soul/<名字>.md，作为人设里的 {{soul}} */
   soul?: string;
   /** performer：台上的她（默认）；worker：后台，只查资料、挑画面、交素材，不说话不碰舞台 */
@@ -157,6 +160,8 @@ function readSoul(name: string): string {
 }
 
 export function apply(ctx: AgentContext, config: Config = {}): void {
+  if (config.v2Role) { applyRoleAgent(ctx, config.v2Role); return; }
+  if (process.env.AIVTB_HARNESS === 'v2') return;
   bindCredentials(ctx);
   // 性格：每次组装提示词时读一次文件，改了 soul 不用重启（内容不变时提示词前缀不变，缓存照样命中）
   const soulName = config.soul ?? 'whale-maid';

@@ -118,6 +118,10 @@ export function createStageHost(o: StageHostOptions): StageHost {
   stage.setVoice(new ElevenLabsVoice({ dir: o.mounts.voice!, secret: (name) => o.secret(name) }));
   const trace = new TraceHub();
   const input = new LiveInput((cmd) => stage.apply(cmd));
+  const inputJournalId = crypto.randomUUID();
+  let inputSequence = 0;
+  const harnessInputs: {sequence:number;event:import('./input').LiveEvent;receivedAt:number}[] = [];
+  const stopHarnessInputs = input.subscribe((event,receivedAt) => { if (!['danmaku','gift','superchat','guard'].includes(event.kind)) return; harnessInputs.push({sequence:++inputSequence,event:structuredClone(event),receivedAt}); if(harnessInputs.length>10000)harnessInputs.shift(); });
   const show: ShowRecord = { live: false };
   const blackboard = new Blackboard();
   const orders = blackboard.orders;
@@ -167,6 +171,8 @@ export function createStageHost(o: StageHostOptions): StageHost {
     return { ...cmd, visual, ...(url ? { url } : {}) };
   });
 
+  let harnessMode: 'legacy' | 'v2' = 'legacy';
+  let harnessSceneUrl: string | undefined;
   const crew = pictureDirector(stage, () => o.secret('DEEPSEEK_API_KEY'), record, blackboard);
 
   // 她念过的话（嘴替、大脑回来时用）
@@ -249,6 +255,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
   const filled: string[] = [];
   let away: { since: number; steps: number; lastSayAt: number; noticeAt: number } | undefined;
   const say = (line: string, tone: Tone = 'aside', mood?: Mood) => {
+    if(harnessMode==='v2')return;
     lastEnqueueAt = Date.now();
     stage.enqueue(line, { next: true, acknowledgement: true, host: true, tone, ...(mood ? { mood } : {}) });
     filled.push(line);
@@ -274,7 +281,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
     stage.apply({ type: 'away', on: true });
   };
   const fillTimer = setInterval(() => {
-    if (!show.live) return;
+    if (harnessMode === 'v2' || !show.live) return;
     const now = Date.now();
     // 大脑断开一会儿了：舞台自己顶着
     if (!clients.size && goneAt !== undefined && now - goneAt >= AWAY_AFTER_MS) {
@@ -351,6 +358,19 @@ export function createStageHost(o: StageHostOptions): StageHost {
   /** 大脑调用 */
   const call = (method: string, args: Record<string, any>): unknown => {
     switch (method) {
+      case 'harness.inputs': return {journalId:inputJournalId,oldest:harnessInputs[0]?.sequence??0,latest:inputSequence,events:harnessInputs.filter(e=>e.sequence>Number(args.after??0)).slice(0,200)};
+      case 'harness.mode': {
+        if (args.mode !== 'legacy' && args.mode !== 'v2') throw new Error('Invalid harness mode');
+        if (args.mode === 'v2') {
+          const url = new URL(String(args.sceneUrl));
+          if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.pathname !== '/') throw new Error('Invalid scene host URL');
+          harnessSceneUrl = url.origin;
+          stage.apply({ type: 'interrupt' }); crew.setEnabled(false);
+          for(const command of [{type:'erase'},{type:'ungraphic'},{type:'unshow'},{type:'board',clear:true},{type:'rundown',clear:true},{type:'research',done:true}] as Command[])stage.apply(command);
+        }
+        harnessMode = args.mode;
+        return { mode: harnessMode, sceneUrl: harnessSceneUrl };
+      }
       case 'blackboard.read': return blackboard.read();
       case 'blackboard.line': return blackboard.line();
       case 'blackboard.topic': blackboard.update(String(args.key), () => blackboard.topic(String(args.id), args.card)); return true;
@@ -360,6 +380,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
       case 'orders.pending': return orders.pending();
       case 'orders.add': orders.add(String(args.who), String(args.gift ?? ''), String(args.want)); blackboard.changed(); return orders.pending();
       case 'speech.break': {
+        if(harnessMode==='v2')throw new Error('Legacy speech disabled while v2 owns stage');
         const news = String(args.news ?? '');
         stage.apply({ type: 'interrupt', soft: true });
         const checkpoint = stage.checkpoint();
@@ -379,6 +400,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
       case 'apply':
         return stage.apply(args.cmd as Command);
       case 'enqueue': {
+        if (harnessMode === 'v2') throw new Error('Legacy speech disabled while v2 owns the stage');
         lastEnqueueAt = Date.now();
         fills = 0;
         return queueSpeech(String(args.text ?? ''), undefined, args.options, typeof args.receipt === 'string' ? args.receipt : undefined);
@@ -429,6 +451,8 @@ export function createStageHost(o: StageHostOptions): StageHost {
   };
 
   const extra = async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> => {
+    if(harnessMode==='v2' && req.method==='POST' && ['/speak','/demo','/command'].includes(url.pathname)){res.writeHead(409,{'content-type':'application/json'});res.end(JSON.stringify({ok:false,error:'V2 runtime owns programme control'}));return true;}
+    if (req.method === 'GET' && url.pathname === '/harness') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ mode: harnessMode, sceneUrl: harnessSceneUrl })); return true; }
     if (req.method === 'GET' && url.pathname === '/tracks') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ now: stage.now(), speech: stage.timeline.snapshot().map(({ key: _key, ...p }) => p), visual: crew.track.snapshot() })); return true;
@@ -439,6 +463,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
         for await (const chunk of req) chunks.push(Buffer.from(chunk));
         const body = JSON.parse(Buffer.concat(chunks).toString());
         if (typeof body.enabled !== 'boolean') { res.writeHead(400); res.end(); return true; }
+        if (harnessMode === 'v2' && body.enabled) { res.writeHead(409); res.end(JSON.stringify({ error: 'v2 owns the stage' })); return true; }
         crew.setEnabled(body.enabled);
       }
       res.writeHead(200, { 'content-type': 'application/json' });
@@ -611,6 +636,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
     server, stage, input, trace, show, blackboard,
     brainPresent: () => clients.size > 0,
     close() {
+      stopHarnessInputs();
       crew.stop();
       offState();
       offBoard();

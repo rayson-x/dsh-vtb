@@ -137,7 +137,7 @@ export class RecordingSceneHost implements SceneHostPort {
     const row = this.require(request.instanceId);
     this.assertPhase(row, ['loaded', 'prepared', 'holding'], 'updateInputs');
     const generation = row.memoryGeneration;
-    if (request.codeVersion !== row.codeVersion) {
+    if (request.codeVersion !== row.codeVersion || !Number.isSafeInteger(request.inputsRevision) || request.inputsRevision <= row.inputsRevision) {
       return this.finishPatch(row, request, 'rejected', generation);
     }
     if (!row.supportsInPlaceInputUpdate) {

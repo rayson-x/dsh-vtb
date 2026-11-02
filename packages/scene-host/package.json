@@ -2,18 +2,30 @@
   "name": "scene-host",
   "version": "0.0.0",
   "private": true,
-  "description": "P2 场景宿主脚手架。不是运行验收。未安装 Remotion Player / HyperFrames Player，也不包含私有 reelmorph-agent 源码。",
+  "description": "Real browser Scene runtime plus domain protocol fixtures; capability validation remains per component.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
     "check": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "node build.mjs"
   },
   "devDependencies": {
     "@types/node": "24.10.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
     "typescript": "6.0.3",
     "vitest": "3.2.4"
+  },
+  "dependencies": {
+    "@hyperframes/player": "0.8.212",
+    "@remotion/player": "4.0.535",
+    "gsap": "3.15.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.535"
   }
 }

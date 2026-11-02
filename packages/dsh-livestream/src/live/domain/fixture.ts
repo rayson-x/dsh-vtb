@@ -404,6 +404,11 @@ export class DomainFixture {
   private apply(command: CommandEnvelope, role: string): CommandResult {
     const payload = command.payload;
     switch (payload.type) {
+      case 'progressSpeech':
+      case 'noteLiveCapabilities':
+      case 'receiptScenePatch':
+      case 'receiptSceneLifecycle': return this.reject('ILLEGAL_TRANSITION', 'Production receipt requires EngineeringKernel', command);
+
       case 'ingestAudience':
         return this.ingest(command, payload);
       case 'setProposalStatus':

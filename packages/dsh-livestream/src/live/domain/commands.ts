@@ -87,13 +87,17 @@ export type ShowCommand =
     }
   | { type: 'requestInteraction'; requestId: string; text: string }
   | { type: 'offerSpeech'; partId: string; text: string; plannedBeatRef?: string }
+  | { type: 'progressSpeech'; partId: string; mediaTimeMs: number; audioRef: string }
+  | { type: 'noteLiveCapabilities'; instanceId: string; supportsInPlaceInputUpdate: boolean }
+  | { type: 'receiptScenePatch'; instanceId: string; codeVersion: string; inputsRevision: number; inputs: Record<string, unknown> }
+  | { type: 'receiptSceneLifecycle'; instanceId: string; lifecycle: 'holding' | 'taken' | 'retired' | 'disposed' }
   | { type: 'acceptSpeech'; partId: string }
   | { type: 'queueSpeech'; partId: string }
   | { type: 'startSpeech'; partId: string }
   | {
       type: 'receiptSpeech';
       partId: string;
-      kind: 'playing' | 'ended' | 'failed';
+      kind: 'playing' | 'ended' | 'failed' | 'aborted';
       spokenChars?: number;
       alignment?: 'estimated' | 'real';
       starts?: number[];

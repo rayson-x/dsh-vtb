@@ -78,6 +78,7 @@ export type KernelFact =
   | { op: 'bus-release'; lane: BusClaim['lane']; place: BusClaim['place'] };
 
 export interface KernelEventPayload {
+  command?: import('./domain/commands').CommandEnvelope;
   facts: KernelFact[];
   effect: KernelEffect | null;
 }

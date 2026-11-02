@@ -163,6 +163,7 @@ export interface SpeechPart {
   text: string;
   state: SpeechPartState;
   audioRef?: string;
+  abortRequested?: boolean;
   plannedBeatRef?: string;
   alignment: { mode: AlignmentMode; starts?: number[] };
   playback?: { startedAtShowTime?: ShowTimeMs; endedAtShowTime?: ShowTimeMs };

@@ -69,8 +69,9 @@ const GATE_STATUS = new Set<GateStatus>(['pending', 'ok', 'failed', 'timedOut'])
 
 export function parseHostMessage(
   raw: unknown,
-  ctx: { session: HostSession | null; allowedOrigin: string },
+  ctx: { session: HostSession | null; allowedOrigin: string; eventOrigin: string },
 ): ParseResult {
+  if (ctx.eventOrigin !== ctx.allowedOrigin) return fail('实际消息来源 origin 不符');
   if (!isRecord(raw)) return fail('消息不是对象');
   const problem = jsonProblem(raw);
   if (problem) return fail(problem);

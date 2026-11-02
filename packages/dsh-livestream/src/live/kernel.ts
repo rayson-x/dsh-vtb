@@ -77,7 +77,7 @@ export class EngineeringKernel {
   private readonly effects: ExecutionEffects;
   private readonly actors: Record<string, ActorRecord>;
   private state: EngineeringState;
-  private readonly idempotency = new Map<string, CommandResult>();
+  private readonly idempotency = new Map<string, { fingerprint: string; result: CommandResult }>();
   private wall = 0;
   private internalSeq = 0;
 
@@ -99,6 +99,9 @@ export class EngineeringKernel {
       const payload = event.payload as Partial<KernelEventPayload> | null;
       if (!payload || !Array.isArray(payload.facts)) continue;
       applyFacts(kernel.state, payload.facts);
+      kernel.internalSeq = Math.max(kernel.internalSeq, event.sequence);
+      if (!options.clock && kernel.clock instanceof ManualProgrammeClock) kernel.clock.showTime = Math.max(kernel.clock.now(), event.showTime ?? 0);
+      if (payload.command) kernel.remember(payload.command, { ok: true, acceptSequence: event.sequence, events: [event] });
       if (event.receivedAt > kernel.wall) kernel.wall = event.receivedAt;
     }
     kernel.syncCommits();
@@ -134,8 +137,7 @@ export class EngineeringKernel {
       case 'cue':
         return this.state.cues[target.id]?.revision ?? 0;
       default: {
-        const neverTarget: never = target;
-        return neverTarget;
+        throw new Error('Invalid command target kind');
       }
     }
   }
@@ -170,8 +172,11 @@ export class EngineeringKernel {
     if (!command.idempotencyKey) {
       return this.rejected('ILLEGAL_TRANSITION', '缺少 idempotencyKey', command);
     }
-    const cached = this.idempotency.get(command.idempotencyKey);
-    if (cached) return structuredClone(cached);
+    const cached = this.idempotency.get(command.actorId + '\0' + command.idempotencyKey);
+    if (cached) {
+      if (cached.fingerprint !== JSON.stringify(command)) return this.rejected('ILLEGAL_TRANSITION', 'Idempotency key reused for a different command', command);
+      return structuredClone(cached.result);
+    }
     if (!this.state.connected && command.payload.type !== 'reconnect') {
       return this.rejected('DISCONNECTED', '连接已断开，不执行命令', command);
     }
@@ -206,6 +211,7 @@ export class EngineeringKernel {
       effect: planned.effect,
       source: command.actorId,
       commandId: command.commandId,
+      command,
     }));
   }
 
@@ -327,12 +333,13 @@ export class EngineeringKernel {
     effect: KernelEffect | null;
     source: string;
     commandId: string;
+    command?: CommandEnvelope;
   }): Extract<CommandResult, { ok: true }> {
     const sequence = this.log.peekNext();
     const facts = stampFacts(input.facts, sequence);
     const draft = structuredClone(this.state);
     applyFacts(draft, facts);
-    const eventId = `evt-${input.commandId}`;
+    const eventId = `evt-${input.source}-${input.commandId}`;
     this.wall += 1;
     const event = this.log.append({
       eventId,
@@ -343,13 +350,20 @@ export class EngineeringKernel {
       directionEpoch: draft.project.currentEpoch,
       correlationId: input.commandId,
       causationId: input.commandId,
-      payload: { facts, effect: input.effect } satisfies KernelEventPayload,
+      payload: { facts, effect: input.effect, ...(input.command ? { command: input.command } : {}) } satisfies KernelEventPayload,
     });
     if (event.sequence !== sequence) {
       throw new Error(`事件 ${eventId} 已存在，拒绝覆盖状态`);
     }
     this.state = draft;
-    this.fire(input.effect, event.sequence);
+    // A device error must not turn a durable accepted command into an exception that callers retry.
+    try { this.fire(input.effect, event.sequence); }
+    catch (error) {
+      const effect = input.effect;
+      this.commit({ eventType: 'execution.receipt', effect: null, source: 'runtime', commandId: this.internalId('execution-failed'),
+        facts: [{ op: 'playback', event: { id: `failure-${event.eventId}`, kind: 'failed', showTime: this.clock.now(), directionEpoch: this.epoch(),
+          ...(effect?.kind === 'speech' ? { partId: effect.partId } : effect?.kind === 'take' ? { sceneInstanceId: effect.instanceId } : effect?.kind === 'cue' ? { cueId: effect.cueId } : {}), disposition: 'failed' } }] });
+    }
     return { ok: true, acceptSequence: event.sequence, events: [event] };
   }
 
@@ -437,7 +451,7 @@ export class EngineeringKernel {
 
   private remember(command: CommandEnvelope, result: CommandResult): CommandResult {
     const stored = structuredClone(result);
-    this.idempotency.set(command.idempotencyKey, stored);
+    this.idempotency.set(command.actorId + '\0' + command.idempotencyKey, { fingerprint: JSON.stringify(command), result: stored });
     return structuredClone(stored);
   }
 

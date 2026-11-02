@@ -83,6 +83,8 @@ const FEED_TEXT = { follow: '关注了', fanclub: '加入了粉丝团', share: '
 const VISIT_REMIND_MS = 5 * 60_000;
 
 export class LiveInput {
+  private observers = new Set<(event: LiveEvent, receivedAt: number) => void>();
+  subscribe(observer: (event: LiveEvent, receivedAt: number) => void): () => void { this.observers.add(observer); return () => { this.observers.delete(observer); }; }
   private people = new Map<string, Person>();
   /** 在线人数、直播间信息：按「平台:房间号」分（没给房间号就按平台） */
   private viewers: Record<string, number> = {};
@@ -114,6 +116,7 @@ export class LiveInput {
       if (!e || !NAMES[e.platform] || !(e.kind in this.counts)) continue;
       n++;
       const at = this.now();
+      for (const observer of this.observers) observer(e, at);
       this.counts[e.kind]++;
       this.lastAt[e.platform] = at;
       const where = e.room ? `${e.platform}:${e.room}` : e.platform;

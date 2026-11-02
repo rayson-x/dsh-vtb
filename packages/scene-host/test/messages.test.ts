@@ -21,22 +21,26 @@ function session(): HostSession {
 }
 
 describe('宿主消息 schema', () => {
+  it('does not trust an allowed origin claimed inside an evil-origin message', () => {
+    const result = parseHostMessage(envelope('handshake', {hostInstanceId:'host-1',origin}), { session:null,allowedOrigin:origin,eventOrigin:'https://evil.example' });
+    expect(result.ok).toBe(false);
+  });
   it('握手之后才接受生命周期消息', () => {
     const early = parseHostMessage(envelope('lifecycle', { op: 'load', instanceId: 'scene-a' }), {
       session: null,
-      allowedOrigin: origin,
+      allowedOrigin: origin, eventOrigin: origin,
     });
     expect(early.ok).toBe(false);
 
     const handshake = parseHostMessage(
       envelope('handshake', { hostInstanceId: 'host-1', origin }, { source: 'scene-host' }),
-      { session: null, allowedOrigin: origin },
+      { session: null, allowedOrigin: origin, eventOrigin: origin },
     );
     expect(handshake.ok).toBe(true);
     if (!handshake.ok) return;
     const next = parseHostMessage(envelope('lifecycle', { op: 'prepare', instanceId: 'scene-a' }), {
       session: handshake.session,
-      allowedOrigin: origin,
+      allowedOrigin: origin, eventOrigin: origin,
     });
     expect(next.ok).toBe(true);
   });
@@ -44,17 +48,17 @@ describe('宿主消息 schema', () => {
   it('拒绝错误 origin、未匹配的实例和信封里的函数', () => {
     const wrongOrigin = parseHostMessage(envelope('handshake', { hostInstanceId: 'host-1', origin: 'https://evil.example' }, {
       origin: 'https://evil.example',
-    }), { session: null, allowedOrigin: origin });
+    }), { session: null, allowedOrigin: origin, eventOrigin: origin });
     expect(wrongOrigin.ok).toBe(false);
 
     const mismatch = parseHostMessage(envelope('lifecycle', { op: 'take', instanceId: 'scene-a' }, {
       hostInstanceId: 'other-host',
-    }), { session: session(), allowedOrigin: origin });
+    }), { session: session(), allowedOrigin: origin, eventOrigin: origin });
     expect(mismatch.ok).toBe(false);
 
     const fn = parseHostMessage(envelope('lifecycle', { op: 'load', instanceId: 'scene-a', run: () => undefined }), {
       session: session(),
-      allowedOrigin: origin,
+      allowedOrigin: origin, eventOrigin: origin,
     });
     expect(fn.ok).toBe(false);
     if (!fn.ok) expect(fn.reason).toMatch(/function/);
@@ -65,7 +69,7 @@ describe('宿主消息 schema', () => {
       code: 'NO',
       detail: 'x',
       $$typeof: 'react.element',
-    }), { session: session(), allowedOrigin: origin });
+    }), { session: session(), allowedOrigin: origin, eventOrigin: origin });
     expect(element.ok).toBe(false);
 
     const timeout = parseHostMessage(envelope('readinessSample', {
@@ -73,7 +77,7 @@ describe('宿主消息 schema', () => {
       gate: 'firstFramePaint',
       status: 'ok',
       timeoutMs: 500,
-    }), { session: session(), allowedOrigin: origin });
+    }), { session: session(), allowedOrigin: origin, eventOrigin: origin });
     expect(timeout.ok).toBe(false);
     if (!timeout.ok) expect(timeout.reason).toMatch(/超时|容限/);
 
@@ -82,7 +86,7 @@ describe('宿主消息 schema', () => {
       programmeShowTime: 10,
       adapterReportedTime: 12,
       toleranceMs: 5,
-    }), { session: session(), allowedOrigin: origin });
+    }), { session: session(), allowedOrigin: origin, eventOrigin: origin });
     expect(tolerance.ok).toBe(false);
     if (!tolerance.ok) expect(tolerance.reason).toMatch(/超时|容限/);
   });
@@ -93,7 +97,7 @@ describe('宿主消息 schema', () => {
       programmeShowTime: 10,
       adapterReportedTime: 14,
     });
-    const parsed = parseHostMessage(JSON.parse(JSON.stringify(raw)), { session: session(), allowedOrigin: origin });
+    const parsed = parseHostMessage(JSON.parse(JSON.stringify(raw)), { session: session(), allowedOrigin: origin, eventOrigin: origin });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok || parsed.message.type !== 'driftSample') return;
     expect(Object.keys(parsed.message.payload).sort()).toEqual([

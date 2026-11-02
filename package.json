@@ -25,7 +25,10 @@
     "console": "npm --prefix packages/dsh-livestream run build && node packages/dsh-livestream/lib/console.js",
     "input:bilibili": "node packages/dsh-livestream/scripts/input-bilibili.mjs",
     "input:douyin": "node scripts/input-douyin.mjs",
-    "input:tiktok": "node scripts/input-tiktok.mjs"
+    "input:tiktok": "node scripts/input-tiktok.mjs",
+    "harness:sdk": "node scripts/sdk-source.mjs",
+    "harness:build": "npm --prefix packages/scene-host run build && npm --prefix packages/dsh-livestream run build",
+    "harness:console": "AIVTB_HARNESS=v2 node packages/dsh-livestream/lib/console.js"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.2.1-rc.2"

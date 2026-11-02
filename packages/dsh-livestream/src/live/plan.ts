@@ -16,6 +16,7 @@ import type {
 } from './domain/entities';
 import { judgeClaim, type MediaObservation } from './playback/audio-bus';
 import { reviseSpeech, speechCommitted, SPEECH_LIVE, SPEECH_OPEN, voiceOccupant } from './playback/speech';
+import { DEFAULT_GROUP_VETO_POLICY, evaluateGroupVeto } from './domain/policy';
 import { closeTaskForEpoch, openTask, publishOntoTask } from './production/registry';
 import {
   currentDirection,
@@ -50,6 +51,28 @@ const PROPOSAL_NEXT: Record<ProposalStatus, readonly ProposalStatus[]> = {
 export function planCommand(command: CommandEnvelope, ctx: PlanContext): Plan {
   const payload = command.payload;
   switch (payload.type) {
+    case 'progressSpeech': {
+      const part = speechOf(ctx.state, payload.partId);
+      if (!part || part.state !== 'playing') return fail('ILLEGAL_TRANSITION', 'Progress requires playing audio');
+      const locked = targetIs(command, 'speechPart', part.partId) ?? requireEpoch(ctx.state, command);
+      if (locked) return locked;
+      if (payload.audioRef !== part.audioRef || !Number.isFinite(payload.mediaTimeMs) || payload.mediaTimeMs < 0 || part.alignment.mode !== 'real' || !part.alignment.starts) return fail('ILLEGAL_TRANSITION', 'Progress requires matching real audio alignment');
+      const spokenChars = Math.min([...part.text].length, part.alignment.starts.filter(start => start <= payload.mediaTimeMs).length);
+      if (spokenChars < part.spokenChars) return fail('ILLEGAL_TRANSITION', 'Audio progress cannot regress');
+      return succeed('execution.receipt', [{ op: 'speech', part: reviseSpeech(part, { spokenChars }) }]);
+    }
+    case 'noteLiveCapabilities':
+    case 'receiptScenePatch':
+    case 'receiptSceneLifecycle': {
+      const scene = ctx.state.scenes[payload.instanceId];
+      if (!scene) return fail('UNKNOWN_TARGET', 'Unknown scene');
+      const locked = targetIs(command, 'sceneInstance', scene.instanceId) ?? requireEpoch(ctx.state, command) ?? requireSceneEpoch(ctx.state, scene);
+      if (locked) return locked;
+      if (payload.type === 'noteLiveCapabilities') return succeed('execution.receipt', [{ op: 'scene', scene: { ...scene, revision: scene.revision + 1, supportsInPlaceInputUpdate: payload.supportsInPlaceInputUpdate, requiresStandbyRebuild: !payload.supportsInPlaceInputUpdate } }]);
+      if (payload.type === 'receiptSceneLifecycle') return succeed('execution.receipt', [{ op: 'scene', scene: { ...scene, revision: scene.revision + 1, lifecycle: payload.lifecycle, surface: payload.lifecycle === 'disposed' ? 'disposed' : payload.lifecycle === 'retired' ? 'retired' : scene.surface, subscriptions: payload.lifecycle === 'disposed' ? 0 : scene.subscriptions } }]);
+      if (scene.codeVersion !== payload.codeVersion || payload.inputsRevision <= scene.inputsRevision) return fail('REVISION_CONFLICT', 'Stale patch receipt');
+      return succeed('execution.receipt', [{ op: 'scene', scene: { ...scene, revision: scene.revision + 1, inputsRevision: payload.inputsRevision, inputs: structuredClone(payload.inputs) } }]);
+    }
     case 'ingestAudience':
       return planIngest(command, payload, ctx);
     case 'setProposalStatus':
@@ -121,7 +144,12 @@ export function planCommand(command: CommandEnvelope, ctx: PlanContext): Plan {
     case 'resumeScene':
     case 'retireScene':
     case 'disposeScene':
-      return fail('ILLEGAL_TRANSITION', `领域内核未接 ${payload.type}。真实场景生命周期留到播放接线`);
+      { const scene = ctx.state.scenes[payload.instanceId];
+        if (!scene) return fail('UNKNOWN_TARGET', 'Unknown scene');
+        const locked = targetIs(command, 'sceneInstance', scene.instanceId) ?? requireEpoch(ctx.state, command) ?? requireSceneEpoch(ctx.state, scene);
+        if (locked) return locked;
+        if (scene.lifecycle === 'disposed') return fail('ILLEGAL_TRANSITION', 'Scene disposed');
+        return succeed('show.command', []); }
     default: {
       const neverPayload: never = payload;
       return neverPayload;
@@ -186,12 +214,12 @@ function planProposalStatus(
     const evidence = payload.evidencePlaybackId
       ? ctx.state.playback.find((item) => item.id === payload.evidencePlaybackId)
       : undefined;
-    if (!evidence || evidence.orphan) return fail('FULFILLMENT_UNPROVEN', '没有实际播出回执，不能记成已兑现');
+    if (!evidence || evidence.orphan || evidence.kind === 'failed' || evidence.disposition === 'aborted' || evidence.disposition === 'failed') return fail('FULFILLMENT_UNPROVEN', '没有实际播出回执，不能记成已兑现');
     const linked = proposal.taskIds.some((taskId) => {
       const task = ctx.state.tasks[taskId];
       return !!evidence.assetVersionId && !!task?.assetVersionIds.includes(evidence.assetVersionId);
     });
-    if (proposal.taskIds.length > 0 && !linked) {
+    if (!linked) {
       return fail('FULFILLMENT_UNPROVEN', '回执没有指到这则提议的产物版本');
     }
     next.fulfillment = { playbackEventId: evidence.id };
@@ -233,8 +261,8 @@ function planRequestProduction(
   if (payload.proposalId) {
     const proposal = ctx.state.proposals[payload.proposalId];
     if (proposal && proposal.directionEpoch === ctx.state.project.currentEpoch) {
-      const next: AudienceProposal = { ...proposal, taskIds: [...proposal.taskIds, task.id] };
-      if (proposal.status === 'accepted') {
+      const next: AudienceProposal = { ...proposal, revision:proposal.revision+1, taskIds: [...proposal.taskIds, task.id] };
+      if (proposal.status === 'received' || proposal.status === 'accepted') {
         next.status = 'creating';
         next.revision = proposal.revision + 1;
       }
@@ -344,9 +372,18 @@ function planIssueAuth(
   if (stale) return stale;
   if (ctx.state.authorizations[payload.authorizationId]) return fail('REVISION_CONFLICT', '授权编号已存在');
   if (payload.kind === 'group-veto') {
-    return fail('POLICY_REJECTED', '群体反对复核留在方向控制器，本内核只消费已签发的 master 授权');
+    if (ctx.role !== 'directionController') return fail('NOT_AUTHORIZED', '群体复核只由方向控制器执行');
+    const times = payload.assessmentTimes ?? [];
+    if (times.some(t => !Number.isFinite(t) || t > ctx.now || t < 0)) return fail('POLICY_REJECTED', 'Invalid assessment times');
+    const policy = DEFAULT_GROUP_VETO_POLICY;
+    const decision = evaluateGroupVeto(times.map(atShowTime => {
+      const records = ctx.state.audience.filter(r => r.directionEpoch === ctx.state.project.currentEpoch && r.showTime <= atShowTime && r.kind !== 'silence');
+      return { atShowTime, activeAudienceIds: [...new Set(records.filter(r => atShowTime - r.showTime <= policy.activeWindowMs).map(r => r.audienceId))],
+        oppositionIds: [...new Set(records.filter(r => r.kind === 'opposition' && atShowTime - r.showTime <= policy.oppositionWindowMs).map(r => r.audienceId))] };
+    }));
+    if (!decision.ok) return fail('POLICY_REJECTED', decision.reason);
   }
-  if (ctx.role !== 'master') return fail('NOT_AUTHORIZED', 'master 切换授权只能从可信身份入口签发');
+  if (payload.kind !== 'group-veto' && ctx.role !== 'master') return fail('NOT_AUTHORIZED', 'master 切换授权只能从可信身份入口签发');
   return succeed('show.command', [{
     op: 'authorization',
     authorization: {
@@ -386,22 +423,9 @@ function planSwitch(command: CommandEnvelope, payload: Extract<ShowCommand, { ty
       facts.push({ op: 'speech', part: next });
       revokedSpeech.push(part.partId);
     } else if (SPEECH_LIVE.has(part.state) && hard) {
-      const next = reviseSpeech(part, { state: 'aborted', unreadFrom: part.spokenChars });
-      const playbackId = `pb-abort-${part.partId}-${next.revision}`;
-      abortPlaybackIds.push(playbackId);
+      // Revoke future work now; actual audio stop is recorded only after the browser acknowledges it.
+      const next = reviseSpeech(part, { abortRequested: true, unreadFrom: part.spokenChars });
       facts.push({ op: 'speech', part: next });
-      facts.push({
-        op: 'playback',
-        event: {
-          id: playbackId,
-          kind: 'ended',
-          showTime: ctx.now,
-          directionEpoch: fromEpoch,
-          partId: part.partId,
-          disposition: 'aborted',
-        },
-      });
-      facts.push(mediaFact(`media-abort-${part.partId}-${next.revision}`, 'aborted', ctx.now, part.partId));
       revokedSpeech.push(part.partId);
     } else if (SPEECH_LIVE.has(part.state)) {
       retainedSpeech.push(part.partId);
@@ -502,7 +526,7 @@ function planSwitch(command: CommandEnvelope, payload: Extract<ShowCommand, { ty
     lease: retainedSpeech.length > 0 ? { fromEpoch, speechPartIds: retainedSpeech, allowAppend: false } : null,
   });
   facts.push({ op: 'bus-release', lane: 'voice', place: 'scene' });
-  if (hard) facts.push({ op: 'bus-release', lane: 'voice', place: 'bus' });
+
 
   const record: SwitchRecord = {
     fromEpoch,
@@ -640,6 +664,9 @@ function planReceipt(
       unreadFrom: spokenChars,
       playback: { ...part.playback, endedAtShowTime: ctx.now },
     });
+  } else if (payload.kind === 'aborted') {
+    if (!SPEECH_LIVE.has(part.state)) return fail('ILLEGAL_TRANSITION', 'Abort receipt requires active audio');
+    next = reviseSpeech(part, { state: 'aborted', unreadFrom: part.spokenChars });
   } else if (!SPEECH_LIVE.has(part.state)) {
     return fail('ILLEGAL_TRANSITION', '失败回执只记录已启动的口播');
   } else {
@@ -652,7 +679,7 @@ function planReceipt(
     };
   }
   if (payload.audioRef) next = { ...next, audioRef: payload.audioRef };
-  const playbackKind = payload.kind === 'playing' ? 'spoken' : payload.kind === 'ended' ? 'ended' : 'failed';
+  const playbackKind = payload.kind === 'playing' ? 'spoken' : payload.kind === 'ended' || payload.kind === 'aborted' ? 'ended' : 'failed';
   const playbackId = `pb-${part.partId}-${playbackKind}-${next.revision}`;
   const facts: KernelFact[] = [
     { op: 'speech', part: next },
@@ -663,7 +690,7 @@ function planReceipt(
         kind: playbackKind,
         showTime: ctx.now,
         partId: part.partId,
-        disposition: payload.kind === 'failed' ? 'failed' : 'completed',
+        disposition: payload.kind === 'failed' ? 'failed' : payload.kind === 'aborted' ? 'aborted' : 'completed',
         directionEpoch: part.directionEpoch,
         ...(payload.audioRef ? {} : {}),
       },
@@ -700,26 +727,9 @@ function planAbort(command: CommandEnvelope, partId: string, ctx: PlanContext): 
   const locked = targetIs(command, 'speechPart', partId);
   if (locked) return locked;
   if (!SPEECH_LIVE.has(part.state)) return fail('ILLEGAL_TRANSITION', '只有已启动的口播可以中止');
-  const next = reviseSpeech(part, { state: 'aborted', unreadFrom: part.spokenChars });
+  const next = reviseSpeech(part, { abortRequested: true, unreadFrom: part.spokenChars });
   const broken = cuesBrokenBySpeech(Object.values(ctx.state.cues), part.partId, part.spokenChars, 'tail');
-  const playbackId = `pb-abort-${part.partId}-${next.revision}`;
-  return succeed('execution.receipt', [
-    { op: 'speech', part: next },
-    {
-      op: 'playback',
-      event: {
-        id: playbackId,
-        kind: 'ended',
-        showTime: ctx.now,
-        partId: part.partId,
-        disposition: 'aborted',
-        directionEpoch: part.directionEpoch,
-      },
-    },
-    mediaFact(`media-abort-${part.partId}-${next.revision}`, 'aborted', ctx.now, part.partId),
-    { op: 'bus-release', lane: 'voice', place: 'bus' },
-    ...invalidateCueFacts(ctx, broken, '未念的口播已中止'),
-  ]);
+  return succeed('show.command', [{ op: 'speech', part: next }, ...invalidateCueFacts(ctx, broken, '中止请求已提交，未念的口播不再触发动作')]);
 }
 
 function planEditSpeech(command: CommandEnvelope, payload: Extract<ShowCommand, { type: 'editSpeech' }>, ctx: PlanContext): Plan {
@@ -934,7 +944,10 @@ function planUpdateInputs(command: CommandEnvelope, payload: Extract<ShowCommand
   const locked = requireEpoch(ctx.state, command) ?? targetIs(command, 'sceneInstance', scene.instanceId);
   if (locked) return locked;
   if (scene.directionEpoch !== ctx.state.project.currentEpoch) return fail('STALE_DIRECTION', '不能更新旧方向场景');
-  return fail('UNSUPPORTED_LIVE_PATCH', 'TODO(P2)：真实 live patch 未接线，不能把输入更新记成已应用');
+  if (!scene.supportsInPlaceInputUpdate) return fail('UNSUPPORTED_LIVE_PATCH', 'Scene requires standby rebuild');
+  if (!Number.isSafeInteger(payload.inputsRevision) || payload.inputsRevision <= scene.inputsRevision) return fail('REVISION_CONFLICT', 'Stale input revision');
+  // Intent only. Actual input values enter state through a matching runtime acknowledgement.
+  return succeed('show.command', []);
 }
 
 function planPerformerCue(command: CommandEnvelope, payload: Extract<ShowCommand, { type: 'sendPerformerCue' }>, ctx: PlanContext): Plan {

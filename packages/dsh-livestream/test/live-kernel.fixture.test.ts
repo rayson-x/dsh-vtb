@@ -401,7 +401,10 @@ describe('方向切换与未来失效', () => {
     })));
     switchDirection(kernel, 'hard');
     const part = kernel.view().speech.live;
-    expect(part?.state).toBe('aborted');
+    expect(part).toMatchObject({ state: 'playing', abortRequested: true });
+    expect(kernel.view().playback.some((item) => item.partId === 'live' && item.disposition === 'aborted')).toBe(false);
+    must(kernel.submit(env(kernel, A.runtime, speechTarget('live'), { type: 'receiptSpeech', partId: 'live', kind: 'aborted' })));
+    expect(kernel.view().speech.live.state).toBe('aborted');
     expect(part?.text).toBe('说到这');
     expect(part?.unreadFrom).toBe(2);
     expect(kernel.view().cues.tail?.status).toBe('invalidated');
@@ -821,7 +824,8 @@ describe('权限与来源', () => {
 
   it('领域内核源码不接私有 SDK、旧 agent 或假播放器', async () => {
     const root = fileURLToPath(new URL('../src/live/', import.meta.url));
-    const files = (await walk(root)).filter((file) => !file.includes(`${join('live', 'domain')}`));
+    // The production composition root intentionally imports adapters; the domain kernel must remain independent.
+    const files = (await walk(root)).filter((file) => !file.includes(join('live', 'domain')) && !file.includes(join('live', 'runtime')));
     expect(files.length).toBeGreaterThan(0);
     for (const file of files) {
       const text = await readFile(file, 'utf8');

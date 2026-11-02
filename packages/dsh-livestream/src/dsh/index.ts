@@ -5,6 +5,7 @@
 
 import { toolPairingBalancedAfter, toolPairingBalancedBefore } from '@deepseek-ai/dsh-compaction';
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
+import { applyV2Root } from '../live/runtime/root-plugin';
 import { createLive } from './live';
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { bindCredentials, BRAIN_PORT, desk, show, stage, STAGE_URL, trace } from './runtime';
@@ -109,6 +110,7 @@ interface HostContext {
 }
 
 export function apply(ctx: HostContext, config: Config = {}): void {
+  if (process.env.AIVTB_HARNESS === 'v2') { applyV2Root(ctx, config); return; }
   bindCredentials(ctx);
   // 直播会话的上下文：每一步之前看一眼，超出窗口的整块换成便签。只管这一场的会话，别的会话不碰
   const window = {
