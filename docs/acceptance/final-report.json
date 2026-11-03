@@ -1,0 +1,1187 @@
+{
+  "date": "2026-11-04",
+  "implementationMerge": "dcd35c3213d1131c4c06e7c3405550f5ceaf9abc",
+  "browserHotfix": "bb008a7895a42c5f2a8dde67e080017072dffa2b",
+  "trial": {
+    "kind": "real-local-team-with-scripted-audience",
+    "externalBroadcast": false,
+    "result": {
+      "actualDurationSeconds": 1800.728,
+      "inputCount": 30,
+      "namedAudibleReplies": 30,
+      "unmatched": [],
+      "replyLatencyMs": {
+        "p50": 15228,
+        "p95": 32530,
+        "max": 39848
+      },
+      "note": "Latency uses observed real speaking/ended parts naming the scripted viewer; does not count unrelated speech or infer unnamed semantic replies. Browser metrics cover this page, not all browser/GPU processes."
+    },
+    "errors": [],
+    "actions": [
+      "editorial-off",
+      "editorial-on",
+      "production-off",
+      "production-on",
+      "prepare-next",
+      "soft-switch",
+      "cold-switch"
+    ],
+    "epochs": [
+      2,
+      3,
+      4
+    ],
+    "first": {
+      "at": 1793742390640,
+      "elapsed": 0,
+      "rssKb": 36144,
+      "roles": [
+        {
+          "role": "performer",
+          "ready": true,
+          "paused": false,
+          "phase": "generating"
+        },
+        {
+          "role": "director",
+          "ready": true,
+          "paused": false,
+          "phase": "generating"
+        },
+        {
+          "role": "editorial",
+          "ready": true,
+          "paused": false,
+          "phase": "generating"
+        },
+        {
+          "role": "production",
+          "ready": true,
+          "paused": false,
+          "phase": "generating"
+        }
+      ],
+      "epoch": 2,
+      "channel": "program",
+      "assets": 2,
+      "tasks": 4,
+      "scenes": 1,
+      "speech": {
+        "ended": 5
+      }
+    },
+    "last": {
+      "at": 1793744181559,
+      "elapsed": 1790.925,
+      "rssKb": 34096,
+      "roles": [
+        {
+          "role": "performer",
+          "ready": true,
+          "paused": false,
+          "phase": "idle"
+        },
+        {
+          "role": "director",
+          "ready": true,
+          "paused": false,
+          "phase": "generating"
+        },
+        {
+          "role": "editorial",
+          "ready": true,
+          "paused": false,
+          "phase": "idle"
+        },
+        {
+          "role": "production",
+          "ready": true,
+          "paused": false,
+          "phase": "generating"
+        }
+      ],
+      "epoch": 4,
+      "channel": "program",
+      "assets": 24,
+      "tasks": 29,
+      "scenes": 19,
+      "speech": {
+        "ended": 90,
+        "aborted": 1,
+        "playing": 1
+      }
+    },
+    "browserSamples": 30,
+    "browserResourceSamples": [
+      {
+        "at": 1793742390859,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 156
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000023
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 40312632
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793742450919,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 173
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.00002
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 39828208
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793742510944,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 4
+          },
+          {
+            "name": "Frames",
+            "value": 5
+          },
+          {
+            "name": "Nodes",
+            "value": 228
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000008
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 34101720
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793742571028,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 253
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000013
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 44121640
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793742631094,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 243
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000067
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 49441256
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793742691273,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 4
+          },
+          {
+            "name": "Frames",
+            "value": 5
+          },
+          {
+            "name": "Nodes",
+            "value": 259
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000011
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 55793140
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793742751360,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 263
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000012
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 52658028
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793742811617,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 4
+          },
+          {
+            "name": "Frames",
+            "value": 5
+          },
+          {
+            "name": "Nodes",
+            "value": 284
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000861
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 42529292
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793742871849,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 4
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "Nodes",
+            "value": 359
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000016
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 35013752
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793742932198,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 309
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.00001
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 43267628
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793742992479,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 4
+          },
+          {
+            "name": "Frames",
+            "value": 5
+          },
+          {
+            "name": "Nodes",
+            "value": 292
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000009
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 44936928
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743052753,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 280
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000011
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 35628840
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743113102,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 282
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000013
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 50483468
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743173545,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 270
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.00001
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 42111580
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743234170,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 2
+          },
+          {
+            "name": "Nodes",
+            "value": 296
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000008
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 53720716
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743294576,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 4
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 323
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000009
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 30570000
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743355036,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 291
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000026
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 34467648
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743415659,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 333
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000013
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 54021800
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743476175,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 319
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000013
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 31756672
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743536771,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 2
+          },
+          {
+            "name": "Nodes",
+            "value": 339
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000008
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 39992156
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743597289,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 317
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000019
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 47936444
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743658055,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 326
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.00105
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 30066020
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743718133,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 330
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.001012
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 31072164
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743778858,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 355
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.00001
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 47528208
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743839237,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 333
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000018
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 54860768
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743899783,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 353
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000526
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 50341352
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793743960552,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 4
+          },
+          {
+            "name": "Nodes",
+            "value": 364
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000139
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 49522000
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793744020588,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 368
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.00051
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 55486132
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793744081440,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 360
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000482
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 31770908
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      },
+      {
+        "at": 1793744141577,
+        "metrics": [
+          {
+            "name": "Documents",
+            "value": 3
+          },
+          {
+            "name": "Frames",
+            "value": 3
+          },
+          {
+            "name": "Nodes",
+            "value": 382
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.000419
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 50915084
+          }
+        ],
+        "page": {
+          "iframes": 1,
+          "images": 0
+        }
+      }
+    ],
+    "memoryScope": "rssKb measured launcher PID, not the DSH child; browser metrics exclude other processes/GPU"
+  },
+  "components": {
+    "schema": 1,
+    "kind": "specific-component-runtime-certificates",
+    "sdk": "c73ac74f9a5479586f0ea5d39f5c40d2dc39a98b",
+    "entries": [
+      {
+        "name": "remotion",
+        "sourceSha256": "be888917339befbaccd0025488775275806e583daf859e0ab5af0103fbae5522",
+        "bundleHash": "ebea22a1596f74d0b91501d685ec6782460cd34b5b75d5904d9401eb76f782a2",
+        "assetId": "0806287a-daa9-477f-a73b-1a52205cb081",
+        "scope": "this exact source and renderer build, not the whole library",
+        "nativePlayback": true,
+        "inPlaceUpdates": 100,
+        "frameBefore": 0,
+        "frameAfter": 28,
+        "hold": true,
+        "resume": true,
+        "disposed": true,
+        "patchMs": {
+          "p50": 32.631124999999884,
+          "p95": 47.86241599999994,
+          "max": 48.29054199999973
+        },
+        "deterministicReplay": "separate certification required",
+        "audioOwnership": "none"
+      },
+      {
+        "name": "hyperframes",
+        "sourceSha256": "c06f0b92737cbaefec661f4eebe4ede99d5c3d63a2ebb98911f595df097d608a",
+        "bundleHash": "3f2e0a3ebdb0adcf27dd08f855beb7e1b11926af8fc14c52ef6df311c3d22db4",
+        "assetId": "5ef99601-91d3-4a3a-a589-ba9be9383548",
+        "scope": "this exact source and renderer build, not the whole library",
+        "nativePlayback": true,
+        "inPlaceUpdates": 100,
+        "frameBefore": 0,
+        "frameAfter": 131,
+        "hold": true,
+        "resume": true,
+        "disposed": true,
+        "patchMs": {
+          "p50": 44.35320899999988,
+          "p95": 48.95008300000154,
+          "max": 50.61879200000021
+        },
+        "deterministicReplay": "separate certification required",
+        "audioOwnership": "none"
+      },
+      {
+        "name": "d3",
+        "sourceSha256": "060ee64010347421948401d454f40a643715a23e3183f43f1f4d026a664cbbcf",
+        "bundleHash": "51130f75c711fb588dc9bb0e3e342e6525ea9d12d3da6cd81f296175acecf707",
+        "assetId": "7a161e57-04a6-4962-8fc4-891d3c1c7ef7",
+        "scope": "this exact source and renderer build, not the whole library",
+        "nativePlayback": true,
+        "inPlaceUpdates": 100,
+        "frameBefore": 0,
+        "frameAfter": 120,
+        "hold": true,
+        "resume": true,
+        "disposed": true,
+        "patchMs": {
+          "p50": 32.98083299999962,
+          "p95": 47.54175000000032,
+          "max": 49.09375
+        },
+        "deterministicReplay": "separate certification required",
+        "audioOwnership": "none"
+      },
+      {
+        "name": "three",
+        "sourceSha256": "e39e5f00f500e9dee562f379fb1a33d734a74d6ddeeb5f3f26a37d4be692df6f",
+        "bundleHash": "eb6585690f800096d3fb3d10d65fb1df3a3d4974cc271abc0dcc39869e228424",
+        "assetId": "948ae066-4ab5-47ce-b62a-6abca49632f5",
+        "scope": "this exact source and renderer build, not the whole library",
+        "nativePlayback": true,
+        "inPlaceUpdates": 100,
+        "frameBefore": 1,
+        "frameAfter": 137,
+        "hold": true,
+        "resume": true,
+        "disposed": true,
+        "patchMs": {
+          "p50": 45.837625000000116,
+          "p95": 48.78649999999834,
+          "max": 53.33954200000153
+        },
+        "deterministicReplay": "separate certification required",
+        "audioOwnership": "none"
+      }
+    ]
+  },
+  "simulation": {
+    "simulation": true,
+    "realModels": false,
+    "realTts": false,
+    "cases": [
+      {
+        "name": "native-scene-through-private-channel",
+        "status": "pass"
+      },
+      {
+        "name": "audience-live-edit-without-production",
+        "status": "pass",
+        "evidence": {
+          "playbackEventId": "pb-patch-a-1"
+        },
+        "frameBefore": 0,
+        "frameAfter": 2
+      },
+      {
+        "name": "failed-standby-keeps-program",
+        "status": "pass",
+        "rejection": "SCENE_NOT_READY"
+      },
+      {
+        "name": "prepared-direction-handoff",
+        "status": "pass",
+        "earlyTake": "STALE_DIRECTION",
+        "codeHash": "97648e2056e64e1028a1565518438a11a7cc54c96252fde423cd38437e7edfc4"
+      },
+      {
+        "name": "thirty-scene-switches",
+        "status": "pass",
+        "count": 30,
+        "simulatedLocalLatencyMs": {
+          "p50": 292.93016599999964,
+          "p95": 312.87745800000084,
+          "max": 322.90341699999954
+        },
+        "note": "Local scripted prepare/take only; excludes models, TTS and platform delivery."
+      }
+    ]
+  },
+  "replay": {
+    "scope": "recorded-composite native Film, same browser",
+    "frames": [
+      {
+        "frame": 0,
+        "time": 0.033008,
+        "sha256": "6a989db37c5e79aca74c065f4e340ca64c4eb90f3d2dd38a43d2a043d57de6b3"
+      },
+      {
+        "frame": 30,
+        "time": 1,
+        "sha256": "60adcf2700a06c8810e60db3d41c7f2997891a319e42b62d318b0e9f7380b156"
+      },
+      {
+        "frame": 90,
+        "time": 3,
+        "sha256": "ec6db2bec61bcca0dde2bf532b91a9836f239197a5a4e4737ad502c95220391f"
+      },
+      {
+        "frame": 30,
+        "time": 1,
+        "sha256": "60adcf2700a06c8810e60db3d41c7f2997891a319e42b62d318b0e9f7380b156"
+      }
+    ],
+    "repeatedFrameMatches": true
+  },
+  "tests": {
+    "plugin": {
+      "passed": 388,
+      "skipped": 17
+    },
+    "sceneHost": {
+      "passed": 21
+    },
+    "scenePackage": {
+      "passed": 18
+    },
+    "privateSdkNode": {
+      "passed": 7,
+      "skipped": 0
+    }
+  },
+  "limitations": [
+    "P95 voice reply 32.530 seconds exceeds the 5-second optimization target; issue #38",
+    "Private SDK remote CI identity authorization remains pending; issue #18",
+    "No real external audience/platform retention test",
+    "Captured composite Film is flattened; arbitrary editable component replay is not certified",
+    "1080p 30fps output resamples presented frames, not a native rendering performance guarantee"
+  ],
+  "capture": {
+    "postfix": {
+      "durationSeconds": 10.0154619140625,
+      "actualFrames": 500,
+      "outputFps": 30,
+      "audioScope": "actual programme taps; this short window mainly contains quiet ambience"
+    },
+    "spokenProgramme": {
+      "durationSeconds": 10.023550048828126,
+      "actualFrames": 409,
+      "meanVolumeDb": -27.5,
+      "maxVolumeDb": -7.6,
+      "note": "Earlier real-voice recording, replay seek regression exercised this media; prior UI overlay remains in these recorded pixels"
+    }
+  }
+}

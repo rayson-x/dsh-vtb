@@ -142,7 +142,7 @@ export function compileCapturedFilm(api, { frameCount, fps = 30, width = 1920, h
     presents: [{ id: 'captured-picture', order: 0, z: 0, span: { startFrame: 0, endFrameExclusive: frameCount }, elements: [{
       id: 'captured-video', kind: 'program', order: 0,
       style: [{ name: 'position', value: 'absolute' }, { name: 'inset', value: '0px' }],
-      program: api.htmlVisual({ html: '', setup: 'return window.__aivtbCapturePlayback.mount(root, data);', data: { videoUrl, fps } }),
+      program: api.htmlVisual({ html: '', setup: 'return window.__aivtbCapturePlayback.mount(root, data);', data: { videoUrl, fps, frameCount } }),
     }] }],
   }));
   tracks = api.appendFilmAudioTrack(tracks, timeline, api.sealAudioTrack({ id: 'actual-programme-mix', timelineId: timeline.id, clips: [{
