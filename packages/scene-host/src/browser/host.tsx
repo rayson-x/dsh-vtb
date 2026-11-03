@@ -1,3 +1,4 @@
+import { AUDIO_POLICY_SCRIPT } from './audio-policy';
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { flushSync } from 'react-dom';
@@ -145,7 +146,8 @@ export class BrowserSceneHost {
         player.setAttribute('muted', '');
         player.setAttribute('assets-loading-ui', 'none');
         player.style.cssText = 'width:100%;height:100%;display:block';
-        player.setAttribute('srcdoc', scene.liveHtml);
+        const guard=`<script>(${AUDIO_POLICY_SCRIPT})(message=>parent.postMessage({source:'aivtb-scene-audio-policy',error:message},'*'))</script>`;
+        player.setAttribute('srcdoc', /<head[^>]*>/i.test(scene.liveHtml)?scene.liveHtml.replace(/<head[^>]*>/i,match=>match+guard):guard+scene.liveHtml);
         layer.append(player);
         const deadline = performance.now() + 15000;
         while (!player.ready || !player.painted) {

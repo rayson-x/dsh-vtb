@@ -22,7 +22,7 @@
     "stage:voice": "npm --prefix packages/dsh-livestream run build && node --env-file-if-exists=.env packages/dsh-livestream/lib/dev.js",
     "stage:graphics": "node packages/dsh-livestream/scripts/import-graphics.mjs",
     "live": "npm --prefix packages/dsh-livestream run build && node --env-file-if-exists=.env scripts/dsh.mjs --profile live --no-open",
-    "console": "npm --prefix packages/dsh-livestream run build && node packages/dsh-livestream/lib/console.js",
+    "console": "npm run harness:build && node packages/dsh-livestream/lib/console.js",
     "input:bilibili": "node packages/dsh-livestream/scripts/input-bilibili.mjs",
     "input:douyin": "node scripts/input-douyin.mjs",
     "input:tiktok": "node scripts/input-tiktok.mjs",
@@ -32,7 +32,11 @@
     "harness:sim": "node scripts/harness-sim.mjs",
     "harness:sim:check": "node packages/dsh-livestream/scripts/harness-sim-check.mjs",
     "harness:film:export": "node scripts/harness-film-export.mjs",
-    "harness:film:capture": "node packages/dsh-livestream/scripts/harness-film-capture.mjs"
+    "harness:film:capture": "node packages/dsh-livestream/scripts/harness-film-capture.mjs",
+    "sdk:doctor": "node scripts/sdk-doctor.mjs",
+    "programme:record": "node scripts/programme-record.mjs",
+    "programme:export": "node scripts/programme-film-export.mjs",
+    "harness:acceptance": "node scripts/harness-acceptance.mjs"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.2.1-rc.2"

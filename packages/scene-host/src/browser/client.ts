@@ -1,8 +1,18 @@
 import { createBrowserSceneHost } from './isolation';
+import { programmeOutput, startAudioCapture, stopAudioCapture } from '../recording/audio';
+let speechContext: AudioContext | undefined;
+const audioContext = () => speechContext ??= new AudioContext({ sampleRate: 48000 });
+let audioNode: MediaElementAudioSourceNode | undefined;
 const send = (value: unknown) => {
   if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(value));
 };
-const host = createBrowserSceneHost(document.getElementById('stage')!, send);
+let recordingActive=false,recordingViolation:string|undefined;
+const violations=new Map<string,string>();
+const host = createBrowserSceneHost(document.getElementById('stage')!, value=>{
+  const event=value as Record<string,unknown>;
+  if(event.type==='error'&&String(event.error).includes('UNTRACKED_SCENE_AUDIO')){violations.set(String(event.instanceId),String(event.error));if(recordingActive&&host.snapshot().program===event.instanceId)recordingViolation=String(event.error);}
+  send(value);
+});
 const caption = document.getElementById('caption')!;
 const status = document.getElementById('status')!;
 let socket: WebSocket;
@@ -18,6 +28,18 @@ try {
   const ref = new URL(document.referrer);
   if (['127.0.0.1', 'localhost'].includes(ref.hostname)) parentOrigin = ref.origin;
 } catch {}
+window.addEventListener('message', event => {
+  if (!parentOrigin || event.origin !== parentOrigin || event.source !== parent || event.data?.type !== 'aivtb-recording-request') return;
+  const { action, requestId } = event.data;
+  if (!['start', 'stop'].includes(action) || typeof requestId !== 'string') return;
+  void (async()=>{
+    if(action==='start'){const violation=violations.get(String(host.snapshot().program));if(violation)throw Error(violation);recordingViolation=undefined;const value=await startAudioCapture(audioContext());recordingActive=true;return value;}
+    const value=await stopAudioCapture(audioContext());recordingActive=false;if(recordingViolation)throw Error(recordingViolation);return value;
+  })().then(
+    value => parent.postMessage({ type: 'aivtb-recording-result', requestId, ok: true, value }, parentOrigin!),
+    error => parent.postMessage({ type: 'aivtb-recording-result', requestId, ok: false, error: String(error) }, parentOrigin!),
+  );
+});
 const notifyParent = (kind: string) => {
   if (parentOrigin && parent !== window)
     parent.postMessage(
@@ -50,6 +72,8 @@ const audioReceipt = (kind: string) => {
 };
 const stopAudio = () => {
   if (!audio) return;
+  audioNode?.disconnect();
+  audioNode = undefined;
   audio.pause();
   audioReceipt('aborted');
   audio.removeAttribute('src');
@@ -137,6 +161,9 @@ function connect() {
             if (parentOrigin && parent !== window) caption.style.display = 'none';
             const element = new Audio(op.payload.audioRef);
             audio = element;
+            const context = audioContext();
+            audioNode = context.createMediaElementSource(element);
+            audioNode.connect(programmeOutput(context));
             element.preload = 'auto';
             for (const kind of ['playing', 'timeupdate', 'pause', 'ended', 'error'])
               element.addEventListener(kind, () => {
@@ -144,6 +171,8 @@ function connect() {
                 if (kind === 'playing') caption.textContent = String(speechInfo.text ?? '');
                 audioReceipt(kind);
                 if (kind === 'ended' || kind === 'error') {
+                  audioNode?.disconnect();
+                  audioNode = undefined;
                   audio = undefined;
                   partId = undefined;
                   caption.textContent = '';
@@ -151,6 +180,7 @@ function connect() {
                 }
               });
             try {
+              await context.resume();
               await element.play();
             } catch (error) {
               if ((error as DOMException).name !== 'NotAllowedError') {
@@ -161,7 +191,7 @@ function connect() {
               value = { blocked: true };
               const unlock = () => {
                 if (audio === element && audioEpoch === epoch)
-                  void element.play().then(
+                  void context.resume().then(() => element.play()).then(
                     () => {
                       status.textContent = '';
                     },
@@ -176,6 +206,7 @@ function connect() {
             throw Error('Unsupported browser operation');
         }
         if (!(value as { blocked?: boolean } | undefined)?.blocked) status.textContent = '';
+        const mounted=new Set(host.snapshot().scenes.map(scene=>scene.instanceId));for(const id of violations.keys())if(!mounted.has(id))violations.delete(id);
         send({ type: 'result', opId: op.opId, ok: true, epoch, value: value ?? null });
       } catch (error) {
         send({ type: 'result', opId: op.opId, ok: false, epoch, error: String(error) });

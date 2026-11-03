@@ -16,6 +16,7 @@ import type { Fx, Item } from '../stage/draw/model';
 import type { StageState } from '../stage/protocol';
 import { audioContext, playable } from './voice';
 import { SETS } from '../stage/sets';
+import { programmeOutput } from '../../../scene-host/src/recording/audio';
 
 type Family = 'pop' | 'drip' | 'whoosh' | 'hit' | 'knock' | 'mallet' | 'riser' | 'swell' | 'click' | 'glitch' | 'shutter' | 'notify';
 
@@ -82,7 +83,7 @@ function start(buffer: AudioBuffer, delayMs: number, volume: number): void {
   src.buffer = buffer;
   const gain = ctx.createGain();
   gain.gain.value = volume;
-  src.connect(gain).connect(ctx.destination);
+  src.connect(gain).connect(programmeOutput(ctx));
   src.start(ctx.currentTime + Math.max(0, delayMs) / 1000);
 }
 
@@ -113,7 +114,7 @@ function switchBed(set: string): void {
     src.loop = true;
     const gain = ctx.createGain();
     gain.gain.value = 0;
-    src.connect(gain).connect(ctx.destination);
+    src.connect(gain).connect(programmeOutput(ctx));
     src.start();
     gain.gain.setTargetAtTime(MASTER * def.bed!.volume, ctx.currentTime, 0.8);
     bed = { set, gain, src };
@@ -152,7 +153,7 @@ function crewBackground(next: NonNullable<StageState['sound']['bed']>): void {
     if (!buffer || generation !== bedGeneration) return;
     const src = ctx.createBufferSource(); src.buffer = buffer; src.loop = true;
     const gain = ctx.createGain(); gain.gain.value = 0;
-    src.connect(gain).connect(ctx.destination); src.start();
+    src.connect(gain).connect(programmeOutput(ctx)); src.start();
     fade(gain, next.volume); crewBed = { name: next.name, gain, src };
   });
 }
@@ -179,7 +180,7 @@ function play(family: Family, delayMs: number, speaking: boolean): void {
   src.buffer = list[i]!;
   const gain = ctx.createGain();
   gain.gain.value = MASTER * LEVEL[family] * (speaking ? DUCK : 1);
-  src.connect(gain).connect(ctx.destination);
+  src.connect(gain).connect(programmeOutput(ctx));
   src.start(ctx.currentTime + delayMs / 1000);
 }
 

@@ -42,6 +42,7 @@ const BRAIN = arg('brain', 3920);
 
 // 舞台要读密钥（语音、Jev、嘴替）：根目录 .env 读进环境变量
 if (existsSync(join(ROOT, '.env'))) process.loadEnvFile(join(ROOT, '.env'));
+process.env.AIVTB_HARNESS ??= 'v2';
 
 const PACKAGE = join(LIB, '..');
 const SHOW_FILE = join(PACKAGE, '.cache', 'show.json');
@@ -300,10 +301,37 @@ function proxy(req: IncomingMessage, res: ServerResponse): void {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://console');
-  const host = (req.headers.host ?? '').replace(/:\d+$/, '');
-  if (!['127.0.0.1', 'localhost', '[::1]'].includes(host)) return json(res, 403, { ok: false, error: '只接受本机访问' });
+  const requestHost = (req.headers.host ?? '').replace(/:\d+$/, '');
+  if (!['127.0.0.1', 'localhost', '[::1]'].includes(requestHost)) return json(res, 403, { ok: false, error: '只接受本机访问' });
   const method = req.method ?? 'GET';
   if (method === 'POST' && !String(req.headers['content-type'] ?? '').startsWith('application/json')) return json(res, 415, { ok: false, error: '要用 application/json' });
+
+  if (method === 'POST' && url.pathname === '/stage/owner') {
+    let text='';for await(const chunk of req){text+=chunk;if(text.length>4096)return json(res,413,{ok:false});}
+    let cmd;try{cmd=JSON.parse(text);}catch{return json(res,400,{ok:false});}
+    if(!cmd||!['room','layout'].includes(cmd.type))return json(res,400,{ok:false,error:'只接受布景或布局操作'});
+    return json(res,200,host.stage.apply({...cmd,by:'owner'}));
+  }
+  if (method === 'GET' && url.pathname === '/harness/status') {
+    try {
+      const upstream = await fetch(`http://127.0.0.1:${BRAIN}/live/status`, { signal: AbortSignal.timeout(1500) });
+      return json(res, upstream.status, await upstream.json());
+    } catch {
+      return json(res, 200, { mode: process.env.AIVTB_HARNESS === 'v2' ? 'v2' : 'legacy', brain: false, roles: [] });
+    }
+  }
+  if (method === 'POST' && url.pathname === '/harness/roles') {
+    let text = '';
+    for await (const chunk of req) { text += chunk; if (text.length > 4096) return json(res, 413, { ok: false }); }
+    let body;
+    try { body = JSON.parse(text); } catch { return json(res, 400, { ok: false, error: 'Invalid role request' }); }
+    if (!body || typeof body !== 'object' || Array.isArray(body) || !['performer','director','editorial','production'].includes(body.role) || typeof body.online !== 'boolean')
+      return json(res, 400, { ok: false, error: 'Invalid role request' });
+    try {
+      const upstream = await fetch(`http://127.0.0.1:${BRAIN}/live/roles`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10000) });
+      return json(res, upstream.status, await upstream.json());
+    } catch { return json(res, 503, { ok: false, error: '团队未连接' }); }
+  }
 
   if (method === 'GET' && url.pathname === '/') {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });

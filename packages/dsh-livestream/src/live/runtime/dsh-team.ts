@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { installModelSelection } from '@deepseek-ai/dsh-agent';
 import type { AgentRole } from '../domain/codes';
+import { boundRoleContext } from './context-window';
 
 export interface DshAgentPort {
   session: { id: string };
@@ -27,6 +28,11 @@ interface Resident {
   queue: { text: string; urgent: boolean }[];
   disposed: boolean;
   timer?: ReturnType<typeof setTimeout>;
+  failures?: number;
+  retryAt?: number;
+  lastSuccessAt?: number;
+  lastError?: string;
+  context?: {bytes:number;changed:boolean;dropped?:number};
 }
 export interface RoleRuntime {
   brief(role: AgentRole): unknown;
@@ -93,7 +99,7 @@ export class DshLiveTeam {
     const { agent } = await registry.create({
       sessionId,
       meta: { cwd: this.cwd, agentPreset: `live-v2-${role}` },
-      agentOptions: { provider: selected.provider, model: selected.model },
+      agentOptions: { provider: selected.provider, model: selected.model, maxTokens: role === 'production' ? 12288 : role === 'performer' ? 2048 : 4096 },
       setup: (agentCtx: unknown) => {
         installModelSelection(agentCtx as never, { current: selected, assembled: undefined } as never);
       },
@@ -143,6 +149,11 @@ export class DshLiveTeam {
   }
   hasSession(id?: string) {
     return !!id && this.bySession.has(id);
+  }
+  prepareStep(agent: any) {
+    const resident = this.bySession.get(agent?.session?.id);
+    if (!resident || resident.agent !== agent || resident.disposed || !agent.session.surface) return;
+    resident.context = boundRoleContext(agent.session, this.runtime.brief(resident.role), resident.role === 'production' ? 160000 : 96000);
   }
   async invoke(sessionId: string | undefined, role: AgentRole, tool: string, args: Record<string, unknown>) {
     if (
@@ -198,17 +209,26 @@ export class DshLiveTeam {
     if (event.type === 'tool/result') {
       r.tools.delete(String(event.data?.message?.source?.callId));
       r.phase = r.tools.size ? 'tool' : r.activeAttempt ? 'generating' : 'idle';
+      if (!event.data?.message?.isError) { r.lastSuccessAt=Date.now(); r.failures=0; r.lastError=undefined; this.roleErrors.delete(r.role); }
+    }
+    if (event.type === 'turn/end') {
+      const reason=event.data?.reason;
+      if (reason?.kind==='error') {
+        r.failures=(r.failures??0)+1;r.lastError=String(reason.error?.code??'REQUEST_FAILED');
+        r.retryAt=Date.now()+Math.min(60000,2000*2**Math.min(r.failures,5));
+        this.roleErrors.set(r.role,r.lastError);
+      } else if(reason?.kind==='completed') {r.failures=0;r.lastError=undefined;r.retryAt=0;this.roleErrors.delete(r.role);}
     }
   }
   /** Called from actual idle hook/poll; timers never force utterances or replace scene content. */
   poll() {
     for (const r of this.residents.values()) {
-      if (!r.ready || r.disposed || r.paused || this.stopped || r.agent.status !== 'idle' || r.timer)
+      if (!r.ready || r.disposed || r.paused || this.stopped || r.agent.status !== 'idle' || r.timer || (r.retryAt??0)>Date.now())
         continue;
       r.phase = 'idle';
       r.timer = setTimeout(() => {
         r.timer = undefined;
-        if (r.agent.status !== 'idle' || r.disposed || this.stopped) return;
+        if (r.agent.status !== 'idle' || r.disposed || this.stopped || (r.retryAt??0)>Date.now()) return;
         this.wake(r.role, '现场观察点：读取最新简报，决定是否有必要行动；有明确等待条件时继续停留。');
       }, INTERVAL[r.role]);
       r.timer.unref?.();
@@ -230,7 +250,7 @@ export class DshLiveTeam {
         r.timer = undefined;
       }
       r.agent.cancel({ kind: 'user', reason: 'role-pause' }, { keepInbox: true });
-    } else this.wake(role, '岗位恢复，先读最新简报。');
+    } else {r.retryAt=0;r.failures=0;r.lastError=undefined;this.roleErrors.delete(role);this.wake(role, '岗位恢复，先读最新简报。');}
   }
   snapshot() {
     return [...this.residents.values()].map((r) => ({
@@ -239,6 +259,9 @@ export class DshLiveTeam {
       phase: r.phase,
       ready: r.ready,
       paused: r.paused ?? false,
+      error: r.lastError,
+      lastSuccessAt: r.lastSuccessAt,
+      context: r.context,
       status: r.agent.status,
       attemptId: r.attemptId,
     }));

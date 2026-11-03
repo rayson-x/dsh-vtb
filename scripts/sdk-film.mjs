@@ -132,3 +132,25 @@ export function compileRecordedFilm(api, recording) {
   const document = api.compileHtmlDocument(composition, timeline);
   return { composition, timeline, document };
 }
+
+/** The native Film can also wrap a recorded composite, retaining its real mixed AudioTrack. */
+export function compileCapturedFilm(api, { frameCount, fps = 30, width = 1920, height = 1080, videoUrl, audioArtifact, sampleFrames }) {
+  const timeline = api.sealTimeline({ id: 'captured-programme', frameRate: { numerator: fps, denominator: 1 }, frameCount });
+  let tracks = api.createFilmTrackSet();
+  tracks = api.appendFilmVisualTrack(tracks, timeline, api.sealVisualTrack({
+    id: 'actual-programme-picture', timelineId: timeline.id, visualIr: api.VISUAL_IR_V1,
+    presents: [{ id: 'captured-picture', order: 0, z: 0, span: { startFrame: 0, endFrameExclusive: frameCount }, elements: [{
+      id: 'captured-video', kind: 'program', order: 0,
+      style: [{ name: 'position', value: 'absolute' }, { name: 'inset', value: '0px' }],
+      program: api.htmlVisual({ html: '', setup: 'return window.__aivtbCapturePlayback.mount(root, data);', data: { videoUrl, fps } }),
+    }] }],
+  }));
+  tracks = api.appendFilmAudioTrack(tracks, timeline, api.sealAudioTrack({ id: 'actual-programme-mix', timelineId: timeline.id, clips: [{
+    id: 'programme-mix', artifact: audioArtifact,
+    target: { startSample: 0, endSampleExclusive: sampleFrames },
+    sourceTime: { sourceSampleFrames: sampleFrames, pieces: [{ target: { startSample: 0, endSampleExclusive: sampleFrames }, sourceAtStart: { numerator: 0, denominator: 1 }, rate: { numerator: 1, denominator: 1 } }] },
+    gain: 1, fadeInSamples: 0, fadeOutSamples: 0,
+  }] }));
+  const composition = api.compileFilmComposition(api.sealFilmProgram({ id: 'captured-show', clearColor: '#000000' }), api.sealCanvas({ widthPx: width, heightPx: height }), timeline, tracks);
+  return { composition, timeline, document: api.compileHtmlDocument(composition, timeline) };
+}

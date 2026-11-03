@@ -1,79 +1,62 @@
-# aivtb
+# 大肥鱼直播舞台
 
-AI 虚拟主播「大肥鱼」的本地直播舞台。DSH 负责主持和后台编导，`packages/dsh-livestream` 提供控制台、语音队列、共享黑板、独立画面导演和 OBS 浏览器源。
+本地运行的 AI 主播与舞台。主播、现场导播、编导和制作席使用独立 DSH 会话，共享工程事实；制作不会阻塞现场。观众建议可以改变场景版本或在播参数，只有实际播出回执才记为兑现。
 
-## 新版共创 Harness
+## 启动
 
-新版已接通独立角色会话、原生 Remotion / HyperFrames 播放、方向预制与 Film 回放。运行和模拟验证方法见 [docs/harness-runtime.md](docs/harness-runtime.md)。这仍是集成候选，完整制作组件、全舞台音画导出与真实直播验收尚未完成。
-
-## 本仓库的 scene-package 不是 P4 认证
-
-`packages/scene-package` 只是组件生产链的可测骨架。**P4 脚手架已落地，两条制作路径与代表组件认证没有完成。** 没有私有 SDK 时，pick / scaffold 返回 blocked。详见 `packages/scene-package/README.md`。
-
-## 开播
-
-项目使用本机 DSH 的 `live` 配置，并需将本插件加入该配置。`.dsh/` 是本机状态，不随仓库提交。
-
-使用 Node.js 24 或更新版本：
+需要 Node.js 24。角色、布景大型资源和凭据保存在本机，不提交到公开仓。
 
 ```sh
 npm ci
 npm --prefix packages/dsh-livestream ci
+npm --prefix packages/scene-host ci
+npm --prefix packages/scene-package ci
+npm run plugin:install
+npm run harness:sdk -- /authorized/path/to/reelmorph-agent
 npm run console
 ```
 
-打开控制台 `http://127.0.0.1:3800/`，设置本场方向后点「开播」。控制台管理大脑进程；「下播」停止大脑，关闭控制台也会清理它启动的子进程。舞台页为 `http://127.0.0.1:3900/`，可作为 OBS 的浏览器源；大脑内部控制口为 3920。
+控制台 `http://127.0.0.1:3800/`；舞台/OBS 浏览器源 `http://127.0.0.1:3900/`。设置方向后开播；控制台可分别暂停/恢复四个岗位。开播使用本机 `.env` / DSH 凭据服务，语音沿用 ElevenLabs 配置，字段见 `.env.example`。SDK 路径只写入忽略的 `.deps/sdk-source.json`；也可用 `AIVTB_SDK_REPO` 环境变量覆盖。
 
-根目录 `.env` 存放本机凭据，不提交到仓库。画面导演使用 `DEEPSEEK_API_KEY`；语音使用 `ELEVENLABS_API_KEY`、`ELEVENLABS_VOICE_ID`，可选 `ELEVENLABS_MODEL_ID`。DSH 的凭据也可由其凭据服务提供。没有语音凭据或合成失败时会退回估时字幕，这不等同于真实语音播放。
+控制台默认使用 v2 Harness；需回退时先停止团队、关闭控制台，再以 `AIVTB_HARNESS=legacy npm run console` 重启。同一舞台不热交接给两套控制路径。未播放的历史音频不因恢复自动重放。平台输入需在控制台另行配置；本地开播不等于向外部直播平台推流。
 
-如果本机通过环境变量配置 HTTP 代理，可对控制台进程启用 Node 的环境代理支持，并让本机端口直连：
+## 制作与播出
 
-```sh
-NODE_USE_ENV_PROXY=1 NO_PROXY=localhost,127.0.0.1,::1 npm run console
-```
+- **编导**研究观众兴趣，维持当前方向，准备当前/下一/过场内容；不审批每句话。
+- **制作席**复用真实组件或编写原生 SDK Scene，编译为不可变候选；不能直接上播。
+- **导播**管理未来时间轴、备场、实际 take、驻留和参数更新。
+- **主播**负责当下表达、即兴和留白；编导离线时也可继续工作。
 
-这里使用已有代理配置，不设置系统代理。
+采用真实 Remotion、HyperFrames/GSAP、Scene/Component Kit。D3、Three 等依赖用于原生源码创作。四类可复用示例在 `examples/scenes/`，制作席也可通过 `searchSdk` 的 `aivtb/*` 条目读取。目录中未经验证的能力仍标未认证，不因所属 SDK 或品牌自动宣称实时、patch、确定性回放全部可用。
 
-## 舞台团队
+模型上下文按岗位控制大小，完整历史仍保留；写工具只返回薄回执，详细工程按需读取。普通主人指令单独持久化，恢复与裁剪不会把它们混入普通观察点。模型输出预留按岗位限制；失败有独立健康状态和退避，不能把 ready 当作请求成功。
 
-- **主持人**负责说话、表情和互动内容。普通讲述按节目单最上面的点展开；重要新消息先短回应，再接回原来的话。主持人不能用台词直接控制说明画面、灯光和布景。
-- **编导与黑板**维护当前话题、节目单、素材架、观众要求和历史归档。点题与礼物附言进入点单，由编导决定插入位置与理由；实际念完并点名后才关单。换题保留旧题未讲的安排，删点需说明理由。
-- **说话轨**保存排队、正在念、挂起、已念和撤回的段落，以及真实 TTS 逐字时标。软打断、插队、改稿和接回会同步更新锚点。
-- **画面导演**独立读取说话轨、黑板和画布，持续编辑组件的进场、效果与退场。组件可以跨多段话保留；未执行的计划可改，已执行回执保留。锚点所依赖的话被撤回或改掉时，相关未执行计划作废。
-
-画面不是入队时给每段台词配好的一组装饰。导演由队列变化、话题和素材变化、画布变化及巡场唤醒；事件本身不会直接变成预设画面。运行时校验车道权限、互动保护、排版预算和灯光频率。
-
-控制台的「舞台团队」关闭后停止画面计划，只保留当前主题；再次开启交回画面导演。当前阶段互动道具仍由主持人发起。画面通告回传、完整互动请求交接，以及布景、灯光和音响各自的独立岗位循环仍是后续工作。
-
-## 画面与声音
-
-舞台为 1920×1080，支持海底书房与午夜怪谈布景、说明组件、互动挂件、基础灯光效果和 Live2D 人物。角色与大型素材不进仓库；没有角色资源时使用 SVG 占位。
-
-可选展示字体：
+## 录制与导出
 
 ```sh
-node packages/dsh-livestream/scripts/fetch-font.mjs
+npm run programme:record -- <Ego-space> <page> 10
+npm run programme:export -- <输出的录制目录>
 ```
 
-语音缓存在插件的 `.cache/voice/`。声音从舞台页播放，控制台不代替舞台采音；浏览器首次打开时需允许声音。
+记录实际合成画面及舞台/受信场景客户端的节目混音，生成有声 MP4、规范 WAV、媒体 hash 清单和真正的原生 Film。全舞台回放是**实际播出录制**，包含当时人物、字幕、侧栏、场景与节目音频；不宣称能从旧的、不完整事件重建所有 Live2D 动作。网页预览和 Film 使用同一份媒体。
 
-## 开发与验证
+另有 `harness:film:export` / `harness:film:capture` 对经认证的 Scene 轨做事件级、可逐帧复现的离线回放。两种方式的范围不同，详见[运行说明](docs/harness-runtime.md)。录制不访问麦克风、不连接外部推流平台；未接入节目混音总线的外部工作区视频会明确拒绝录音，避免静默丢失声音。
+
+## 验证
 
 ```sh
 npm run plugin:check
 npm run plugin:test
-npm run plugin:build
-npm run stage          # 独立开发舞台，默认 3900
-npm run stage:demo     # 本地演示
-npm run stage:voice    # 读取根目录 .env 的独立语音舞台
+npm run scene-host:check && npm run scene-host:test
+npm run scene-package:check && npm run scene-package:test
+npm run sdk:doctor
+npm run harness:sim
+# 在 Ego 中打开输出的场景地址后：
+npm run harness:sim:check -- <operator-url>
 ```
 
-程序入口在 `src/host/stagehost.ts`，说话与画面轨在 `src/host/{timeline,track}.ts`，导演在 `src/host/crew/director.ts`，共享黑板在 `src/host/blackboard.ts`。控制台的 `/tracks` 可读取双轨快照。
+持续验证使用 `harness:acceptance`，实际调用本地四个模型岗位，观众输入由脚本提供；不注入模型回答或虚构统计。报告明确区分真人观众、脚本观众、实际播放及未匹配回应。
 
-`scripts/merged-qa/README.md` 说明统一真实语音验收：同一产品版本连续三轮，每轮六分钟团队开启、一分钟关闭，同时检查点单、换题、真实逐字进场、跨段退场、改轨、打断与最简退路。截图使用 ego-browser；原始取证数据、联系表和时间轴由脚本生成，不作为测试答案提交。
+固定私有 SDK 来源、依赖核验、CI 和许可清单见[SDK 重建说明](docs/sdk-reproducibility.md)。公开 CI 不需要私有源码；私有集成需要单独的只读授权，不把未配置/未执行的 job 写成成功。运行数据、生成源码与录制素材保留在 `.deps/`，不自动发布。
 
-基础特效和画布的截图检查分别在 `scripts/fx-qa/` 与 `scripts/ui-qa/`。测试端口与日常控制台分开，避免把测试节目送进正在使用的舞台。
-
-## 首次安装
-
-使用 `npm run plugin:install` 初始化本地 live profile，补齐 web 预设服务。凭据字段见 `.env.example`；不要覆盖已有 `.env`。`HARNESS.md` 记录的是旧版单主持人编排，当前 v2 以 `docs/harness-runtime.md` 和共创 Harness 设计为准。
+历史设计见 [总计划](docs/plans/co-creative-live-harness.md)，当前实现与验收记录以[运行说明](docs/harness-runtime.md)和 GitHub issue 为准。`HARNESS.md` 描述旧版单主持人路径。

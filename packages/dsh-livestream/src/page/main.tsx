@@ -9,10 +9,12 @@ import { Stage } from './Stage';
 import { useNow, useStage } from './useStage';
 import { useSfx } from './sfx';
 import { useAudioBlocked, useVoice } from './voice';
+import { useProgrammeRecording } from './recording';
 
 function App() {
   const [sceneUrl, setSceneUrl] = useState<string>();
   const frame=useRef<HTMLIFrameElement>(null);
+  useProgrammeRecording(frame, sceneUrl);
   const [voice,setVoice]=useState<{subtitle:SubtitleData;playing:boolean}|null>(null);
   const actualMediaTime=useRef(0);
   useEffect(()=>{

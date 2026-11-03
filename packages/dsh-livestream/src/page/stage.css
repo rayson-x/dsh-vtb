@@ -1204,3 +1204,7 @@ body { font-family: var(--sans); color: var(--pearl); -webkit-font-smoothing: an
 .dm-line { flex: none; }
 .dm-user { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .dm-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+
+.harness-roles { width: 100%; border-collapse: collapse; text-align: left; }
+.harness-roles th, .harness-roles td { padding: 8px 4px; border-bottom: 1px solid var(--line); }
+.harness-roles td:last-child { text-align: right; }

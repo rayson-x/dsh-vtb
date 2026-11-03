@@ -13,7 +13,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AVATAR_BASE, WORKSPACE_BASE, type Element, type ElementId } from '../stage/canvas';
 import { STAGE_H, STAGE_W, type Scene, type StageState } from '../stage/protocol';
-import { BOARD, BOARD_EDGE, REGIONS } from '../stage/regions';
+import { BOARD, BOARD_EDGE } from '../stage/regions';
+import { programmeBox } from '../stage/programme-layout';
 import { mainOccupied } from './board';
 import { ProgramWall, Room } from './Room';
 import { Canvas } from './draw/Canvas';
@@ -69,15 +70,7 @@ export function Stage({ state, now, fit = true, programme }: { state: StageState
   // 布景：转场过半前用旧皮；特效里的「震」作用在整个舞台上
   const skin = setPhase(state, now).set;
   const shake = shakeOf(state, now);
-  const content = REGIONS[layout].main;
-  // Keep the player in the stage's coordinate system and below persistent layers.
-  // One stable slot survives layout changes; moving it must not restart playback.
-  const avatar = state.canvas.avatar;
-  const availableWidth = layout === 'chat' && avatar.visible && avatar.x > content.x + 20
-    ? Math.min(content.w, avatar.x - content.x - 20)
-    : content.w;
-  const programmeWidth = Math.min(availableWidth, content.h * 16 / 9);
-  const programmeHeight = programmeWidth * 9 / 16;
+  const programmeFrame=programmeBox(state,layout);
   return (
     <div className="stage-frame" style={fit ? { transform: `translate(${x}px, ${y}px) scale(${scale})` } : undefined}>
       <div className={`stage scene-${layout} ${phase} ${shake ? 'vfx-shaking' : ''}`} data-set={skin} style={shake ? { ['--shake' as string]: shake } : undefined}>
@@ -100,10 +93,10 @@ export function Stage({ state, now, fit = true, programme }: { state: StageState
         </Place>}
 
         {programme && <div className="el programme-surface mover" style={{
-          left: content.x + (availableWidth - programmeWidth) / 2,
-          top: content.y + (content.h - programmeHeight) / 2,
-          width: programmeWidth,
-          height: programmeHeight,
+          left: programmeFrame.x,
+          top: programmeFrame.y,
+          width: programmeFrame.w,
+          height: programmeFrame.h,
           zIndex: 2,
           overflow: 'hidden',
         }}>{programme}</div>}

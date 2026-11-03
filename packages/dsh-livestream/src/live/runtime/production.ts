@@ -62,19 +62,22 @@ export class ProductionRuntime implements RoleRuntime {
   private readonly speechQueue: string[] = [];
   private speaking?: string;
   private synthController?: AbortController;
+  private masterNotes: Array<{id:string;text:string;at:number}> = [];
+  private readonly syntheses = new Map<string, { controller: AbortController; promise: Promise<SpeechClip> }>();
   private sdk: any;
   private sdkLoading?: Promise<any>;
   private sdkError?: string;
   private tickTimer?: ReturnType<typeof setInterval>;
   private isClosing = false;
   private readonly busy = new Set<string>();
+  private readonly sceneErrors = new Map<string,{epoch:number;message:string}>();
   private readonly dispatched = new Set<number>();
   private lastVetoCheck = -10000;
   private tickBusy = false;
   onWake?: (role: AgentRole, text: string, urgent?: boolean) => void;
   onError?: (message: string) => void;
   constructor(
-    private readonly options: { repoRoot: string; dataDir: string; port: number; secret: SecretReader },
+    private readonly options: { repoRoot: string; dataDir: string; port: number; secret: SecretReader; presentation?:()=>unknown },
   ) {
     this.log = new FileEventLog(join(options.dataDir, 'events.jsonl'));
     const actors = Object.fromEntries(
@@ -98,6 +101,7 @@ export class ProductionRuntime implements RoleRuntime {
     });
   }
   async start() {
+    this.masterNotes = await readFile(join(this.options.dataDir,'master-notes.json'),'utf8').then(JSON.parse).catch(()=>[]);
     for (const file of await readdir(join(this.options.dataDir, 'candidates')).catch(() => [] as string[])) {
       if (!file.endsWith('.json')) continue;
       const c = JSON.parse(
@@ -138,44 +142,66 @@ export class ProductionRuntime implements RoleRuntime {
       });
     return this.sdkLoading;
   }
+  async recordMasterNote(text:string) {
+    const next=[...this.masterNotes,{id:randomUUID(),text,at:Date.now()}];
+    await storeJson(join(this.options.dataDir,'master-notes.json'),next);
+    this.masterNotes=next;
+  }
   private error(e: unknown) {
     this.onError?.(e instanceof Error ? e.message : String(e));
   }
   brief(role: AgentRole) {
     const state = this.kernel.view();
-    const briefs = projectRoleBriefs(state);
+    const tail = <T>(items:T[],cap:number) => items.slice(-cap);
+    const map = <T>(items:T[],key:(item:T)=>string) => Object.fromEntries(items.map(item=>[key(item),item]));
+    const current = state.project.currentEpoch;
+    const view = { ...state,
+      audience: tail(state.audience,12),
+      directions: Object.fromEntries(Object.entries(state.directions).map(([id,d])=>[id,{...d,commitment:d.commitment.slice(0,2000),coreQuestion:d.coreQuestion.slice(0,1000),outcomes:d.outcomes.slice(-8).map(x=>x.slice(0,400)),contentPool:d.contentPool.slice(-8).map(x=>({...x,summary:x.summary.slice(0,400)}))}])),
+      speech: map(tail(Object.values(state.speech).filter(p=>p.directionEpoch===current).map(p=>({...p,text:p.text.slice(0,500)})),10),p=>p.partId),
+      tasks: map(Object.values(state.tasks).filter(t=>!t.cancelled&&(t.directionEpoch===current||(t.intendedDirectionId&&state.directions[t.intendedDirectionId]?.status==='preparing'))).sort((a,b)=>Number(a.status==='ready')-Number(b.status==='ready')||b.priority-a.priority).slice(0,12),t=>t.id),
+      scenes: map(tail(Object.values(state.scenes).filter(s=>s.directionEpoch===current&&!['disposed','retired','failed'].includes(s.lifecycle)),8),s=>s.instanceId),
+      proposals: map(tail(Object.values(state.proposals).filter(p=>!['cancelled','presented'].includes(p.status)),12),p=>p.id),
+      performerCues: tail(state.performerCues,6),
+      timeline: {...state.timeline,segments:tail(state.timeline.segments,12)},
+    };
+    const briefs = projectRoleBriefs(view);
     return {
       epoch: this.kernel.epoch(),
+      presentation: this.options.presentation?.(),
       role,
       playbackConnected: this.gateway.connected(),
+      sceneErrors: Object.fromEntries([...this.sceneErrors].filter(([,e])=>e.epoch===current).slice(-8)),
       sdk: {
         state: this.sdk ? 'ready' : this.sdkLoading ? 'loading' : this.sdkError ? 'blocked' : 'not-requested',
         ...(this.sdkError ? { reason: this.sdkError } : {}),
       },
-      brief: briefs[role],
+      masterNotes: this.masterNotes.slice(-16).map(n=>({...n,text:n.text.slice(0,700),excerpt:n.text.length>700})),
+      masterNoteCount: this.masterNotes.length,
+      brief: role==='production' ? briefs.production.slice(0,1).map(v=>({...v,task:v.task?{...v.task,goal:v.task.goal.slice(0,4000),goalExcerpt:v.task.goal.length>4000}:null})) : briefs[role],
       revisions: {
-        show: state.project,
-        directions: state.directions,
-        timeline: state.timeline,
+        show: {id:state.project.id,revision:state.project.revision,currentEpoch:current,currentDirectionId:state.project.currentDirectionId,channel:state.project.channel},
+        directions: Object.fromEntries(Object.entries(view.directions).filter(([id,d])=>id===state.project.currentDirectionId||d.status==='preparing').slice(-4).map(([id,d])=>[id,{id,revision:d.revision,epoch:d.epoch,status:d.status,commitment:d.commitment,coreQuestion:d.coreQuestion}])),
+        timeline: view.timeline,
         speech: Object.fromEntries(
-          Object.entries(state.speech).filter(
+          Object.entries(view.speech).filter(
             ([, p]) => !['ended', 'cancelled', 'aborted', 'failed'].includes(p.state),
           ),
         ),
-        scenes: state.scenes,
-        tasks: state.tasks,
-        proposals: state.proposals,
+        scenes: Object.fromEntries(Object.entries(view.scenes).map(([id,s])=>[id,{instanceId:id,revision:s.revision,directionEpoch:s.directionEpoch,assetVersionId:s.assetVersionId,codeVersion:s.codeVersion,inputsRevision:s.inputsRevision,lifecycle:s.lifecycle,readiness:Object.fromEntries(Object.entries(s.readiness).map(([key,gate])=>[key,{status:gate.status,hint:JSON.stringify(gate).slice(0,240)}]))}])),
+        tasks: Object.fromEntries(Object.entries(view.tasks).map(([id,t])=>[id,{id,revision:t.revision,version:t.version,status:t.status,directionEpoch:t.directionEpoch,intendedDirectionId:t.intendedDirectionId,liveEligible:t.liveEligible,cancelled:t.cancelled,assetVersionIds:t.assetVersionIds.slice(-4)}])),
+        proposals: Object.fromEntries(Object.entries(view.proposals).map(([id,p])=>[id,{id,revision:p.revision,status:p.status,intent:p.intent.slice(0,400)}])),
       },
       candidates: [...this.candidates.values()]
         .map((c) => this.candidateContext(c))
         .filter((c): c is NonNullable<typeof c> => !!c)
-        .map(({ file, ...c }) => c),
+        .slice(-8).map(({file,props,...c})=>({...c,propsAvailable:!!props})),
       recentEvents: this.kernel
         .allEvents()
         .slice(-10)
         .map((e) => ({ eventId: e.eventId, type: e.type, showTime: e.showTime })),
       commandFormat:
-        'Always directionEpoch. New records get target/revision/id from runtime; updates require expectedRevision from revisions.',
+        'Brief text fields are excerpts. Use readTask({taskId,offset}) or readProgramme({instanceId}) for targeted detail; masterOffset pages durable master instructions. Always directionEpoch. New records get target/revision/id from runtime; updates require expectedRevision from revisions.',
       toolContracts: {
         offerSpeech: '{directionEpoch,text,partId?}',
         requestProduction:
@@ -217,6 +243,10 @@ export class ProductionRuntime implements RoleRuntime {
   }
   async invoke(role: AgentRole, tool: string, args: Record<string, any>): Promise<unknown> {
     if (!(TOOL_PERMISSIONS[role] as readonly string[]).includes(tool)) throw Error('Role tool denied');
+    if (tool.startsWith('read') && args.masterOffset!==undefined) {const offset=Math.max(0,Number(args.masterOffset)||0);return {epoch:this.kernel.epoch(),masterNotes:this.masterNotes.slice(offset,offset+4),nextOffset:offset+4<this.masterNotes.length?offset+4:null};}
+    if(tool.startsWith('read')&&args.directionId){const d=this.kernel.view().directions[String(args.directionId)];const offset=Math.max(0,Number(args.offset)||0);return d?{id:d.id,revision:d.revision,epoch:d.epoch,commitment:d.commitment.slice(offset,offset+8000),coreQuestion:d.coreQuestion.slice(0,2000),nextOffset:offset+8000<d.commitment.length?offset+8000:null}:null;}
+    if(tool==='readTask'&&args.taskId){const task=this.kernel.view().tasks[String(args.taskId)];const offset=Math.max(0,Number(args.offset)||0);return {epoch:this.kernel.epoch(),task:task?{...task,goal:task.goal.slice(offset,offset+8000)}:null,nextOffset:task&&offset+8000<task.goal.length?offset+8000:null};}
+    if(tool==='readProgramme'&&args.instanceId){const scene=this.kernel.view().scenes[String(args.instanceId)];if(!scene)return null;const {playbackSamples,...detail}=scene;return {epoch:this.kernel.epoch(),scene:detail,sampleCount:playbackSamples?.length??0};}
     if (tool.startsWith('read')) return this.brief(role);
     if (tool === 'inspectCandidate')
       return {
@@ -227,9 +257,11 @@ export class ProductionRuntime implements RoleRuntime {
       };
     if (tool === 'searchSdk') {
       const sdk = await this.loadSdk();
-      return { guide: await sdk.readGuide(args.path ?? 'INDEX.md'), pin: sdk.provenance.commit };
+      const examples:Record<string,string>={'aivtb/remotion':'remotion.tsx','aivtb/hyperframes':'hyperframes.ts','aivtb/d3':'d3.ts','aivtb/three':'three.ts'};
+      const path=String(args.path??'INDEX.md');
+      const guide=examples[path]?await readFile(join(this.options.repoRoot,'examples/scenes',examples[path]),'utf8'):await sdk.readGuide(path);const offset=Math.max(0,Number(args.offset)||0);const end=offset+16000;return {guide:guide.slice(offset,end),offset,nextOffset:end<guide.length?end:null,pin:sdk.provenance.commit,integrationExamples:Object.keys(examples)};
     }
-    if (tool === 'searchEffects') return this.effects(String(args.query ?? ''));
+    if (tool === 'searchEffects') return this.effects(String(args.query ?? ''),args.includeSource===true);
     if (tool === 'offerSpeech' && this.speechQueue.length >= 1)
       return {
         ok: false,
@@ -302,12 +334,18 @@ export class ProductionRuntime implements RoleRuntime {
     const result = this.submit(role, target, payload, { commandId, directionEpoch, expectedRevision });
     if (!result.ok) return result;
     if (this.dispatched.has(result.acceptSequence))
-      return { ...result, reused: true, latest: this.brief(role) };
+      return {ok:true,acceptSequence:result.acceptSequence,reused:true,epoch:this.kernel.epoch(),target,revision:this.kernel.revision(target)};
     this.dispatched.add(result.acceptSequence);
     // One command owner dispatches effects; fixture Desks are never part of this path.
     if (tool === 'offerSpeech') {
       this.speechQueue.push(args.partId);
+      this.prepareSpeech(args.partId);
       void this.pumpSpeech().catch((e) => this.error(e));
+    } else if (tool === 'yieldSpeech') {
+      const index = this.speechQueue.indexOf(args.partId);
+      if (index >= 0) this.speechQueue.splice(index, 1);
+      this.syntheses.get(args.partId)?.controller.abort();
+      this.syntheses.delete(args.partId);
     } else if (tool === 'requestProduction')
       this.onWake?.('production', '有新的制作任务。读取任务与版本，后台制作不得阻塞现场。');
     else if (tool === 'publishCandidate')
@@ -364,7 +402,7 @@ export class ProductionRuntime implements RoleRuntime {
       this.disposedRetiredScenes(observation?.observedAtShowTime);
     } else if (tool === 'updateInputs')
       await this.applyPatch(args.instanceId, commandId, args.inputsRevision, args.inputs);
-    return { ...result, latest: this.brief(role) };
+    return {ok:true,acceptSequence:result.acceptSequence,epoch:this.kernel.epoch(),target,revision:this.kernel.revision(target)};
   }
   private target(tool: string, args: Record<string, any>): CommandTarget {
     if (['offerSpeech', 'yieldSpeech'].includes(tool))
@@ -576,7 +614,7 @@ export class ProductionRuntime implements RoleRuntime {
       this.busy.delete(id);
     }
   }
-  private async effects(query: string) {
+  private async effects(query: string, includeSource = false) {
     const sdk = await this.loadSdk();
     const root = join(sdk.root, 'library/sources');
     const entries: any[] = [];
@@ -585,20 +623,46 @@ export class ProductionRuntime implements RoleRuntime {
         const folder = join(root, source, name);
         const entry = JSON.parse(await readFile(join(folder, 'component.json'), 'utf8').catch(() => 'null'));
         if (entry && JSON.stringify(entry).toLowerCase().includes(query.toLowerCase())) {
-          const implementation = await readFile(join(folder, 'index.ts'), 'utf8').catch(() => undefined);
+          const implementation = includeSource ? await readFile(join(folder, 'index.ts'), 'utf8').catch(()=>undefined) : undefined;
           entries.push({
-            ...entry,
+            id:entry.id,name:entry.name,summary:entry.summary,params:entry.params,media:entry.media,version:entry.version,source:entry.source,
             path: `library/sources/${source}/${name}`,
             reuse: { tool: 'workspaceBuildPreview', effectPath: `library/sources/${source}/${name}` },
-            ...(implementation ? { implementation } : {}),
+            ...(implementation && implementation.length<=24000 ? { implementation } : {}),
           });
         }
       }
     return {
-      entries: entries.slice(0, 12),
-      scaffoldGuide: await sdk.readGuide('INDEX.md'),
+      entries: entries.slice(0, includeSource?1:6),
+      scaffoldGuide: 'Read searchSdk INDEX.md; use effectPath for direct reuse. includeSource=true returns one bounded source entry.',
       note: 'Read/copy source via authorized SDK workspace; no database is required for these local components',
     };
+  }
+  private prepareSpeech(partId: string) {
+    const prior = this.syntheses.get(partId);
+    if (prior) return prior;
+    const part = this.kernel.view().speech[partId];
+    const controller = new AbortController();
+    const promise = Promise.resolve().then(async () => {
+      if (!part || part.state !== 'offered' || part.directionEpoch !== this.kernel.epoch() || this.isClosing)
+        throw Error('Speech is no longer eligible for synthesis');
+      return this.voice.synthesize(part.text, controller.signal);
+    });
+    // One current part plus the bounded future queue; preparation never sends media.
+    void promise.catch(() => {});
+    const entry = { controller, promise };
+    this.syntheses.set(partId, entry);
+    return entry;
+  }
+  private cancelSpeechPreparation() {
+    this.synthController?.abort();
+    for (const entry of this.syntheses.values()) entry.controller.abort();
+    this.syntheses.clear();
+    for (let i = this.speechQueue.length - 1; i >= 0; i--) {
+      const part = this.kernel.view().speech[this.speechQueue[i]];
+      if (this.isClosing || !part || part.directionEpoch !== this.kernel.epoch() || part.state !== 'offered')
+        this.speechQueue.splice(i, 1);
+    }
   }
   private async pumpSpeech() {
     if (this.speaking || this.isClosing) return;
@@ -609,9 +673,9 @@ export class ProductionRuntime implements RoleRuntime {
       const part = this.kernel.view().speech[partId];
       if (!part || part.directionEpoch !== this.kernel.epoch() || part.state !== 'offered') return;
       const target: CommandTarget = { kind: 'speechPart', id: partId };
-      const controller = new AbortController();
+      const { controller, promise } = this.prepareSpeech(partId);
       this.synthController = controller;
-      const clip = await this.voice.synthesize(part.text, controller.signal);
+      const clip = await promise;
       if (this.synthController === controller) this.synthController = undefined;
       if (
         part.directionEpoch !== this.kernel.epoch() ||
@@ -639,6 +703,7 @@ export class ProductionRuntime implements RoleRuntime {
       // The playing event, not this command acknowledgement, moves speech to playing.
       return;
     } catch (error) {
+      if (this.isClosing) return;
       const part = this.kernel.view().speech[partId];
       if (part && ['starting', 'playing'].includes(part.state))
         this.submit(
@@ -661,8 +726,11 @@ export class ProductionRuntime implements RoleRuntime {
       this.speaking = undefined;
       this.error(error);
     } finally {
+      this.syntheses.delete(partId);
       if (!['starting', 'playing'].includes(this.kernel.view().speech[partId]?.state ?? ''))
         this.speaking = undefined;
+      if (!this.speaking && this.speechQueue.length && !this.isClosing)
+        queueMicrotask(() => void this.pumpSpeech().catch(e => this.error(e)));
     }
   }
   private fulfill(evidenceId: string) {
@@ -693,6 +761,7 @@ export class ProductionRuntime implements RoleRuntime {
     }
   }
   private async receipt(event: Record<string, any>) {
+    if(event?.type==='error'&&typeof event.instanceId==='string'){this.sceneErrors.set(event.instanceId,{epoch:Number(event.epoch),message:String(event.error).slice(0,300)});if(this.sceneErrors.size>16)this.sceneErrors.delete(this.sceneErrors.keys().next().value!);this.onWake?.('director',`场景 ${event.instanceId} 实际运行报错；读取sceneErrors并选择替代或重做，不要把失败视作已播效果。`,true);return;}
     if (event.type === 'clock' && event.epoch === this.kernel.epoch() && Number.isFinite(event.showTime)) {
       this.clock.showTime = Math.max(this.clock.now(), event.showTime);
       return;
@@ -801,7 +870,7 @@ export class ProductionRuntime implements RoleRuntime {
         : { transition: true },
     });
     if (result.ok) {
-      this.synthController?.abort();
+      this.cancelSpeechPreparation();
     }
     if (result.ok && this.gateway.connected()) {
       await this.gateway.execute('setEpoch', this.kernel.epoch(), { keepSpeech: !hard });
@@ -892,7 +961,7 @@ export class ProductionRuntime implements RoleRuntime {
         : { transition: true },
     });
     if (!switched.ok) return;
-    this.synthController?.abort();
+    this.cancelSpeechPreparation();
 
     if (this.gateway.connected()) {
       await this.gateway.execute('setEpoch', this.kernel.epoch(), { keepSpeech: true });
@@ -978,7 +1047,7 @@ export class ProductionRuntime implements RoleRuntime {
   }
   async stop() {
     this.isClosing = true;
-    this.synthController?.abort();
+    this.cancelSpeechPreparation();
     if (this.tickTimer) clearInterval(this.tickTimer);
     await this.gateway.stop();
     this.log.close();

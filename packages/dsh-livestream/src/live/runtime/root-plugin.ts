@@ -1,3 +1,4 @@
+import { programmeBox } from '../../stage/programme-layout';
 import { resolve } from 'node:path';
 import { createServer } from 'node:http';
 import { RuntimeInputs, StageJournalConsumer } from './inputs';
@@ -11,11 +12,16 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
   const repoRoot = resolve(PACKAGE_ROOT, '../..');
   const runtime = new ProductionRuntime({
     repoRoot,
-    dataDir: resolve(repoRoot, '.deps/live-v2'),
+    dataDir: resolve(process.env.AIVTB_DATA_DIR ?? resolve(repoRoot, '.deps/live-v2')),
     port: Number(process.env.AIVTB_SCENE_PORT ?? 3930),
     secret,
+    presentation:()=>({layout:stage.state.scene,programmeFrame:programmeBox(stage.state),coordinateSystem:'1920x1080 target layout'}),
   });
   const team = new DshLiveTeam(ctx, runtime, PACKAGE_ROOT);
+  ctx.effect(() => ctx.on('agent/pre-step', ({agent,signal}:any,next:()=>Promise<unknown>) => {
+    if (!signal?.aborted) team.prepareStep(agent);
+    return next();
+  }), 'v2 bounded role contexts');
   runtime.onWake = (role, text, urgent) => team.wake(role, text, urgent);
   runtime.onError = (message) => ctx.logger?.warn?.(`live-v2: ${message}`);
   bindTeam(team);
@@ -48,7 +54,12 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
         transportReady = true;
         if (record.live) {
           await starting;
+          const state=runtime.kernel.view();
+          if(record.direction&&state.project.currentEpoch===1&&state.directions[state.project.currentDirectionId]?.commitment==='初始方向') {
+            await runtime.switchDirection(record.direction);show.direction=record.direction;
+          }
           await team.start();
+          if(show.direction)stage.setShow({direction:show.direction});
         }
       })().catch((e: Error) => {
         transportReady = false;
@@ -119,6 +130,8 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
         if (![`127.0.0.1:${expectedPort}`, `localhost:${expectedPort}`].includes(String(req.headers.host)))
           return send(403, { ok: false });
         const url = new URL(req.url ?? '/', 'http://brain');
+        if (req.method === 'GET' && url.pathname === '/live/playback')
+          return send(200, { snapshot: await runtime.gateway.execute('snapshot', runtime.kernel.epoch(), {}) });
         if (req.method === 'GET' && url.pathname === '/live/harness')
           return send(200, {
             roles: team.snapshot(),
@@ -133,6 +146,7 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
             direction: show.direction,
             roles: team.snapshot(),
             roleErrors: team.errors(),
+            sdk: runtime.brief('production').sdk,
             playbackConnected: runtime.gateway.connected(),
           });
         // Existing stage control transport is loopback. Reject cross-origin/form requests.
@@ -193,7 +207,9 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
               body.cut === true || !!explicitDirection?.[1],
             );
             show.direction = String(nextDirection);
+            stage.setShow({direction:show.direction});
           } else {
+            await runtime.recordMasterNote(message);
             team.wake('performer', `主人：${message}`, true);
             team.wake('director', `主人现场要求：${message}`, true);
             team.wake('editorial', `主人要求：${message}`);

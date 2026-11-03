@@ -17,6 +17,10 @@ export async function resolveSdkSource({
   sourceRepo = process.env.AIVTB_SDK_REPO,
   cacheRoot = resolve('.deps/sdk'),
 } = {}) {
+  if (!sourceRepo) {
+    const config = await readFile(join(dirname(resolve(cacheRoot)), 'sdk-source.json'), 'utf8').then(JSON.parse).catch(() => undefined);
+    sourceRepo = config?.sourceRepo;
+  }
   if (!sourceRepo) throw Error('Set AIVTB_SDK_REPO to an authorized private SDK git checkout');
   sourceRepo = await realpath(sourceRepo);
   cacheRoot = resolve(cacheRoot);
@@ -215,6 +219,11 @@ export async function sdkTools(options = {}) {
   };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const source = await resolveSdkSource();
+  const sourceRepo = process.argv[2] || process.env.AIVTB_SDK_REPO;
+  const source = await resolveSdkSource({ sourceRepo });
+  if (sourceRepo) {
+    await mkdir(resolve('.deps'), { recursive: true });
+    await writeFile(resolve('.deps/sdk-source.json'), JSON.stringify({ sourceRepo: await realpath(sourceRepo), commit: SDK_PIN }));
+  }
   console.log(JSON.stringify({ root: source.root, ...source.provenance }));
 }

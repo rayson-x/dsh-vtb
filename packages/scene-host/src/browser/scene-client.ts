@@ -1,4 +1,5 @@
 import { BrowserSceneHost } from './host';
+import { blockUntrackedAudio } from './audio-policy';
 const nonce = location.hash.slice(1),
   origin = new URL(import.meta.url).origin;
 // The capability channel is established before importing generated code. No later
@@ -15,6 +16,10 @@ function connect(event: MessageEvent) {
   window.removeEventListener('message', connect);
   const port = event.ports[0],
     send = port.postMessage.bind(port);
+  let audioViolation:string|undefined;
+  const reportAudio=(message:string)=>{audioViolation=message;send({type:'error',error:message});};
+  blockUntrackedAudio(reportAudio);
+  window.addEventListener('message',event=>{if(event.source!==parent&&event.data?.source==='aivtb-scene-audio-policy')reportAudio(String(event.data.error));});
   const host = new BrowserSceneHost(document.getElementById('stage')!, (e) => {
     if (e.type === 'error') send({ ...e, type: 'error' });
   });
@@ -46,9 +51,13 @@ function connect(event: MessageEvent) {
           case 'resume':
             value = host.resume(op.payload.instanceId);
             break;
+          case 'dispose':
+            await host.dispose(op.payload.instanceId);
+            break;
           default:
             throw Error('Unsupported scene operation');
         }
+        if(audioViolation)throw Error(audioViolation);
         send({ type: 'result', opId: op.opId, ok: true, value: value ?? null });
       } catch (error) {
         send({ type: 'result', opId: op.opId, ok: false, error: String(error) });

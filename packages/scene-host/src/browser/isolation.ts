@@ -62,6 +62,7 @@ export class IsolatedSceneHost {
     if (this.slots.size >= 2) throw Error('Standby full');
     const frame = document.createElement('iframe');
     frame.sandbox.add('allow-scripts');
+    frame.allow="autoplay 'none'; microphone 'none'; camera 'none'";
     frame.title = '节目画面';
     frame.style.cssText =
       'position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;pointer-events:none';
@@ -211,6 +212,13 @@ export class IsolatedSceneHost {
   async dispose(id: string) {
     const s = this.slots.get(id);
     if (!s) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        this.call(s, 'dispose', { instanceId: id }).catch(() => {}),
+        new Promise<void>(resolve => { timer=setTimeout(resolve,250); }),
+      ]);
+    } finally { if(timer)clearTimeout(timer); }
     this.slots.delete(id);
     s.cancelLoad();
     for (const p of s.pending.values()) {

@@ -122,3 +122,10 @@ it('collects messages during preset setup without polling or invoking an unready
   expect(editorial.calls).toContain('followup');
   expect(team.snapshot().find((r) => r.role === 'editorial')?.ready).toBe(true);
 });
+it('exposes request failures and backs off until the operator resumes only that role',async()=>{
+ vi.useFakeTimers();const {team,agents}=setup();await team.start();const actor=agents.get('live-v2-performer')!;actor.calls=[];
+ team.observeEvent(actor.session,{type:'turn/end',data:{reason:{kind:'error',error:{code:'CONTEXT_WINDOW_EXCEEDED'}}}});
+ expect(team.snapshot().find(r=>r.role==='performer')?.error).toBe('CONTEXT_WINDOW_EXCEEDED');
+ team.poll();await vi.advanceTimersByTimeAsync(1000);expect(actor.calls).toEqual([]);
+ await team.setOnline('performer',true);expect(actor.calls).toContain('followup');expect(team.errors()).not.toHaveProperty('performer');
+});
