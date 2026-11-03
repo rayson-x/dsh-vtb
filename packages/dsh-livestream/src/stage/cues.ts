@@ -43,6 +43,7 @@ export const CUE_HELP = [
   '节目单：每段讲最上面的点，讲完在整段末尾写 [[beat done b编号]]。对应观众点单时正文必须点名；实际念到末尾才结点并关单。编号以节目单为准，写错报错。',
   '点单兑现：在兑现那句点名点单人，兑现整段的最后写 [[done o1]]；婉拒说明理由后，在整段最后写 [[decline o1]]。关闭标记后不能再跟正文（句末标点除外），写早了会报错且不关闭。编号必须来自未兑现点单簿，写错会报错。',
   '你只管说话，画面导演独立管理画布、灯光与布景。不要写画面、灯光、布景或意图标记；团队关闭时程序显示当前主题。',
+  '禁止 [[show]]，也禁止说明类 [[draw text]]、[[draw list]]、[[draw versus]]、[[fx]]、[[room]]、[[page]]、[[erase]]。这些标记会被丢掉。',
   ...(['poll', 'tier', 'score', 'guess', 'soup', 'timer', 'wall'] as const).map((kind) => KIND_HELP[kind]),
   '互动结果用 [[result 编号]]，答案 [[ans 编号 是]]（是/不是/不重要），评档 [[judge 编号 东西]]，排序 [[rank 编号 选项 档位]]。',
   '[[mood happy]]（neutral happy surprised thinking sad）  [[emote laugh]] 头边冒个表情包（' + EMOTE_MENU + '；也可以直接写一个 emoji，比如 [[emote 🥹]]），点到为止，一段最多一个',

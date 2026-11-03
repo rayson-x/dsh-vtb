@@ -5,7 +5,10 @@
 
 import { toolPairingBalancedAfter, toolPairingBalancedBefore } from '@deepseek-ai/dsh-compaction';
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
+import { applyV2Root } from '../live/runtime/root-plugin';
 import { createLive } from './live';
+import type { Agent, AssistantStreamFrame } from '@deepseek-ai/dsh-agent';
+import { observeGeneration } from './urgent';
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { bindCredentials, BRAIN_PORT, desk, show, stage, STAGE_URL, trace } from './runtime';
 import { createTracer, type Tracer } from './trace';
@@ -109,6 +112,7 @@ interface HostContext {
 }
 
 export function apply(ctx: HostContext, config: Config = {}): void {
+  if (process.env.AIVTB_HARNESS === 'v2') { applyV2Root(ctx, config); return; }
   bindCredentials(ctx);
   // 直播会话的上下文：每一步之前看一眼，超出窗口的整块换成便签。只管这一场的会话，别的会话不碰
   const window = {
@@ -174,9 +178,10 @@ export function apply(ctx: HostContext, config: Config = {}): void {
     }
     trace.push(tracer!(event));
   }), 'dsh-livestream 轨迹');
-  ctx.effect(() => ctx.on('agent/assistant-stream', ({ agent, frame }: { agent: any; frame: any }) => {
+  ctx.effect(() => ctx.on('agent/assistant-stream', ({ agent, frame }: { agent: Agent; frame: AssistantStreamFrame }) => {
+    observeGeneration(agent, frame);
     if (!show.sessionId || agent?.session?.id !== show.sessionId) return;
-    if (frame?.type === 'chunk' || frame?.chunk) {
+    if (frame.type === 'chunk') {
       const chunk = frame.chunk;
       if (chunk?.type === 'reasoning-delta' && chunk.text) trace.think(String(chunk.text));
     }

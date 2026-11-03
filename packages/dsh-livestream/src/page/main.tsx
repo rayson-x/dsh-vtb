@@ -1,13 +1,47 @@
 /** 舞台页入口：OBS 浏览器源打开的就是这个 */
 
+import { useEffect, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
+import {setPlaying} from './mouth';
+import type {Subtitle as SubtitleData} from '../stage/protocol';
 import { SET_IDS } from '../stage/sets';
 import { Stage } from './Stage';
 import { useNow, useStage } from './useStage';
 import { useSfx } from './sfx';
 import { useAudioBlocked, useVoice } from './voice';
+import { useProgrammeRecording } from './recording';
 
 function App() {
+  const [sceneUrl, setSceneUrl] = useState<string>();
+  const frame=useRef<HTMLIFrameElement>(null);
+  useProgrammeRecording(frame, sceneUrl);
+  const [voice,setVoice]=useState<{subtitle:SubtitleData;playing:boolean}|null>(null);
+  const actualMediaTime=useRef(0);
+  useEffect(()=>{
+    const receive=(event:MessageEvent)=>{
+      if(!sceneUrl||event.origin!==sceneUrl||event.source!==frame.current?.contentWindow||event.data?.type!=='aivtb-v2-voice')return;
+      const data=event.data;if(typeof data.partId!=='string')return;
+      if(['ended','aborted','error'].includes(data.kind)){setVoice(null);setPlaying(undefined);return;}
+      if(Number.isFinite(data.mediaTimeMs))actualMediaTime.current=data.mediaTimeMs;
+      if(data.kind==='playing'&&typeof data.text==='string'){setPlaying({id:data.partId,ms:()=>actualMediaTime.current});setVoice({playing:true,subtitle:{id:data.partId,text:data.text,startedAt:Date.now()-actualMediaTime.current,ms:Number(data.ms)||1000,...(Array.isArray(data.starts)?{starts:data.starts}:{})}});}
+      if(data.kind==='pause')setVoice(previous=>previous?{...previous,playing:false}:null);
+    };
+    window.addEventListener('message',receive);return()=>{window.removeEventListener('message',receive);setPlaying(undefined);};
+  },[sceneUrl]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const check = async () => {
+      try {
+        const response = await fetch('/harness' + location.search, { signal: controller.signal });
+        if (!response.ok) return;
+        const data = await response.json();
+        const url = data.sceneUrl ? new URL(data.sceneUrl) : undefined;
+        setSceneUrl(data.mode === 'v2' && url?.protocol === 'http:' && url.hostname === '127.0.0.1' ? url.origin : undefined);
+      } catch { /* A disconnected stage keeps its last image. */ }
+    };
+    void check(); const timer = setInterval(() => void check(), 2000);
+    return () => { controller.abort(); clearInterval(timer); };
+  }, []);
   const live = useStage();
   const now = useNow(live.offset);
   useVoice(live.state);
@@ -16,7 +50,8 @@ function App() {
   if (!live.state) return null;
   return (
     <>
-      <Stage state={live.state} now={now} />
+      <Stage state={sceneUrl ? {...live.state,subtitle:voice?.subtitle??null,avatar:{...live.state.avatar,speaking:voice?.playing??false}} : live.state} now={now}
+        programme={sceneUrl ? <iframe ref={frame} title="节目场景" referrerPolicy="origin" src={sceneUrl} allow="autoplay" style={{ width: '100%', height: '100%', border: 0, display: 'block', background: 'transparent' }} /> : undefined} />
       {/* 浏览器拦着不让出声：提示点一下（点了就消失）。OBS 浏览器源、带自动播放参数的窗口不会出现 */}
       {blocked && <div className="audio-blocked">🔇 点一下页面开声音</div>}
     </>

@@ -5,12 +5,17 @@
  * 每个工具做完回一份薄情报（舞台现在大概什么样），不回整包状态。被拒绝时回理由，她照着改。
  */
 
+import { applyRoleAgent } from '../live/runtime/agent-plugin';
+import type { AgentRole } from '../live/domain/codes';
 import type { PlanEdit } from '../host/blackboard';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { appendFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { installModelSelection } from '@deepseek-ai/dsh-agent';
+import { installModelSelection, type AgentRegistry } from '@deepseek-ai/dsh-agent';
+import { SessionId } from '@deepseek-ai/dsh-session';
+import { createUserMessage } from '@deepseek-ai/dsh-llm';
+import { steerHost } from './urgent';
 import { defineTool, type ParameterSchemaSpec } from '@deepseek-ai/dsh-tools';
 import { brief } from '../stage/brief';
 import { clockNow } from './clock';
@@ -112,6 +117,7 @@ function bad(message: string): string {
 }
 
 export interface Config {
+  v2Role?: AgentRole;
   /** 她的性格文件：soul/<名字>.md，作为人设里的 {{soul}} */
   soul?: string;
   /** performer：台上的她（默认）；worker：后台，只查资料、挑画面、交素材，不说话不碰舞台 */
@@ -139,7 +145,7 @@ function takeVisuals(task: Task, text: string): { text: string; error?: string }
     const v = visuals[i++]!;
     const id = `${task.id}-${v.id}`;
     desk.visuals.set(id, { ...v, id });
-    // 舞台那边登记上，[[show 编号]] 才找得到
+    // 舞台那边登记上，画面导演才找得到
     stage.putVisual({ ...v, id });
     return `素材编号 ${id}（由画面导演管理，不写上屏标记）：${VISUAL_NAMES[v.kind]}${'title' in v && v.title ? `「${v.title}」` : ''}`;
   });
@@ -157,6 +163,8 @@ function readSoul(name: string): string {
 }
 
 export function apply(ctx: AgentContext, config: Config = {}): void {
+  if (config.v2Role) { applyRoleAgent(ctx, config.v2Role); return; }
+  if (process.env.AIVTB_HARNESS === 'v2') return;
   bindCredentials(ctx);
   // 性格：每次组装提示词时读一次文件，改了 soul 不用重启（内容不变时提示词前缀不变，缓存照样命中）
   const soulName = config.soul ?? 'whale-maid';
@@ -248,15 +256,14 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
    * 往她的会话推一条消息并唤醒她：插进她这一轮的下一步（她闲着就马上开一轮）。
    * 不能排到下一轮：直播时她一轮能说半小时，排到下一轮就等于丢了。找不到会话返回 false
    */
-  const push = async (text: string): Promise<boolean> => {
+  const push = async (text: string, urgent = false): Promise<boolean> => {
     const id = show.sessionId ?? sessionId;
     if (!id) return false;
-    const found = ctx.get?.('agents')?.get?.(id);
-    const agent = found?.followup ? found : found?.agent;
-    if (!agent?.followup) return false;
-    const message = Object.freeze({ id: randomUUID(), role: 'user', content: [{ type: 'text', text }], source: { kind: 'dsh-livestream' } });
-    if (agent.steer) await agent.steer(message);
-    else await agent.followup(message);
+    const registry: AgentRegistry | undefined = ctx.get?.('agents');
+    const agent = registry?.get(SessionId(id));
+    if (!agent) return false;
+    const message = createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'dsh-livestream' } });
+    steerHost(agent, message, urgent);
     return true;
   };
 
@@ -321,7 +328,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
 
     register({
       name: 'plan_update',
-      description: '编导立即改当前话题节目单。先处理点题再查资料，十秒内给安排。观众点题放在眼前这个点之后，马上或讲完当前点后兑现；只有观众明确要求稍后，才可以排到资料后面。任何写兑现某人点单的点必须带有效 pending 点单编号，已关闭要求不要重开。读取黑板，保留被挤后的点；add 每项写 text、material（素材架编号）、reason、order（点单编号）、position（now/after-current/later）；remove 写 id 和 reason；move 写 id、position、reason。已有素材够讲就引用，不捏造事实。换话题要求先安排收尾，主持人开新话题；未兑现点单在新话题继续安排。',
+      description: '编导立即改当前话题节目单。先处理点题再查资料，十秒内给安排。观众点题放在眼前这个点之后，马上或讲完当前点后兑现；只有观众明确要求稍后，才可以排到资料后面。任何写兑现某人点单的点必须带有效 pending 点单编号，已关闭要求不要重开。读取黑板，保留被挤后的点；add 每项写 text、material（素材架编号）、reason、order（点单编号）、position（now/after-current/later）；这一批里最多一个点再写 hook（最多40字）和 device（text/number/versus/bars/line/timeline/flow/list/card/image/hold），可选 materialIds（素材架编号，最多两个）、setHint、sceneHint。不要写 phase。remove 写 id 和 reason；move 写 id、position、reason。已有素材够讲就引用，不捏造事实。换话题要求先安排收尾，主持人开新话题；未兑现点单在新话题继续安排。',
       parameters: { edit: { oneOf: [{ type: 'string' }, { type: 'object', additionalProperties: true }], required: true, description: 'JSON 对象，含 add/remove/move 数组' } },
       async run(args, exec) {
         const task = mine(exec);
@@ -350,7 +357,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
       parameters: {
         kind: { type: 'string', enum: ['start', 'cards', 'answer', 'visual', 'progress', 'fail'], required: true },
         text: { type: 'string', required: true, description: '交的内容' },
-        plan: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'object', additionalProperties: true } }], description: 'start/cards 必填：JSON 数组，3–5 个接下来讲的点，每项 text（讲什么）、reason（为何放这里）、material（可省，默认这批资料编号）、order（有关联点单时填）。保留现有点，不重复已讲点。' },
+        plan: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'object', additionalProperties: true } }], description: 'start/cards 必填：JSON 数组，3–5 个接下来讲的点，每项 text（讲什么）、reason（为何放这里）、material（可省，默认这批资料编号）、order（有关联点单时填）。这一批最多一个点再写 hook 和 device，可选 materialIds。不要写 phase。保留现有点，不重复已讲点。' },
         title: { type: 'string', description: '话题名（交 start 时必填，短，观众一看就懂）' },
       },
       async run(args, exec) {
@@ -461,7 +468,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
         if (!news) return;
         lastBreakAt = Date.now();
         const checkpoint = ownerNews ? await stage.call<string>('speech.break', { news: ownerNews }) : '';
-        await push(`【直播间·马上回】\n${news}${checkpoint ? `\n${checkpoint}\n${HELD_NOTE}` : ''}`);
+        await push(`【直播间·马上回】\n${news}${checkpoint ? `\n${checkpoint}\n${HELD_NOTE}` : ''}`, true);
       })().catch(() => undefined).finally(() => { busy = false; });
     }, 500);
     timer.unref?.();
@@ -477,7 +484,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
       + '字幕会自己演：你只管标语气（tone）和重音——要强调的词用 *星号* 包起来（一段一两处），念到时字幕上那个词会放大变色，里面有数字会滚上去；'
       + '想做个表情就写 [[emote laugh]]（笑出声，还有 shock、cry、love、think、fire、clap、sweat、star、question、party……也可以直接写一个 emoji），点到为止，一段最多一个。tone=reveal（揭晓、反转）的句子会跳到画面中间砸出来，只有 24 个字以内才砸——揭晓那句单独成段、说短，铺垫和解释放到前后段。别把台词再写到画布上。'
       + '例：「结果呢？*这个数*，后来查下来，*一个都对不上*。」标记和星号都不念出来。'
-      + '节目单到了，每段按最上面的点讲，讲完句末 [[beat done b编号]]；观众点题自动交给编导，先短回应并说出收到的安排（编导没回就说先讲完眼前这个点，已交编导排在后面；改单回来再报实际位置），兑现时点名。不要把安排当兑现；没收到改单时说已交编导安排，不虚报位置。主人换话题时一段内收尾，research kind=topic 开新话题，用 speech_queue 撤掉旧话题挂起的台词。\n'
+      + '节目单到了，每段按最上面的点讲，讲完句末 [[beat done b编号]]；观众点题自动交给编导，先短回应并说出收到的安排（编导没回就说先讲完眼前这个点，已交编导排在后面；改单回来再报实际位置），兑现时点名。不要把安排当兑现；没收到改单时说已交编导安排，不虚报位置。看到【这一拍】就把内容讲出来，不要写画面标记，也不要描述画布上怎么操作。主人换话题时一段内收尾，research kind=topic 开新话题，用 speech_queue 撤掉旧话题挂起的台词。\n'
       + '要等这段念完再做别的（比如要切走），传 wait=true。不要念路径、报告、代码或工具结果。',
     parameters: {
       text: { type: 'string', required: true, description: '给观众听的一段话，只可带互动、表情与点单标记，最多300字' },
@@ -609,7 +616,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
 
   register({
     name: 'stage_scene',
-    description: '切镜头：chat 杂谈（你占半屏，素材摆在你旁边）或 watch 展示（素材铺满主画面，你缩到右下）。'
+    description: '升级舞台时不要调用。切镜头：chat 杂谈（你占半屏，素材摆在你旁边）或 watch 展示（素材铺满主画面，你缩到右下）。'
       + 'cut 选 soft 软切（默认）或 hard 硬切，具体转场由导播定。两次切换至少隔几秒；主人锁镜头时不能切。',
     parameters: {
       scene: { type: 'string', enum: ['chat', 'watch'], required: true },
@@ -1011,7 +1018,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
 
   register({
     name: 'stage_place',
-    description: '摆直播间画布（1920×1080）：整套换摆法（layout），或者挪一个元素（el）——给区域名 at，或者给 x、y、w、h 里的几项；hide 藏起、show 亮出；look 转你的视线。'
+    description: '升级舞台时不要调用。摆直播间画布（1920×1080）：整套换摆法（layout），或者挪一个元素（el）——给区域名 at，或者给 x、y、w、h 里的几项；hide 藏起、show 亮出；look 转你的视线。'
       + '元素：avatar（你自己）、workspace（主画面：片子、翻资料）、subtitle（字幕）、side（右栏）、onair（角标）、alerts（礼物提示）。直播画面由画面导演管理，主持人不把布局动作写进台词。',
     parameters: {
       layout: { type: 'string', enum: LAYOUT_NAMES, description: '整套换摆法' },

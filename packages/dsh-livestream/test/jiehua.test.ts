@@ -299,7 +299,7 @@ describe('节目单约束主持人的排播', () => {
       vi.spyOn(liveInput, 'hasBreak').mockReturnValue(false), vi.spyOn(liveInput, 'hasUrgent').mockReturnValue(false), vi.spyOn(liveInput, 'take').mockResolvedValue({ text: '', urgent: false }),
     ];
     let speak: any;
-    apply({ get: () => ({get: () => ({followup:pushed})}), effect: (fn: () => unknown, label: string) => { if (label === 'speak') fn(); else if (label === 'dsh-livestream 马上回') cleanups.push(fn() as ()=>void); }, tools: { register: (tool: unknown) => { speak = tool; } } });
+    apply({ get: () => ({get: () => ({steer:pushed})}), effect: (fn: () => unknown, label: string) => { if (label === 'speak') fn(); else if (label === 'dsh-livestream 马上回') cleanups.push(fn() as ()=>void); }, tools: { register: (tool: unknown) => { speak = tool; } } });
     try {
       expect(await speak.execute({ text: '这点内容讲完了。' }, {})).toContain('没排播');
       expect(enqueue).not.toHaveBeenCalled();

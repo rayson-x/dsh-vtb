@@ -1,7 +1,7 @@
 {
   "name": "dsh-livestream",
   "version": "0.1.0",
-  "description": "DSH 直播插件：直播舞台（OBS 浏览器源）和 Agent 控制舞台的工具。",
+  "description": "DSH \u76f4\u64ad\u63d2\u4ef6\uff1a\u76f4\u64ad\u821e\u53f0\uff08OBS \u6d4f\u89c8\u5668\u6e90\uff09\u548c Agent \u63a7\u5236\u821e\u53f0\u7684\u5de5\u5177\u3002",
   "type": "module",
   "private": true,
   "exports": {
@@ -30,10 +30,10 @@
     "dev": "node build.mjs && node lib/dev.js"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
     "@types/node": "24.10.1",
     "@types/react": "18.3.5",
     "@types/react-dom": "18.3.1",
+    "@types/ws": "8.18.1",
     "esbuild": "0.28.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -48,5 +48,13 @@
     "protobufjs": "8.8.0",
     "tiktok-live-connector": "2.5.0",
     "ws": "8.21.3"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "0.2.1-rc.2"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    }
   }
 }

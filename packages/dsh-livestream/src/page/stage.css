@@ -372,7 +372,7 @@ body { font-family: var(--sans); color: var(--pearl); -webkit-font-smoothing: an
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes slidein { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes dm-in { from { transform: translateY(18px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes dm-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes drop { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes gift-in { 0% { transform: translateY(-24px) scale(0.92); opacity: 0; } 60% { transform: translateY(3px) scale(1.02); opacity: 1; } 100% { transform: none; } }
 @keyframes leave { to { transform: translateY(-12px); opacity: 0; } }
@@ -1192,3 +1192,19 @@ body { font-family: var(--sans); color: var(--pearl); -webkit-font-smoothing: an
 
 /* 挂件和揭晓时固定镜头，避免实时数字跟着整页漂移。 */
 .draw-page:has(.docked) .draw-drift, .draw-page.overview .draw-drift { animation: none; }
+
+/* Keep sidebar content within its lane as history and incoming messages grow. */
+.rd-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rd-title small { flex: none; margin-left: auto; font: 18px var(--mono); color: var(--ink-faint); }
+.searching small { box-sizing: border-box; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dm-welcome { max-width: 100%; box-sizing: border-box; flex-wrap: nowrap; white-space: nowrap; }
+.dm-welcome span { flex: none; }
+.dm-welcome b { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dm-list { position: relative; mask-image: none; -webkit-mask-image: none; }
+.dm-line { flex: none; }
+.dm-user { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dm-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+
+.harness-roles { width: 100%; border-collapse: collapse; text-align: left; }
+.harness-roles th, .harness-roles td { padding: 8px 4px; border-bottom: 1px solid var(--line); }
+.harness-roles td:last-child { text-align: right; }

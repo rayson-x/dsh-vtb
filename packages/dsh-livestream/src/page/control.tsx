@@ -105,8 +105,22 @@ const when = (ms: number) => new Date(ms).toLocaleString('zh-CN', { month: 'nume
 
 const AGENT_NAMES = { none: '还没开场', busy: '在说 / 在想', idle: '闲着' } as const;
 
+interface HarnessStatus { mode?: string; brain?: boolean; sdk?: {state: string}; roles?: Array<{role: string; ready: boolean; paused: boolean; phase: string; error?:string}> }
+function useHarnessStatus() {
+  const [value,setValue]=useState<HarnessStatus>({});
+  useEffect(()=>{let alive=true;const load=()=>void fetch('/harness/status').then(r=>r.ok?r.json():{}).then(v=>{if(alive)setValue(v);}).catch(()=>{});load();const timer=setInterval(load,3000);return()=>{alive=false;clearInterval(timer);};},[]);
+  return value;
+}
+function HarnessDesk({status}:{status:HarnessStatus}) {
+  const [busy,setBusy]=useState(''),[error,setError]=useState('');
+  if(status.mode!=='v2')return null;
+  const names:Record<string,string>={performer:'主播',director:'现场导播',editorial:'编导',production:'内容制作'};
+  const toggle=async(role:string,online:boolean)=>{setBusy(role);setError('');try{const r=await fetch('/harness/roles',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({role,online})});const v=await r.json();if(!r.ok||v.ok===false)throw Error(v.error??'操作未完成');}catch(e){setError(e instanceof Error?e.message:'操作未完成');}finally{setBusy('');}};
+  return <section className="ctl-group"><h3>现场岗位</h3><div className="ctl-row"><button onClick={()=>void fetch('/stage/owner',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({type:'layout',name:'chat',cut:'soft'})})}>聊天布局</button><button onClick={()=>void fetch('/stage/owner',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({type:'layout',name:'watch',cut:'soft'})})}>展示布局</button></div><table className="harness-roles"><tbody>{Object.entries(names).map(([role,name])=>{const seat=status.roles?.find(r=>r.role===role);return <tr key={role}><th scope="row">{name}</th><td>{!seat?'未启动':seat.paused?'已暂停':seat.error?'重试等待':!seat.ready?'准备中':seat.phase==='generating'?'思考中':seat.phase==='tool'?'执行中':'待命'}</td><td><button title="暂停该岗位；已排入的演出继续" disabled={!seat||!!busy} onClick={()=>void toggle(role,!!seat?.paused||!!seat?.error)}>{busy===role?'处理中…':seat?.paused?'恢复':seat?.error?'重试':'暂停'}</button></td></tr>;})}</tbody></table>{status.sdk?.state==='blocked'&&<p role="status">制作库未连接，请配置本机 SDK 来源。</p>}{error&&<p role="alert">{error}</p>}</section>;
+}
+
 /** 主播台：定这一场的方向、开播、跟她说话 */
-function Owner({ state }: { state: ReturnType<typeof useStage>['state'] }) {
+function Owner({ state, v2 = false }: { state: ReturnType<typeof useStage>['state']; v2?: boolean }) {
   const [live, setLive] = useState<LiveStatus | null>(null);
   // 方向从舞台那边拿：上次开播用的（存在磁盘上），没有就是 shows/ 里的默认那份
   const [direction, setDirection] = useState('');
@@ -165,12 +179,12 @@ function Owner({ state }: { state: ReturnType<typeof useStage>['state'] }) {
         <span>{off ? '还没开播：先在这里设好方向和观众数据，再点上面的「开播」' : `她：${AGENT_NAMES[live?.agent ?? 'none']}`}</span>
         {topics.length > 0 && <span>聊过：{topics.join('、')}</span>}
       </div>
-      <button aria-pressed={crew} onClick={() => { void fetch('/crew', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: !crew }) }).then((r) => r.json()).then((r) => setCrew(r.enabled)).catch(() => setNote('舞台团队开关未送达，请重试')); }}>{crew ? '舞台团队：开（点击关闭）' : '舞台团队：关 · 当前主题（点击开启）'}</button>
+      {!v2 && <button aria-pressed={crew} onClick={() => { void fetch('/crew', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: !crew }) }).then((r) => r.json()).then((r) => setCrew(r.enabled)).catch(() => setNote('舞台团队开关未送达，请重试')); }}>{crew ? '舞台团队：开（点击关闭）' : '舞台团队：关 · 当前主题（点击开启）'}</button>}
       <textarea className="owner-direction" placeholder="今天这场的方向：主题、风格、想聊哪类话题" value={direction} onChange={(e) => setDirection(e.target.value)} />
       <div className="owner-row owner-sets">
         <span className="owner-note">布景：</span>
         {SET_IDS.map((id) => (
-          <button key={id} className={state?.set === id ? 'primary' : ''} onClick={() => void send({ type: 'room', id, by: 'owner' }).then((r) => setNote(r.ok ? `换成「${SETS[id]!.name}」` : r.error ?? ''))}>{SETS[id]!.name}</button>
+          <button key={id} className={state?.set === id ? 'primary' : ''} onClick={() => void (v2?post('/stage/owner',{type:'room',id}):send({type:'room',id,by:'owner'})).then((r) => setNote(r.ok ? `换成「${SETS[id]!.name}」` : r.error ?? ''))}>{SETS[id]!.name}</button>
         ))}
       </div>
       {state && SETS[state.set] && (
@@ -276,6 +290,7 @@ function Rooms() {
 }
 
 function App() {
+  const harness = useHarnessStatus();
   const live = useStage();
   const [error, setError] = useState('');
   const [brief, setBrief] = useState('');
@@ -313,7 +328,8 @@ function App() {
 
       <div className="ctl-panel">
         <BrainBar />
-        <Owner state={state} />
+        <Owner state={state} v2={harness.mode==='v2'} />
+        <HarnessDesk status={harness} />
         <Rooms />
         <details className="ctl-debug">
         <summary>调试指令（不经过她，直接改舞台）</summary>

@@ -14,6 +14,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AVATAR_BASE, WORKSPACE_BASE, type Element, type ElementId } from '../stage/canvas';
 import { STAGE_H, STAGE_W, type Scene, type StageState } from '../stage/protocol';
 import { BOARD, BOARD_EDGE } from '../stage/regions';
+import { programmeBox } from '../stage/programme-layout';
 import { mainOccupied } from './board';
 import { ProgramWall, Room } from './Room';
 import { Canvas } from './draw/Canvas';
@@ -61,7 +62,7 @@ function useFit(): { scale: number; x: number; y: number } {
   return fitted;
 }
 
-export function Stage({ state, now, fit = true }: { state: StageState; now: number; fit?: boolean }) {
+export function Stage({ state, now, fit = true, programme }: { state: StageState; now: number; fit?: boolean; programme?: ReactNode }) {
   const { scale, x, y } = useFit();
   const { layout, phase, wipe } = staging(state, now);
   const nowRef = useRef(now);
@@ -69,6 +70,7 @@ export function Stage({ state, now, fit = true }: { state: StageState; now: numb
   // 布景：转场过半前用旧皮；特效里的「震」作用在整个舞台上
   const skin = setPhase(state, now).set;
   const shake = shakeOf(state, now);
+  const programmeFrame=programmeBox(state,layout);
   return (
     <div className="stage-frame" style={fit ? { transform: `translate(${x}px, ${y}px) scale(${scale})` } : undefined}>
       <div className={`stage scene-${layout} ${phase} ${shake ? 'vfx-shaking' : ''}`} data-set={skin} style={shake ? { ['--shake' as string]: shake } : undefined}>
@@ -78,17 +80,26 @@ export function Stage({ state, now, fit = true }: { state: StageState; now: numb
 
         {/* 展示板：素材、翻资料都上在这块板上；没东西时收起来 */}
         <div
-          className={`board at-${layout} ${mainOccupied(state, now) ? 'on' : 'off'}`}
+          className={`board at-${layout} ${programme || mainOccupied(state, now) ? 'on' : 'off'}`}
           style={{ left: BOARD[layout].x, top: BOARD[layout].y, width: BOARD[layout].w, height: BOARD[layout].h, borderWidth: BOARD_EDGE[layout].map((n) => `${n}px`).join(' ') }}
         />
 
-        <Place state={state} id="workspace" mover>
+        {!programme && <Place state={state} id="workspace" mover>
           {(e) => (
             <div className="el-inner" style={{ width: WORKSPACE_BASE.w, height: WORKSPACE_BASE.h, transform: `scale(${Math.min(e.w / WORKSPACE_BASE.w, e.h / WORKSPACE_BASE.h)})` }}>
               <Workspace state={state} now={now} />
             </div>
           )}
-        </Place>
+        </Place>}
+
+        {programme && <div className="el programme-surface mover" style={{
+          left: programmeFrame.x,
+          top: programmeFrame.y,
+          width: programmeFrame.w,
+          height: programmeFrame.h,
+          zIndex: 2,
+          overflow: 'hidden',
+        }}>{programme}</div>}
 
         <Place state={state} id="onair">{() => <OnAir now={now} viewers={state.viewers} away={state.away} />}</Place>
 

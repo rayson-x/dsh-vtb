@@ -1,0 +1,73 @@
+name: Harness checks
+on:
+  push:
+    branches: [master, 'rayson-pagepeek/harness-completion']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      sdk_integration:
+        type: boolean
+        default: false
+        description: Run the authorized private SDK checks
+permissions:
+  contents: read
+jobs:
+  public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+      - run: npm ci
+      - run: npm --prefix packages/dsh-livestream ci
+      - run: npm --prefix packages/scene-host ci
+      - run: npm --prefix packages/scene-package ci
+      - run: npm run plugin:check && npm run scene-host:check && npm run scene-package:check
+      - run: npm run plugin:test && npm run scene-host:test && npm run scene-package:test
+      - run: node --test scripts/sdk-source.test.mjs scripts/harness-recording.test.mjs scripts/programme-recording.test.mjs
+      - run: npm run harness:build
+  private-sdk:
+    if: github.event_name == 'workflow_dispatch' && inputs.sdk_integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require explicit private read authorization
+        env:
+          SDK_TOKEN: ${{ secrets.AIVTB_SDK_TOKEN }}
+        run: test -n "$SDK_TOKEN" || { echo 'Configure the read-only AIVTB_SDK_TOKEN secret first'; exit 1; }
+      - uses: actions/checkout@v7
+        with:
+          repository: rayson-x/reelmorph-agent
+          ref: c73ac74f9a5479586f0ea5d39f5c40d2dc39a98b
+          token: ${{ secrets.AIVTB_SDK_TOKEN }}
+          path: .private-sdk
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+      - name: Install the fixed private dependency closure
+        run: |
+          mkdir -p .deps
+          if ! pnpm --dir .private-sdk install --frozen-lockfile > .deps/sdk-install.log 2>&1; then
+            echo 'Private SDK install failed; raw source diagnostics are not published in public logs'
+            exit 1
+          fi
+      - run: npm ci && npm --prefix packages/dsh-livestream ci
+      - name: Validate private SDK without publishing implementation diagnostics
+        run: |
+          node scripts/sdk-doctor.mjs
+          if ! node --test scripts/sdk-source.test.mjs scripts/harness-recording.test.mjs scripts/programme-recording.test.mjs > .deps/sdk-checks.log 2>&1; then
+            echo 'Private SDK checks failed; inspect in an authorized local checkout'
+            exit 1
+          fi
+          echo 'Private SDK checks passed'
+        env:
+          AIVTB_SDK_REPO: ${{ github.workspace }}/.private-sdk

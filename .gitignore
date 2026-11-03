@@ -1,5 +1,5 @@
 .deps/
-node_modules/
+node_modules
 .dsh/
 .env
 .env.*
@@ -27,3 +27,9 @@ packages/dsh-livestream/scripts/*-qa/metrics.json
 packages/dsh-livestream/scripts/*-qa/observations.json
 packages/dsh-livestream/scripts/*-qa/board-current.json
 packages/dsh-livestream/scripts/*-qa/validation-config.json
+
+packages/scene-host/dist/
+packages/scene-host/.generated/
+
+# Authorized CI/local SDK checkout must never be vendored.
+.private-sdk/

@@ -6,7 +6,10 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { installModelSelection } from '@deepseek-ai/dsh-agent';
+import { installModelSelection, type AgentRegistry } from '@deepseek-ai/dsh-agent';
+import { SessionId } from '@deepseek-ai/dsh-session';
+import { createUserMessage } from '@deepseek-ai/dsh-llm';
+import { steerHost } from './urgent';
 import type { LiveHost, LiveStatus } from '../host/live';
 import { clockNow } from './clock';
 import { desk, HELD_NOTE, PACKAGE_ROOT, said, show, stage, wake } from './runtime';
@@ -19,18 +22,17 @@ interface HostContext {
   [service: string]: any;
 }
 
-function message(text: string, kind: string) {
-  return Object.freeze({ id: randomUUID(), role: 'user', content: [{ type: 'text', text }], source: { kind } });
+function message(text: string, kind: 'dsh-livestream-owner') {
+  return createUserMessage({ content: [{ type: 'text', text }], source: { kind } });
 }
 
 export function createLive(ctx: HostContext): LiveHost & { resume(said: string[]): Promise<string>; reset(): Promise<string> } {
-  const agents = () => ctx.get?.('agents');
+  const agents = (): AgentRegistry | undefined => ctx.get?.('agents');
 
   /** 她现在的会话；没有就是还没开场 */
   const current = () => {
     if (!show.sessionId) return undefined;
-    const found = agents()?.get?.(show.sessionId);
-    return found?.followup ? found : found?.agent;
+    return agents()?.get(SessionId(show.sessionId));
   };
 
   const open = async () => {
@@ -43,7 +45,7 @@ export function createLive(ctx: HostContext): LiveHost & { resume(said: string[]
     const selection = { provider, model: id, reasoningEffort: REASONING };
     const sessionId = `session-${randomUUID()}`;
     const { agent } = await registry.create({
-      sessionId,
+      sessionId: SessionId(sessionId),
       meta: { cwd: PACKAGE_ROOT, agentPreset: PRESET },
       agentOptions: { provider, model: id },
       // setup 的返回值会被当成要 commit 的东西，这里什么都不返回
@@ -128,8 +130,7 @@ export function createLive(ctx: HostContext): LiveHost & { resume(said: string[]
         const note = `【主人】${words}`;
         // 先让她闭嘴，再插进她这一轮的下一步
         stage.apply({ type: 'interrupt' });
-        if (agent.steer) await agent.steer(message(note, 'dsh-livestream-owner'));
-        else agent.followup(message(note, 'dsh-livestream-owner'));
+        steerHost(agent, message(note, 'dsh-livestream-owner'), true);
         return '已打断，她马上看到';
       }
       // 不硬切：念完正在念的这句就停，后面的话挂起；她先回主人，回完自动接着念挂起的
@@ -137,12 +138,8 @@ export function createLive(ctx: HostContext): LiveHost & { resume(said: string[]
       wake.at = Date.now();
       const orders = await stage.call<string>('orders.pending');
       const note = `【主人】${words}\n${checkpoint}\n当前方向：${show.direction ?? '未定'}\n${orders}\n（${HELD_NOTE}）`;
-      if (agent.steer) {
-        await agent.steer(message(note, 'dsh-livestream-owner'));
-        return '她念完这句就停下来回你';
-      }
-      agent.followup(message(note, 'dsh-livestream-owner'));
-      return '她这一轮做完就看到';
+      steerHost(agent, message(note, 'dsh-livestream-owner'), true);
+      return '她念完这句就停下来回你';
     },
   };
 }

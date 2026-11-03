@@ -6,6 +6,8 @@
  */
 
 import { useEffect, useState } from 'react';
+import { routedProgrammeMedia } from './audio-audit';
+import { programmeOutput } from '../../../scene-host/src/recording/audio';
 import type { StageState } from '../stage/protocol';
 import { setMouth, setPlaying } from './mouth';
 
@@ -71,8 +73,9 @@ export function useVoice(state: StageState | null): void {
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 256;
     const node = ctx.createMediaElementSource(player);
+    routedProgrammeMedia(player);
     node.connect(analyser);
-    analyser.connect(ctx.destination);
+    analyser.connect(programmeOutput(ctx));
     const samples = new Uint8Array(analyser.fftSize);
     let raf = 0;
     let alive = true;
