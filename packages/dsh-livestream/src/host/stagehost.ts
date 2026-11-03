@@ -378,6 +378,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
       case 'blackboard.topic': blackboard.update(String(args.key), () => blackboard.topic(String(args.id), args.card)); return true;
       case 'blackboard.material': blackboard.update(String(args.key), () => blackboard.material(String(args.id), String(args.description), args.data)); return true;
       case 'blackboard.edit': blackboard.update(String(args.key), () => blackboard.edit(String(args.topic), args.edit as PlanEdit)); return blackboard.line();
+      case 'blackboard.aim': blackboard.update(String(args.key), () => blackboard.aim(args)); return blackboard.line();
       case 'crew.topic': crew.setTopic(args.card as TopicCard | undefined); return true;
       case 'orders.pending': return orders.pending();
       case 'orders.add': orders.add(String(args.who), String(args.gift ?? ''), String(args.want)); blackboard.changed(); return orders.pending();
