@@ -48,8 +48,8 @@ function App() {
   if (!live.state) return null;
   return (
     <>
-      <Stage state={sceneUrl ? {...live.state,subtitle:voice?.subtitle??null,avatar:{...live.state.avatar,speaking:voice?.playing??false}} : live.state} now={now} />
-      {sceneUrl && <iframe ref={frame} title="节目场景" referrerPolicy="origin" src={sceneUrl} allow="autoplay" style={{ position: 'absolute', left: '25%', top: '10%', width: '70%', height: '80%', border: 0, background: 'transparent' }} />}
+      <Stage state={sceneUrl ? {...live.state,subtitle:voice?.subtitle??null,avatar:{...live.state.avatar,speaking:voice?.playing??false}} : live.state} now={now}
+        programme={sceneUrl ? <iframe ref={frame} title="节目场景" referrerPolicy="origin" src={sceneUrl} allow="autoplay" style={{ width: '100%', height: '100%', border: 0, display: 'block', background: 'transparent' }} /> : undefined} />
       {/* 浏览器拦着不让出声：提示点一下（点了就消失）。OBS 浏览器源、带自动播放参数的窗口不会出现 */}
       {blocked && <div className="audio-blocked">🔇 点一下页面开声音</div>}
     </>
