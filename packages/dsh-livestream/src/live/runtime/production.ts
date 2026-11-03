@@ -37,6 +37,7 @@ async function storeJson(path: string, value: unknown) {
 const internal = ['runtime', 'master', 'directionController', 'input'] as const;
 const roleNames: AgentRole[] = ['performer', 'director', 'editorial', 'production'];
 interface Candidate {
+  component?: { path: string; id: string; version?: string; source?: unknown };
   id: string;
   taskId: string;
   taskVersion: number;
@@ -183,7 +184,7 @@ export class ProductionRuntime implements RoleRuntime {
           '{directionEpoch,proposal:{id,segmentIntent,viewingValue,participation,handoff,minimumMaterials:[],alternatives:[]}}',
         prepareDirection: '{directionEpoch,directionId,commitment,coreQuestion}',
         workspaceBuildPreview:
-          '{directionEpoch,taskId,taskVersion,source,props?,width?,height?,durationInFrames?}',
+          '{directionEpoch,taskId,taskVersion,source? OR template? OR effectPath?,props?,width?,height?,durationInFrames?}',
         publishCandidate: '{directionEpoch,taskId,assetVersionId,expectedRevision}',
         prepareScene: '{directionEpoch,instanceId,assetVersionId,segmentId,label}',
         take: '{directionEpoch,instanceId,expectedRevision}',
@@ -484,10 +485,12 @@ export class ProductionRuntime implements RoleRuntime {
     )
       throw Error('Stale task');
     if (
-      !args.template &&
+      !args.template && !args.effectPath &&
       (typeof args.source !== 'string' || !args.source.trim() || args.source.length > 100000)
     )
-      throw Error('Provide Scene source (up to 100000 characters), or template gsap/remotion');
+      throw Error('Provide Scene source (up to 100000 characters), template gsap/remotion, or effectPath from searchEffects');
+    if (args.effectPath && (args.source || args.template))
+      throw Error('Choose effectPath, source or template; do not mix component reuse with source overrides');
     if (args.template && !['gsap', 'remotion'].includes(args.template))
       throw Error('Unknown native SDK template');
     const width = args.width ?? 1920,
@@ -507,7 +510,9 @@ export class ProductionRuntime implements RoleRuntime {
     const folder = join(this.options.dataDir, 'production', id);
     try {
       const sdk = await this.loadSdk();
+      const reused = args.effectPath ? await sdk.reuseEffect(args.effectPath) : undefined;
       await mkdir(folder, { recursive: true });
+      if (reused) await writeFile(join(folder, 'index.tsx'), reused.source);
       if (args.template) {
         const files = sdk.scaffold(`scene-${id}`, args.template);
         for (const [name, bytes] of files)
@@ -544,6 +549,7 @@ export class ProductionRuntime implements RoleRuntime {
       const code = await readFile(join(folder, 'bundle.js'));
       const hash = createHash('sha256').update(code).digest('hex');
       const c: Candidate = {
+        ...(reused ? { component: reused.component } : {}),
         id,
         taskId: task.id,
         taskVersion: completedTask.version,
@@ -583,6 +589,7 @@ export class ProductionRuntime implements RoleRuntime {
           entries.push({
             ...entry,
             path: `library/sources/${source}/${name}`,
+            reuse: { tool: 'workspaceBuildPreview', effectPath: `library/sources/${source}/${name}` },
             ...(implementation ? { implementation } : {}),
           });
         }

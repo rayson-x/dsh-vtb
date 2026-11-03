@@ -36,7 +36,9 @@ export class RemoteStage {
   private hello: ((h: { show: ShowRecord; said: string[] }) => void)[] = [];
   private abort: AbortController | undefined;
 
-  constructor(private readonly base: string) {}
+  constructor(private readonly base: string) {
+    this.base = base.replace(/\/+$/, '');
+  }
 
   /** 连上舞台并一直保持（断了 1 秒后重连）；每次连上都回调一次舞台交来的这一场情况 */
   connect(onHello: (h: { show: ShowRecord; said: string[] }) => void): void {

@@ -182,6 +182,30 @@ export async function sdkTools(options = {}) {
       };
     },
     scaffold: scaffoldComponent,
+    async reuseEffect(componentPath) {
+      if (typeof componentPath !== 'string' || !/^library\/sources\/[\w-]+\/[\w-]+$/.test(componentPath))
+        throw Error('Use a component path returned by searchEffects');
+      const base = await realpath(join(source.root, 'library/sources'));
+      const folder = await realpath(join(source.root, componentPath));
+      if (!folder.startsWith(base + sep)) throw Error('Component escapes pinned SDK library');
+      const metadataFile = await realpath(join(folder, 'component.json'));
+      if (!metadataFile.startsWith(folder + sep)) throw Error('Component metadata escapes its source folder');
+      const metadata = JSON.parse(await readFile(metadataFile, 'utf8'));
+      if (typeof metadata.id !== 'string') throw Error('Component metadata has no id');
+      let entry;
+      for (const name of ['index.ts', 'index.tsx', 'index.js']) {
+        const candidate = await realpath(join(folder, name)).catch(() => undefined);
+        if (!candidate) continue;
+        if (!candidate.startsWith(folder + sep)) throw Error('Component entry escapes its source folder');
+        entry = candidate;
+        break;
+      }
+      if (!entry) throw Error('Component has no Scene entry');
+      return {
+        source: `export {default} from ${JSON.stringify(entry)};`,
+        component: { path: componentPath, id: metadata.id, version: metadata.version, source: metadata.source },
+      };
+    },
     async readGuide(path = 'INDEX.md') {
       const base = join(source.root, 'sandbox/sdk');
       const file = await realpath(join(base, path));

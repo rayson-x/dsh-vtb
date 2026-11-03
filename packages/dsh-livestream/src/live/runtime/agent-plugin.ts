@@ -26,7 +26,7 @@ export function applyRoleAgent(ctx: any, role: AgentRole) {
               payload: {
                 type: 'string',
                 description:
-                  'JSON对象。读可省略。写入必须directionEpoch。offerSpeech:{directionEpoch,text,partId可选}；requestProduction:{directionEpoch,task:{id,goal,priority,inputs:[],dependsOn:[]}}；workspaceBuildPreview:{directionEpoch,taskId,taskVersion,source,props,width,height,durationInFrames}；publishCandidate:{directionEpoch,taskId,assetVersionId,expectedRevision}；prepareScene:{directionEpoch,instanceId,assetVersionId,segmentId,label}；take:{directionEpoch,instanceId,expectedRevision}。其他工具先读简报内toolContracts。命令ID/新实体ID可由运行时分配。',
+                  'JSON对象。读可省略。写入必须directionEpoch。offerSpeech:{directionEpoch,text,partId可选}；requestProduction:{directionEpoch,task:{id,goal,priority,inputs:[],dependsOn:[]}}；workspaceBuildPreview:{directionEpoch,taskId,taskVersion,source或template或effectPath三选一,props,width,height,durationInFrames}，effectPath使用searchEffects返回的路径直接复用；publishCandidate:{directionEpoch,taskId,assetVersionId,expectedRevision}；prepareScene:{directionEpoch,instanceId,assetVersionId,segmentId,label}；take:{directionEpoch,instanceId,expectedRevision}。其他工具先读简报内toolContracts。命令ID/新实体ID可由运行时分配。',
               },
             },
             output: {

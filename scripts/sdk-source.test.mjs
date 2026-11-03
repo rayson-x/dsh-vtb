@@ -4,6 +4,20 @@ import { mkdtemp, writeFile, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { sdkTools } from './sdk-source.mjs';
+test('a catalog effect can be reused through its real pinned Scene entry without copying private source',
+  { skip: !process.env.AIVTB_SDK_REPO }, async () => {
+    const folder = await mkdtemp(join(tmpdir(), 'live-sdk-reuse-'));
+    try {
+      const sdk = await sdkTools({ cacheRoot: resolve('.deps/sdk') });
+      const reused = await sdk.reuseEffect('library/sources/moving-letters/moving-letters-beautiful-questions');
+      await writeFile(join(folder, 'index.tsx'), reused.source);
+      assert.ok((await sdk.buildLive(folder)).code.length > 0);
+      assert.equal(reused.component.id, 'moving-letters-beautiful-questions');
+      await assert.rejects(() => sdk.reuseEffect('library/sources/../../private'), /component path/);
+    } finally {
+      await rm(folder, { recursive: true, force: true });
+    }
+  });
 test(
   'a scene can use the real pinned SDK, but cannot bundle a neighboring private file',
   { skip: !process.env.AIVTB_SDK_REPO },

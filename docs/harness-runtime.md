@@ -34,6 +34,30 @@ npm run harness:sim:check -- <operator URL>
 
 模拟器只装配生产 Runtime 与 SDK 渲染器，由脚本扮演岗位/观众，不创建 DSH 会话、不连接平台、不读取 TTS 密钥。报告写入 `.deps/harness-simulation-report.json`。
 
+## 直接复用现成组件
+
+制作席调用 `searchEffects` 取得组件的 `path` 与 `reuse.effectPath` 后，可向 `workspaceBuildPreview` 提交 `effectPath`，替代 `source` 或 `template`。三种制作输入择一；任务版本、方向资格和制作限额仍照常检查。例如：
+
+```json
+{
+  "directionEpoch": 1,
+  "taskId": "opening-title",
+  "taskVersion": 1,
+  "effectPath": "library/sources/moving-letters/moving-letters-beautiful-questions",
+  "props": { "params": { "text": "记忆里留下的光", "hold": 120 } }
+}
+```
+
+`directionEpoch`、任务ID与版本必须来自当前简报，示例值不直接复用。复用入口从授权固定SDK目录解析真实Scene及其相对依赖；拒绝目录穿越与越界入口/metadata软链接。工作区只写入导入入口，公开仓不复制私有组件实现。候选manifest保留组件路径、ID、版本与来源，产物沿用原有代码hash、publish/prepare/take链；复用不自动授予实时、patch或离线回放认证。
+
+2026-11-04本机验证：上述真实目录标题组件、使用已安装`d3-scale`的SVG示例、轻量Three/WebGL示例，分别完成编译、真实浏览器就绪、送播、帧推进与hold。固定SDK未提供`d3-selection`，不能因“支持D3”而假定所有子包可导入；该失败保留在记录中，示例改用真实可用依赖，未增加新库。以上只证明所选三个条目的有限运行，不代表全部catalog、复杂媒体、30fps预算或确定性导出均通过。
+
+## 模式切回与宿主释放
+
+v2接管时旧`/command`、`/speak`入口被拒，不能在运行中用`harness.mode=legacy`直接交回。应先停止v2运行，再关闭旧舞台宿主，以legacy模式重启舞台；方向、布景配置和已保存场次均保留，观众数据通过操作台选择场次恢复，不自动重播旧音频。
+
+宿主`close()`先发布`interrupt`，让仍连接的浏览器/桥接端收到音频清除状态，再停止控制器队列/定时器，最后移除订阅。回归检查真实RemoteStage SSE上的停止状态、队列完成为interrupted，以及同端口重启后的方向/布景配置与观众场次恢复；音频URL在此测试中是控制面fixture，不声称解码真实音频。RemoteStage同时归一化根地址末尾的斜杠，避免复制舞台URL后请求到双斜杠路径。
+
 ## 启动真实团队（本轮未启动）
 
 需要 Node >=24、仓库各包的依赖和已授权 SDK 源项目的依赖。

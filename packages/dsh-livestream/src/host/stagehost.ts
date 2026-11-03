@@ -641,6 +641,9 @@ export function createStageHost(o: StageHostOptions): StageHost {
     close() {
       stopHarnessInputs();
       crew.stop();
+      // Publish the stop while bridge/browser subscriptions are still attached.
+      stage.apply({ type: 'interrupt' });
+      stage.stop();
       offState();
       offBoard();
       clearInterval(speechTimer);
