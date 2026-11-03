@@ -150,7 +150,8 @@ async function start(): Promise<string> {
   mkdirSync(dirname(BRAIN_LOG), { recursive: true });
   const out = openSync(BRAIN_LOG, 'w');
   const env = existsSync(join(ROOT, '.env')) ? ['--env-file=.env'] : [];
-  const child = spawn(process.execPath, [...env, 'scripts/dsh.mjs', '--profile', 'live'], {
+  // --no-open：live profile 带 web 模板，避免开播时再弹出 DSH 自己的浏览器客户端
+  const child = spawn(process.execPath, [...env, 'scripts/dsh.mjs', '--profile', 'live', '--no-open'], {
     cwd: ROOT,
     // 独立进程组：控制台重启、关掉都不影响她
     detached: true,

@@ -2,9 +2,9 @@
 
 AI 虚拟主播「大肥鱼」的本地直播舞台。DSH 负责主持和后台编导，`packages/dsh-livestream` 提供控制台、语音队列、共享黑板、独立画面导演和 OBS 浏览器源。
 
-## 本仓库的 scene-host 不是 P2 验收
+## 新版共创 Harness
 
-`packages/scene-host` 只是脚手架和端口接线。**P2 运行验收没有通过。** 连续 100 次 live patch 保实例、真实 Remotion / HyperFrames 播放器和 Chromium 绘制仍然阻塞。详见 `packages/scene-host/README.md`。
+新版已接通独立角色会话、原生 Remotion / HyperFrames 播放、方向预制与 Film 回放。运行和模拟验证方法见 [docs/harness-runtime.md](docs/harness-runtime.md)。这仍是集成候选，完整制作组件、全舞台音画导出与真实直播验收尚未完成。
 
 ## 本仓库的 scene-package 不是 P4 认证
 
@@ -73,3 +73,7 @@ npm run stage:voice    # 读取根目录 .env 的独立语音舞台
 `scripts/merged-qa/README.md` 说明统一真实语音验收：同一产品版本连续三轮，每轮六分钟团队开启、一分钟关闭，同时检查点单、换题、真实逐字进场、跨段退场、改轨、打断与最简退路。截图使用 ego-browser；原始取证数据、联系表和时间轴由脚本生成，不作为测试答案提交。
 
 基础特效和画布的截图检查分别在 `scripts/fx-qa/` 与 `scripts/ui-qa/`。测试端口与日常控制台分开，避免把测试节目送进正在使用的舞台。
+
+## 首次安装
+
+使用 `npm run plugin:install` 初始化本地 live profile，补齐 web 预设服务。凭据字段见 `.env.example`；不要覆盖已有 `.env`。`HARNESS.md` 记录的是旧版单主持人编排，当前 v2 以 `docs/harness-runtime.md` 和共创 Harness 设计为准。
