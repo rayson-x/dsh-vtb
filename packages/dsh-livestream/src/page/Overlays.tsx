@@ -2,6 +2,7 @@
  * 叠层上的挂件：口播字幕、弹幕框、礼物（含醒目留言、上船）、任务角、开播角标。
  */
 
+import { useLayoutEffect, useRef } from 'react';
 import { playedMs } from './mouth';
 import type { Alert, Platform, StageState, TaskKind } from '../stage/protocol';
 
@@ -116,6 +117,28 @@ const WELCOME_MS = 20_000;
  */
 export function Danmaku({ state, now }: { state: StageState; now: number }) {
   const lines = state.danmaku.slice(-9);
+  const list = useRef<HTMLDivElement>(null);
+  const lineIds = lines.map((line) => line.id).join(':');
+  useLayoutEffect(() => {
+    const root = list.current;
+    if (!root) return;
+    // Keep whole cards at the bottom. Hidden older cards still participate in
+    // layout, so resizing can reveal them again without re-entering animations.
+    const cards = Array.from(root.querySelectorAll<HTMLElement>('.dm-line'));
+    const fit = () => {
+      const padding = getComputedStyle(root);
+      const top = parseFloat(padding.paddingTop) || 0;
+      const bottom = root.clientHeight - (parseFloat(padding.paddingBottom) || 0);
+      for (const card of cards) {
+        card.style.visibility = card.offsetTop >= top - 1 && card.offsetTop + card.offsetHeight <= bottom + 1 ? 'visible' : 'hidden';
+      }
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(root);
+    cards.forEach((card) => observer.observe(card));
+    return () => observer.disconnect();
+  }, [lineIds]);
   const fresh = (state.entering ?? []).filter((x) => now - x.at < WELCOME_MS).slice(-3);
   return (
     <div className="danmaku">
@@ -126,13 +149,12 @@ export function Danmaku({ state, now }: { state: StageState; now: number }) {
           <span>进入直播间</span>
         </div>
       )}
-      <div className="dm-list">
+      <div className="dm-list" ref={list}>
         {lines.map((d) => (
           <div key={d.id} className={`dm-line ${d.platform} ${d.kind ? `ev ev-${d.kind}` : ''} ${d.tier ? `tier-${d.tier}` : ''} ${state.picked === d.id ? 'picked' : ''}`}>
             <b className="dm-pf">{PLATFORM[d.platform]}</b>
             <span className="dm-user">{d.user}</span>
-            {d.kind && d.kind !== 'chat' && <i className="dm-icon">{FEED_ICON[d.kind]}</i>}
-            <span className="dm-text">{d.text}</span>
+            <span className="dm-text">{d.kind && d.kind !== 'chat' && <i className="dm-icon">{FEED_ICON[d.kind]}</i>}{d.text}</span>
           </div>
         ))}
         {!lines.length && (
@@ -249,16 +271,21 @@ export function Searching({ state }: { state: StageState }) {
 export function Rundown({ state }: { state: StageState }) {
   const r = state.rundown;
   if (!r) return null;
+  const count = state.scene === 'watch' ? 1 : 3;
+  const start = Math.max(0, Math.min(r.at - (count === 1 ? 0 : 1), r.steps.length - count));
   return (
     <div className="rundown">
-      <div className="rd-title">{r.title}{r.paused && <em>暂停</em>}</div>
+      <div className="rd-title"><span className="rd-label">{r.title}</span>{r.steps.length > count && <small>{Math.min(r.at + 1, r.steps.length)}/{r.steps.length}</small>}{r.paused && <em>暂停</em>}</div>
       <ol>
-        {r.steps.map((step, i) => (
+        {r.steps.slice(start, start + count).map((step, offset) => {
+          const i = start + offset;
+          return (
           <li key={i} className={i < r.at ? 'done' : i === r.at ? 'now' : ''}>
             <i>{i < r.at ? '✓' : i + 1}</i>
             <span>{step}</span>
           </li>
-        ))}
+          );
+        })}
       </ol>
     </div>
   );
