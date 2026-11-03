@@ -12,7 +12,10 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { appendFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { installModelSelection } from '@deepseek-ai/dsh-agent';
+import { installModelSelection, type AgentRegistry } from '@deepseek-ai/dsh-agent';
+import { SessionId } from '@deepseek-ai/dsh-session';
+import { createUserMessage } from '@deepseek-ai/dsh-llm';
+import { steerHost } from './urgent';
 import { defineTool, type ParameterSchemaSpec } from '@deepseek-ai/dsh-tools';
 import { brief } from '../stage/brief';
 import { clockNow } from './clock';
@@ -253,15 +256,14 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
    * 往她的会话推一条消息并唤醒她：插进她这一轮的下一步（她闲着就马上开一轮）。
    * 不能排到下一轮：直播时她一轮能说半小时，排到下一轮就等于丢了。找不到会话返回 false
    */
-  const push = async (text: string): Promise<boolean> => {
+  const push = async (text: string, urgent = false): Promise<boolean> => {
     const id = show.sessionId ?? sessionId;
     if (!id) return false;
-    const found = ctx.get?.('agents')?.get?.(id);
-    const agent = found?.followup ? found : found?.agent;
-    if (!agent?.followup) return false;
-    const message = Object.freeze({ id: randomUUID(), role: 'user', content: [{ type: 'text', text }], source: { kind: 'dsh-livestream' } });
-    if (agent.steer) await agent.steer(message);
-    else await agent.followup(message);
+    const registry: AgentRegistry | undefined = ctx.get?.('agents');
+    const agent = registry?.get(SessionId(id));
+    if (!agent) return false;
+    const message = createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'dsh-livestream' } });
+    steerHost(agent, message, urgent);
     return true;
   };
 
@@ -466,7 +468,7 @@ export function apply(ctx: AgentContext, config: Config = {}): void {
         if (!news) return;
         lastBreakAt = Date.now();
         const checkpoint = ownerNews ? await stage.call<string>('speech.break', { news: ownerNews }) : '';
-        await push(`【直播间·马上回】\n${news}${checkpoint ? `\n${checkpoint}\n${HELD_NOTE}` : ''}`);
+        await push(`【直播间·马上回】\n${news}${checkpoint ? `\n${checkpoint}\n${HELD_NOTE}` : ''}`, true);
       })().catch(() => undefined).finally(() => { busy = false; });
     }, 500);
     timer.unref?.();

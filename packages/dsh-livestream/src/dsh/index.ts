@@ -7,6 +7,8 @@ import { toolPairingBalancedAfter, toolPairingBalancedBefore } from '@deepseek-a
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
 import { applyV2Root } from '../live/runtime/root-plugin';
 import { createLive } from './live';
+import type { Agent, AssistantStreamFrame } from '@deepseek-ai/dsh-agent';
+import { observeGeneration } from './urgent';
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { bindCredentials, BRAIN_PORT, desk, show, stage, STAGE_URL, trace } from './runtime';
 import { createTracer, type Tracer } from './trace';
@@ -176,9 +178,10 @@ export function apply(ctx: HostContext, config: Config = {}): void {
     }
     trace.push(tracer!(event));
   }), 'dsh-livestream 轨迹');
-  ctx.effect(() => ctx.on('agent/assistant-stream', ({ agent, frame }: { agent: any; frame: any }) => {
+  ctx.effect(() => ctx.on('agent/assistant-stream', ({ agent, frame }: { agent: Agent; frame: AssistantStreamFrame }) => {
+    observeGeneration(agent, frame);
     if (!show.sessionId || agent?.session?.id !== show.sessionId) return;
-    if (frame?.type === 'chunk' || frame?.chunk) {
+    if (frame.type === 'chunk') {
       const chunk = frame.chunk;
       if (chunk?.type === 'reasoning-delta' && chunk.text) trace.think(String(chunk.text));
     }
