@@ -1,5 +1,5 @@
 import { createBrowserSceneHost } from './isolation';
-import { programmeOutput, startAudioCapture, stopAudioCapture } from '../recording/audio';
+import { programmeOutput, startAudioCapture, stopAudioCapture, resumeProgrammeAudio } from '../recording/audio';
 let speechContext: AudioContext | undefined;
 const audioContext = () => speechContext ??= new AudioContext({ sampleRate: 48000 });
 let audioNode: MediaElementAudioSourceNode | undefined;
@@ -29,7 +29,9 @@ try {
   if (['127.0.0.1', 'localhost'].includes(ref.hostname)) parentOrigin = ref.origin;
 } catch {}
 window.addEventListener('message', event => {
-  if (!parentOrigin || event.origin !== parentOrigin || event.source !== parent || event.data?.type !== 'aivtb-recording-request') return;
+  if (!parentOrigin || event.origin !== parentOrigin || event.source !== parent) return;
+  if(event.data?.type==='aivtb-audio-unlock'){void resumeCurrentAudio().catch(()=>{});return;}
+  if(event.data?.type!=='aivtb-recording-request')return;
   const { action, requestId } = event.data;
   if (!['start', 'stop'].includes(action) || typeof requestId !== 'string') return;
   void (async()=>{
@@ -83,6 +85,8 @@ const stopAudio = () => {
   partId = undefined;
   caption.textContent = '';
 };
+async function resumeCurrentAudio(){const element=audio;if(!element)return;await audioContext().resume();if(audio===element&&audioEpoch===epoch){await element.play();status.textContent='';}}
+window.addEventListener('pointerdown',()=>void resumeCurrentAudio().catch(()=>{}));
 function connect() {
   const connection = new WebSocket(location.origin.replace('http', 'ws') + '/ws');
   socket = connection;
@@ -180,7 +184,7 @@ function connect() {
                 }
               });
             try {
-              await context.resume();
+              await resumeProgrammeAudio(context);
               await element.play();
             } catch (error) {
               if ((error as DOMException).name !== 'NotAllowedError') {
@@ -189,16 +193,7 @@ function connect() {
               }
               status.textContent = '点一下页面开声音';
               value = { blocked: true };
-              const unlock = () => {
-                if (audio === element && audioEpoch === epoch)
-                  void context.resume().then(() => element.play()).then(
-                    () => {
-                      status.textContent = '';
-                    },
-                    () => {},
-                  );
-              };
-              window.addEventListener('pointerdown', unlock, { once: true });
+              notifyParent('blocked');
             }
             break;
           }

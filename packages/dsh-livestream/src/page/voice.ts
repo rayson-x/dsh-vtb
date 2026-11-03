@@ -23,6 +23,7 @@ function setBlocked(value: boolean): void {
 }
 
 /** 声音被浏览器拦住了没有（拦住时页面提示「点一下开声音」） */
+export function setAudioBlocked(value:boolean){setBlocked(value);}
 export function useAudioBlocked(): boolean {
   const [value, set] = useState(blocked);
   useEffect(() => {

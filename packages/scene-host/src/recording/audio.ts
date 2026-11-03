@@ -2,6 +2,15 @@
 export interface CapturedAudio { startedAt: number; endedAt: number; mimeType: string; base64: string; sampleRate: number }
 interface Tap { output: GainNode; capture?: { destination: MediaStreamAudioDestinationNode; recorder: MediaRecorder; chunks: Blob[]; startedAt: number } }
 const taps = new WeakMap<AudioContext, Tap>();
+export async function resumeProgrammeAudio(context: Pick<AudioContext,'state'|'resume'>, timeoutMs=250) {
+ const running=()=>context.state==='running';
+ if(running())return;
+ await new Promise<void>((resolve,reject)=>{
+  const timer=setTimeout(()=>reject(new DOMException('Enable programme audio','NotAllowedError')),timeoutMs);
+  context.resume().then(()=>{clearTimeout(timer);resolve();},error=>{clearTimeout(timer);reject(error);});
+ });
+ if(!running())throw new DOMException('Enable programme audio','NotAllowedError');
+}
 export function programmeOutput(context: AudioContext): GainNode {
   let tap = taps.get(context);
   if (!tap) {
@@ -16,7 +25,7 @@ export async function startAudioCapture(context: AudioContext) {
   programmeOutput(context);
   const tap = taps.get(context)!;
   if (tap.capture) throw Error('Programme audio is already recording');
-  await Promise.race([context.resume(), new Promise<never>((_, reject) => setTimeout(() => reject(Error('Enable programme audio before recording')), 4000))]);
+  await resumeProgrammeAudio(context,4000);
   if (context.state !== 'running') throw Error('Programme audio is not running');
   const destination = context.createMediaStreamDestination();
   const mimeType = 'audio/webm;codecs=opus';

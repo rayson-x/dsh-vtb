@@ -112,7 +112,7 @@ export function Stage({ state, now, fit = true, programme }: { state: StageState
         </Place>
 
         <Panels state={state} scene={layout} now={now} />
-        <Canvas draw={state.draw} now={now} />
+        {!programme && <Canvas draw={state.draw} now={now} />}
 
         <Place state={state} id="subtitle" mover>{() => <Subtitle state={state} now={now} />}</Place>
 

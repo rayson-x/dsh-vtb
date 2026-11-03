@@ -32,7 +32,10 @@ export function blockUntrackedAudio(report: (message:string)=>void) {
   const connect=AudioNode.prototype.connect;
   Object.defineProperty(AudioNode.prototype,'connect',{configurable:false,writable:false,value:function(this:AudioNode,...args:unknown[]){
     const destination=args[0];
-    if(destination instanceof AudioDestinationNode&&!(destination.context instanceof OfflineAudioContext))fail();
+    // HyperFrames eagerly wires its empty master graph during visual setup.
+    // Leave that terminal edge disconnected: setup remains usable and no scene
+    // graph can become audible outside the programme bus, even after unmuting.
+    if(destination instanceof AudioDestinationNode&&!(destination.context instanceof OfflineAudioContext))return destination;
     return Reflect.apply(connect,this,args);
   }});
 }
