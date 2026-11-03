@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createServer } from 'node:net';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -48,7 +48,7 @@ async function boot(mode: string, port: number) {
 }
 async function post(port: number, path: string, body: unknown) {
   const response = await fetch(`http://127.0.0.1:${port}${path}`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    method: 'POST', headers: { 'content-type': 'application/json', connection: 'close' }, body: JSON.stringify(body),
   });
   return { status: response.status, data: await response.json() };
 }
@@ -82,7 +82,7 @@ it('v2 rejects legacy playback, then an orderly legacy restart restores settings
   expect((await post(port, '/speak', { text: '旧入口不能发声' })).status).toBe(409);
   expect((await post(port, '/bridge/call', { method: 'harness.mode', args: { mode: 'legacy' } })).status).toBe(400);
   expect((await post(port, '/input', { platform: 'bilibili', kind: 'danmaku', user: { id: 'viewer', name: '小舟' }, text: '我想保留这段记忆' })).status).toBe(200);
-  const sessions = await (await fetch(`http://127.0.0.1:${port}/live/sessions`)).json();
+  const sessions = await (await fetch(`http://127.0.0.1:${port}/live/sessions`, { headers: { connection: 'close' } })).json();
   const saved = sessions.sessions[0];
   expect(saved.people).toBe(1);
   v2.close();
@@ -91,7 +91,7 @@ it('v2 rejects legacy playback, then an orderly legacy restart restores settings
   host = undefined;
   const legacy = await boot('legacy', port);
   expect(legacy.show.direction).toBe('继续讨论记忆');
-  expect(await readFile(join(folder, 'set'), 'utf8')).toBe('midnight-tales');
+  await expect.poll(() => legacy.stage.state.set, { timeout: 3000 }).toBe('midnight-tales');
   expect((await post(port, '/live/prepare', { audience: saved.id })).status).toBe(200);
   expect(legacy.input.snapshot().people.map(person => person.name)).toContain('小舟');
   expect(legacy.stage.state.danmaku.some(line => line.text === '我想保留这段记忆')).toBe(true);
