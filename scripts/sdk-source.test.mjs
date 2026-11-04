@@ -3,7 +3,18 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { sdkTools } from './sdk-source.mjs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { sdkTools, SDK_PIN } from './sdk-source.mjs';
+test('independent SDK clients can initialize the same cold pinned cache concurrently',
+ {skip:!process.env.AIVTB_SDK_REPO},async()=>{
+  const folder=await mkdtemp(join(tmpdir(),'live-sdk-concurrent-'));
+  try{
+   const code=`import {resolveSdkSource} from ${JSON.stringify(new URL('./sdk-source.mjs',import.meta.url).href)};const s=await resolveSdkSource({cacheRoot:${JSON.stringify(folder)}});console.log(s.provenance.commit);`;
+   const results=await Promise.allSettled(Array.from({length:3},()=>promisify(execFile)(process.execPath,['--input-type=module','-e',code])));
+   for(const r of results){assert.equal(r.status,'fulfilled',r.status==='rejected'?r.reason.message:'');if(r.status==='fulfilled')assert.equal(r.value.stdout.trim(),SDK_PIN);}
+  }finally{await rm(folder,{recursive:true,force:true});}
+ });
 test('a catalog effect can be reused through its real pinned Scene entry without copying private source',
   { skip: !process.env.AIVTB_SDK_REPO }, async () => {
     const folder = await mkdtemp(join(tmpdir(), 'live-sdk-reuse-'));

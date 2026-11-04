@@ -1,7 +1,7 @@
 /** Integrate an authorized private checkout without vendoring its implementation in this public repo. */
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile, realpath, stat, symlink, rename, rm } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { resolve, join, dirname, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 export const SDK_PIN = 'c73ac74f9a5479586f0ea5d39f5c40d2dc39a98b';
@@ -35,7 +35,7 @@ export async function resolveSdkSource({
     () => false,
   );
   if (!present) {
-    const temp = root + `.partial-${process.pid}`;
+    const temp = root + `.partial-${process.pid}-${randomUUID()}`;
     await mkdir(temp, { recursive: true });
     try {
       await new Promise((done, reject) => {
@@ -62,7 +62,12 @@ export async function resolveSdkSource({
         join(temp, 'provenance.json'),
         JSON.stringify({ repo: 'rayson-x/reelmorph-agent', commit: SDK_PIN, paths, private: true }, null, 2),
       );
-      await rename(temp, root);
+      try{await rename(temp, root);}catch(error){
+        // Independent test/role processes may publish the same immutable pin.
+        // The winner is verified below; discard only this caller's temporary tree.
+        if(!['EEXIST','ENOTEMPTY'].includes(error.code))throw error;
+        await rm(temp,{recursive:true,force:true});
+      }
     } catch (error) {
       await rm(temp, { recursive: true, force: true });
       throw error;
