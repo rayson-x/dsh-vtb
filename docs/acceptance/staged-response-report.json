@@ -1,0 +1,2635 @@
+{
+  "schema": 1,
+  "date": "2026-11-05",
+  "externalBroadcast": false,
+  "scope": "scripted local audience; real four-role models, ElevenLabs Flash v2.5 and Ego browser",
+  "sourceBase": "1c9e3bc",
+  "trials": [
+    {
+      "id": "1793792107678",
+      "name": "single main speaker staged baseline",
+      "inputs": 30,
+      "durationSeconds": 660.947,
+      "phases": {
+        "firstResponse": {
+          "count": 30,
+          "p50": 7694,
+          "p95": 13342,
+          "max": 13763
+        },
+        "acknowledgement": {
+          "count": 30,
+          "p50": 7694,
+          "p95": 13342,
+          "max": 13763
+        },
+        "firstAnswer": {
+          "count": 30,
+          "p50": 13717,
+          "p95": 28678,
+          "max": 40094
+        },
+        "verbalCompletion": {
+          "count": 11,
+          "p50": 22080,
+          "p95": 43883,
+          "max": 43883
+        },
+        "visualFulfilment": {
+          "count": 0
+        },
+        "unfinished": [
+          2,
+          3,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          13,
+          15,
+          16,
+          17,
+          18,
+          21,
+          22,
+          23,
+          25,
+          28
+        ],
+        "note": "Only completed actual speech counts in latency summaries; a first short response is not a full answer or visual fulfilment. Content relevance requires a separate audit."
+      },
+      "errors": []
+    },
+    {
+      "id": "1793800150306",
+      "name": "short references and non-reasoning speaker",
+      "inputs": 30,
+      "durationSeconds": 661.731,
+      "phases": {
+        "firstResponse": {
+          "count": 30,
+          "p50": 7340,
+          "p95": 13412,
+          "max": 13695
+        },
+        "acknowledgement": {
+          "count": 30,
+          "p50": 7340,
+          "p95": 13412,
+          "max": 13695
+        },
+        "firstAnswer": {
+          "count": 30,
+          "p50": 11760,
+          "p95": 18902,
+          "max": 25817
+        },
+        "verbalCompletion": {
+          "count": 24,
+          "p50": 21526,
+          "p95": 31188,
+          "max": 32513
+        },
+        "visualFulfilment": {
+          "count": 0
+        },
+        "unfinished": [
+          9,
+          10,
+          11,
+          13,
+          24,
+          27
+        ],
+        "note": "Only completed actual speech counts in latency summaries; a first short response is not a full answer or visual fulfilment. Content relevance requires a separate audit."
+      },
+      "errors": []
+    },
+    {
+      "id": "1793803226309",
+      "name": "one-shot full acknowledgement; incomplete interrupted observation",
+      "inputs": 11,
+      "durationSeconds": 875.699,
+      "phases": {
+        "firstResponse": {
+          "count": 4,
+          "p50": 5023,
+          "p95": 10721,
+          "max": 10721
+        },
+        "acknowledgement": {
+          "count": 4,
+          "p50": 5023,
+          "p95": 10721,
+          "max": 10721
+        },
+        "firstAnswer": {
+          "count": 3,
+          "p50": 8554,
+          "p95": 15044,
+          "max": 15044
+        },
+        "verbalCompletion": {
+          "count": 0
+        },
+        "visualFulfilment": {
+          "count": 0
+        },
+        "unfinished": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "note": "Only completed actual speech counts in latency summaries; a first short response is not a full answer or visual fulfilment. Content relevance requires a separate audit."
+      },
+      "errors": []
+    },
+    {
+      "id": "1793805089122",
+      "name": "over-broad interruption diagnostic; rejected",
+      "inputs": 22,
+      "durationSeconds": null,
+      "phases": null,
+      "errors": []
+    },
+    {
+      "id": "1793807092658",
+      "name": "first-contact interruption, comma-clause early commit; rejected semantic quality",
+      "inputs": 30,
+      "durationSeconds": 660.498,
+      "phases": {
+        "firstResponse": {
+          "count": 30,
+          "p50": 5264,
+          "p95": 12070,
+          "max": 14293
+        },
+        "acknowledgement": {
+          "count": 30,
+          "p50": 5264,
+          "p95": 12070,
+          "max": 14293
+        },
+        "firstAnswer": {
+          "count": 29,
+          "p50": 13488,
+          "p95": 19873,
+          "max": 32152
+        },
+        "verbalCompletion": {
+          "count": 17,
+          "p50": 23132,
+          "p95": 93122,
+          "max": 93122
+        },
+        "visualFulfilment": {
+          "count": 0
+        },
+        "unfinished": [
+          1,
+          5,
+          8,
+          12,
+          14,
+          16,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          28
+        ],
+        "note": "Only completed actual speech counts in latency summaries; a first short response is not a full answer or visual fulfilment. Content relevance requires a separate audit."
+      },
+      "errors": []
+    },
+    {
+      "id": "1793808587347",
+      "name": "held drafts, unfinished comma prefixes observed; manually stopped",
+      "inputs": 7,
+      "durationSeconds": null,
+      "phases": null,
+      "errors": [
+        {
+          "at": 1793808717239,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808718250,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808719258,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808720261,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808721267,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808722286,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808723309,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808724318,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808725331,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808726363,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808727371,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808728378,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808729386,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808730389,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808731393,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808732398,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808733403,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808734407,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808735413,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808736419,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808737453,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808738461,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808739472,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808740484,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808741500,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808742508,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808743547,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808744557,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808745569,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808746590,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808747604,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808748611,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808749617,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808750620,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808751624,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808752629,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808753636,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808754641,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808755646,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808756650,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808757656,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        },
+        {
+          "at": 1793808758660,
+          "phase": "sample",
+          "error": "TypeError: fetch failed"
+        }
+      ]
+    },
+    {
+      "id": "1793808870113",
+      "name": "30-input pre-final-guard trial",
+      "inputs": 30,
+      "durationSeconds": 660.675,
+      "phases": {
+        "firstResponse": {
+          "count": 30,
+          "p50": 5687,
+          "p95": 12498,
+          "max": 19465
+        },
+        "acknowledgement": {
+          "count": 30,
+          "p50": 5687,
+          "p95": 12498,
+          "max": 19465
+        },
+        "firstAnswer": {
+          "count": 30,
+          "p50": 12809,
+          "p95": 37199,
+          "max": 37414
+        },
+        "verbalCompletion": {
+          "count": 14,
+          "p50": 31119,
+          "p95": 142844,
+          "max": 142844
+        },
+        "visualFulfilment": {
+          "count": 2,
+          "p50": 485992,
+          "p95": 485992,
+          "max": 485992
+        },
+        "unfinished": [
+          4,
+          7,
+          8,
+          9,
+          11,
+          12,
+          13,
+          17,
+          18,
+          21,
+          22,
+          24,
+          26,
+          27,
+          28,
+          29
+        ],
+        "note": "Only completed actual speech counts in latency summaries; a first short response is not a full answer or visual fulfilment. Content relevance requires a separate audit."
+      },
+      "errors": []
+    }
+  ],
+  "finalSmoke": {
+    "id": "1793809907337",
+    "result": {
+      "actualDurationSeconds": 70.129,
+      "inputCount": 4,
+      "namedAudibleReplies": 1,
+      "unmatched": [
+        1,
+        2,
+        3
+      ],
+      "replyLatencyMs": {
+        "p50": 4312,
+        "p95": 4312,
+        "max": 4312
+      },
+      "note": "Latency uses observed real speaking/ended parts naming the scripted viewer; does not count unrelated speech or infer unnamed semantic replies. Browser metrics cover this page, not all browser/GPU processes."
+    },
+    "phases": {
+      "firstResponse": {
+        "count": 4,
+        "p50": 8218,
+        "p95": 9489,
+        "max": 9489
+      },
+      "acknowledgement": {
+        "count": 4,
+        "p50": 8218,
+        "p95": 9489,
+        "max": 9489
+      },
+      "firstAnswer": {
+        "count": 0
+      },
+      "verbalCompletion": {
+        "count": 0
+      },
+      "visualFulfilment": {
+        "count": 0
+      },
+      "unfinished": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "note": "Only completed actual speech counts in latency summaries; a first short response is not a full answer or visual fulfilment. Content relevance requires a separate audit."
+    },
+    "errors": []
+  },
+  "invalidResumedSmoke": {
+    "id": "1793809699215",
+    "reason": "Repeated viewer names matched old input IDs; invalid statistics; raw local report retained"
+  },
+  "longTrialRows": [
+    {
+      "index": 1,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:1",
+      "firstResponse": {
+        "partId": "quick-a7538f47-65ea-4406-8fb7-e31260d9e4cf",
+        "stage": "ack",
+        "text": "暖灯先记上，小灯这主意挺衬窗边。",
+        "state": "ended",
+        "firstAudibleMs": 6185,
+        "completedMs": 9482
+      },
+      "acknowledgement": {
+        "partId": "quick-a7538f47-65ea-4406-8fb7-e31260d9e4cf",
+        "stage": "ack",
+        "text": "暖灯先记上，小灯这主意挺衬窗边。",
+        "state": "ended",
+        "firstAudibleMs": 6185,
+        "completedMs": 9482
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_I0TZ03a7XkyvbCKBm37n8947",
+        "stage": "answer",
+        "text": "暖灯放窗台内侧还是外侧，这个得挑一下，",
+        "state": "ended",
+        "firstAudibleMs": 11414,
+        "completedMs": 15679
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_01_N1mt39x5vufErdrse1tu5879",
+        "stage": "finish",
+        "text": "说到糊，那封信的落款也是一片糊——",
+        "state": "ended",
+        "firstAudibleMs": 32376,
+        "completedMs": 35670
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-a7538f47-65ea-4406-8fb7-e31260d9e4cf",
+          "stage": "ack",
+          "text": "暖灯先记上，小灯这主意挺衬窗边。",
+          "state": "ended",
+          "firstAudibleMs": 6185,
+          "completedMs": 9482
+        },
+        {
+          "partId": "speech-call_00_I0TZ03a7XkyvbCKBm37n8947",
+          "stage": "answer",
+          "text": "暖灯放窗台内侧还是外侧，这个得挑一下，",
+          "state": "ended",
+          "firstAudibleMs": 11414,
+          "completedMs": 15679
+        },
+        {
+          "partId": "speech-call_00_jvUjBTzzsK5u2Nqwc7pn4485",
+          "stage": "answer",
+          "text": "放内侧吧，玻璃上一层雾，光就化成一片橘子色的雾，",
+          "state": "ended",
+          "firstAudibleMs": 15713,
+          "completedMs": 22773
+        },
+        {
+          "partId": "speech-call_01_N1mt39x5vufErdrse1tu5879",
+          "stage": "finish",
+          "text": "说到糊，那封信的落款也是一片糊——",
+          "state": "ended",
+          "firstAudibleMs": 32376,
+          "completedMs": 35670
+        },
+        {
+          "partId": "speech-call_00_gwSfnsSmGju7mBLDNoUh6804",
+          "stage": "answer",
+          "text": "那片糊不是墨晕开的，倒像有人用拇指按了一下，",
+          "state": "aborted",
+          "firstAudibleMs": 41382,
+          "completedMs": null
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 2,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:2",
+      "firstResponse": {
+        "partId": "quick-1fadf26c-c52c-4fa8-8c01-31cb784e724c",
+        "stage": "ack",
+        "text": "旧杯子好，有那种用旧了的手感。",
+        "state": "ended",
+        "firstAudibleMs": 5506,
+        "completedMs": 8383
+      },
+      "acknowledgement": {
+        "partId": "quick-1fadf26c-c52c-4fa8-8c01-31cb784e724c",
+        "stage": "ack",
+        "text": "旧杯子好，有那种用旧了的手感。",
+        "state": "ended",
+        "firstAudibleMs": 5506,
+        "completedMs": 8383
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_mdURxiJqNripal3XADhs1250",
+        "stage": "answer",
+        "text": "要那种杯口磕掉一小块的，摸着有点糙。",
+        "state": "ended",
+        "firstAudibleMs": 8425,
+        "completedMs": 11669
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_haT2USscrq4zObYUi4QS8369",
+        "stage": "finish",
+        "text": "墙压成灰，书桌那只磕了口的旧杯子，也透着点暖。",
+        "state": "ended",
+        "firstAudibleMs": 138338,
+        "completedMs": 142844
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-1fadf26c-c52c-4fa8-8c01-31cb784e724c",
+          "stage": "ack",
+          "text": "旧杯子好，有那种用旧了的手感。",
+          "state": "ended",
+          "firstAudibleMs": 5506,
+          "completedMs": 8383
+        },
+        {
+          "partId": "speech-call_00_mdURxiJqNripal3XADhs1250",
+          "stage": "answer",
+          "text": "要那种杯口磕掉一小块的，摸着有点糙。",
+          "state": "ended",
+          "firstAudibleMs": 8425,
+          "completedMs": 11669
+        },
+        {
+          "partId": "speech-call_00_haT2USscrq4zObYUi4QS8369",
+          "stage": "finish",
+          "text": "墙压成灰，书桌那只磕了口的旧杯子，也透着点暖。",
+          "state": "ended",
+          "firstAudibleMs": 138338,
+          "completedMs": 142844
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 3,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:3",
+      "firstResponse": {
+        "partId": "quick-bd57e56a-54a1-4d07-b8ba-10d4568ec23c",
+        "stage": "ack",
+        "text": "可以呀，窗边加一小群鱼很合适。",
+        "state": "ended",
+        "firstAudibleMs": 4868,
+        "completedMs": 7878
+      },
+      "acknowledgement": {
+        "partId": "quick-bd57e56a-54a1-4d07-b8ba-10d4568ec23c",
+        "stage": "ack",
+        "text": "可以呀，窗边加一小群鱼很合适。",
+        "state": "ended",
+        "firstAudibleMs": 4868,
+        "completedMs": 7878
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_95Ec9KaNKGnPhjhVP9qP2646",
+        "stage": "answer",
+        "text": "要小小的那种，别太大，游过去的时候像一串逗号，",
+        "state": "ended",
+        "firstAudibleMs": 7994,
+        "completedMs": 13045
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_4kd3PBARrhys3g5p79PW9531",
+        "stage": "finish",
+        "text": "说到那封信，落款也是一片糊，",
+        "state": "ended",
+        "firstAudibleMs": 16546,
+        "completedMs": 19327
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-bd57e56a-54a1-4d07-b8ba-10d4568ec23c",
+          "stage": "ack",
+          "text": "可以呀，窗边加一小群鱼很合适。",
+          "state": "ended",
+          "firstAudibleMs": 4868,
+          "completedMs": 7878
+        },
+        {
+          "partId": "speech-call_00_95Ec9KaNKGnPhjhVP9qP2646",
+          "stage": "answer",
+          "text": "要小小的那种，别太大，游过去的时候像一串逗号，",
+          "state": "ended",
+          "firstAudibleMs": 7994,
+          "completedMs": 13045
+        },
+        {
+          "partId": "speech-call_00_UOCbeFn1U9nAHon9Qubs3430",
+          "stage": "answer",
+          "text": "游过去的时候像一串逗号，慢慢划。",
+          "state": "ended",
+          "firstAudibleMs": 13081,
+          "completedMs": 16509
+        },
+        {
+          "partId": "speech-call_00_4kd3PBARrhys3g5p79PW9531",
+          "stage": "finish",
+          "text": "说到那封信，落款也是一片糊，",
+          "state": "ended",
+          "firstAudibleMs": 16546,
+          "completedMs": 19327
+        }
+      ],
+      "visualStatus": "presented",
+      "visualFulfilledMs": 485992
+    },
+    {
+      "index": 4,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:4",
+      "firstResponse": {
+        "partId": "quick-0e94079a-9034-4bd8-91b9-daab300b039e",
+        "stage": "ack",
+        "text": "好嘞，我手边这盏灯调暗一点——这封信的纸边都被水汽卷起来了。",
+        "state": "ended",
+        "firstAudibleMs": 4217,
+        "completedMs": 10316
+      },
+      "acknowledgement": {
+        "partId": "quick-0e94079a-9034-4bd8-91b9-daab300b039e",
+        "stage": "ack",
+        "text": "好嘞，我手边这盏灯调暗一点——这封信的纸边都被水汽卷起来了。",
+        "state": "ended",
+        "firstAudibleMs": 4217,
+        "completedMs": 10316
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_MxIVLo9TtIVggyndrMIQ6207",
+        "stage": "answer",
+        "text": "说回那片糊——倒像有人用拇指按了一下，",
+        "state": "ended",
+        "firstAudibleMs": 13090,
+        "completedMs": 16572
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-0e94079a-9034-4bd8-91b9-daab300b039e",
+          "stage": "ack",
+          "text": "好嘞，我手边这盏灯调暗一点——这封信的纸边都被水汽卷起来了。",
+          "state": "ended",
+          "firstAudibleMs": 4217,
+          "completedMs": 10316
+        },
+        {
+          "partId": "speech-call_00_MxIVLo9TtIVggyndrMIQ6207",
+          "stage": "answer",
+          "text": "说回那片糊——倒像有人用拇指按了一下，",
+          "state": "ended",
+          "firstAudibleMs": 13090,
+          "completedMs": 16572
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 5,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:5",
+      "firstResponse": {
+        "partId": "quick-ebc31d8e-2de7-422f-882b-33c4828dc376",
+        "stage": "ack",
+        "text": "没署名的话……我倒先猜是隔壁那只寄居蟹。",
+        "state": "ended",
+        "firstAudibleMs": 3985,
+        "completedMs": 7753
+      },
+      "acknowledgement": {
+        "partId": "quick-ebc31d8e-2de7-422f-882b-33c4828dc376",
+        "stage": "ack",
+        "text": "没署名的话……我倒先猜是隔壁那只寄居蟹。",
+        "state": "ended",
+        "firstAudibleMs": 3985,
+        "completedMs": 7753
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_BejxdH1KpadnnCsUGdN23635",
+        "stage": "answer",
+        "text": "我也想知道是谁——落款那片糊，正好说明写信的人不想被认出来。",
+        "state": "ended",
+        "firstAudibleMs": 8535,
+        "completedMs": 13971
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_CmI7bLKufP0fp8j92IcF9528",
+        "stage": "finish",
+        "text": "写完那行就匆匆折起来，连名字都省了。",
+        "state": "ended",
+        "firstAudibleMs": 54525,
+        "completedMs": 58006
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-ebc31d8e-2de7-422f-882b-33c4828dc376",
+          "stage": "ack",
+          "text": "没署名的话……我倒先猜是隔壁那只寄居蟹。",
+          "state": "ended",
+          "firstAudibleMs": 3985,
+          "completedMs": 7753
+        },
+        {
+          "partId": "speech-call_00_BejxdH1KpadnnCsUGdN23635",
+          "stage": "answer",
+          "text": "我也想知道是谁——落款那片糊，正好说明写信的人不想被认出来。",
+          "state": "ended",
+          "firstAudibleMs": 8535,
+          "completedMs": 13971
+        },
+        {
+          "partId": "speech-call_00_j54Gcz0BOh3BjaSEXLgs0107",
+          "stage": "answer",
+          "text": "它老在窗台爬来爬去，还爱捡别人的东西。",
+          "state": "ended",
+          "firstAudibleMs": 14008,
+          "completedMs": 17617
+        },
+        {
+          "partId": "speech-call_00_l0dRx0kRv0do4xJCLZJz5920",
+          "stage": "finish",
+          "text": "按完了就匆匆折起来，连自己叫什么都忘了写。",
+          "state": "aborted",
+          "firstAudibleMs": 19535,
+          "completedMs": null
+        },
+        {
+          "partId": "speech-call_00_S0smTuO1VQmLqdsusX9s5350",
+          "stage": "answer",
+          "text": "说到那封信——写的人大概就是按着这一页，",
+          "state": "ended",
+          "firstAudibleMs": 38045,
+          "completedMs": 41707
+        },
+        {
+          "partId": "speech-call_00_CmI7bLKufP0fp8j92IcF9528",
+          "stage": "finish",
+          "text": "写完那行就匆匆折起来，连名字都省了。",
+          "state": "ended",
+          "firstAudibleMs": 54525,
+          "completedMs": 58006
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 6,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:6",
+      "firstResponse": {
+        "partId": "quick-3cc1c3d8-7502-470c-98f7-04ebecbc734a",
+        "stage": "ack",
+        "text": "小灯想听旧书啊，行，我把它挪到灯底下。",
+        "state": "ended",
+        "firstAudibleMs": 3774,
+        "completedMs": 7681
+      },
+      "acknowledgement": {
+        "partId": "quick-3cc1c3d8-7502-470c-98f7-04ebecbc734a",
+        "stage": "ack",
+        "text": "小灯想听旧书啊，行，我把它挪到灯底下。",
+        "state": "ended",
+        "firstAudibleMs": 3774,
+        "completedMs": 7681
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_Fp6vEXMtuImriz5NbQQU1026",
+        "stage": "answer",
+        "text": "房间就留着，桌上那本旧书我翻翻看。",
+        "state": "ended",
+        "firstAudibleMs": 8734,
+        "completedMs": 12109
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_VYW6gXA9owCYXlfHONZG4387",
+        "stage": "finish",
+        "text": "翻开第一页，夹着张干瘪的海藻书签。",
+        "state": "ended",
+        "firstAudibleMs": 15424,
+        "completedMs": 18724
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-3cc1c3d8-7502-470c-98f7-04ebecbc734a",
+          "stage": "ack",
+          "text": "小灯想听旧书啊，行，我把它挪到灯底下。",
+          "state": "ended",
+          "firstAudibleMs": 3774,
+          "completedMs": 7681
+        },
+        {
+          "partId": "speech-call_00_Fp6vEXMtuImriz5NbQQU1026",
+          "stage": "answer",
+          "text": "房间就留着，桌上那本旧书我翻翻看。",
+          "state": "ended",
+          "firstAudibleMs": 8734,
+          "completedMs": 12109
+        },
+        {
+          "partId": "speech-call_00_lXOOCx7OiSOiGT1uNUpP1898",
+          "stage": "answer",
+          "text": "封面是深蓝的布面，边角都磨白了。",
+          "state": "ended",
+          "firstAudibleMs": 12149,
+          "completedMs": 15394
+        },
+        {
+          "partId": "speech-call_00_VYW6gXA9owCYXlfHONZG4387",
+          "stage": "finish",
+          "text": "翻开第一页，夹着张干瘪的海藻书签。",
+          "state": "ended",
+          "firstAudibleMs": 15424,
+          "completedMs": 18724
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 7,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:7",
+      "firstResponse": {
+        "partId": "quick-cb02916f-9ae4-4d20-81e2-acae78f196e7",
+        "stage": "ack",
+        "text": "书架最上层那格，我特意给你空着。",
+        "state": "ended",
+        "firstAudibleMs": 8199,
+        "completedMs": 11367
+      },
+      "acknowledgement": {
+        "partId": "quick-cb02916f-9ae4-4d20-81e2-acae78f196e7",
+        "stage": "ack",
+        "text": "书架最上层那格，我特意给你空着。",
+        "state": "ended",
+        "firstAudibleMs": 8199,
+        "completedMs": 11367
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_GOSdKAWrnxqeConQQnQX5731",
+        "stage": "answer",
+        "text": "空着那格不是忘放书，是等那封信回来。",
+        "state": "ended",
+        "firstAudibleMs": 18397,
+        "completedMs": 21747
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-cb02916f-9ae4-4d20-81e2-acae78f196e7",
+          "stage": "ack",
+          "text": "书架最上层那格，我特意给你空着。",
+          "state": "ended",
+          "firstAudibleMs": 8199,
+          "completedMs": 11367
+        },
+        {
+          "partId": "speech-call_00_GOSdKAWrnxqeConQQnQX5731",
+          "stage": "answer",
+          "text": "空着那格不是忘放书，是等那封信回来。",
+          "state": "ended",
+          "firstAudibleMs": 18397,
+          "completedMs": 21747
+        },
+        {
+          "partId": "speech-call_00_iy4VYbpJl0oHIuna83EC5294",
+          "stage": "answer",
+          "text": "空着那格不是忘放书，是等那封信回来。",
+          "state": "aborted",
+          "firstAudibleMs": 21790,
+          "completedMs": null
+        }
+      ],
+      "visualStatus": "presented",
+      "visualFulfilledMs": 211875
+    },
+    {
+      "index": 8,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:8",
+      "firstResponse": {
+        "partId": "quick-70a99f52-e631-4eb8-8348-01b05cc1f87f",
+        "stage": "ack",
+        "text": "小灯喜欢安静点的配色，我记下啦；",
+        "state": "ended",
+        "firstAudibleMs": 3211,
+        "completedMs": 6190
+      },
+      "acknowledgement": {
+        "partId": "quick-70a99f52-e631-4eb8-8348-01b05cc1f87f",
+        "stage": "ack",
+        "text": "小灯喜欢安静点的配色，我记下啦；",
+        "state": "ended",
+        "firstAudibleMs": 3211,
+        "completedMs": 6190
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_Epv5BnTifa1ybt5RfG7i7081",
+        "stage": "answer",
+        "text": "安静点好啊，蓝灰配米白，别一股脑儿亮；",
+        "state": "ended",
+        "firstAudibleMs": 8230,
+        "completedMs": 12027
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-70a99f52-e631-4eb8-8348-01b05cc1f87f",
+          "stage": "ack",
+          "text": "小灯喜欢安静点的配色，我记下啦；",
+          "state": "ended",
+          "firstAudibleMs": 3211,
+          "completedMs": 6190
+        },
+        {
+          "partId": "speech-call_00_Epv5BnTifa1ybt5RfG7i7081",
+          "stage": "answer",
+          "text": "安静点好啊，蓝灰配米白，别一股脑儿亮；",
+          "state": "ended",
+          "firstAudibleMs": 8230,
+          "completedMs": 12027
+        },
+        {
+          "partId": "speech-call_00_FrVgcHJHqGl0rZCFClda6060",
+          "stage": "answer",
+          "text": "墙我就往灰里压，窗那边还留一点暖，别整间都凉了。",
+          "state": "ended",
+          "firstAudibleMs": 12062,
+          "completedMs": 16800
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 9,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:9",
+      "firstResponse": {
+        "partId": "quick-07bccc6d-a86d-4b2f-8446-9344976e4c75",
+        "stage": "ack",
+        "text": "可以呀，先挪到窗边。",
+        "state": "ended",
+        "firstAudibleMs": 3168,
+        "completedMs": 5295
+      },
+      "acknowledgement": {
+        "partId": "quick-07bccc6d-a86d-4b2f-8446-9344976e4c75",
+        "stage": "ack",
+        "text": "可以呀，先挪到窗边。",
+        "state": "ended",
+        "firstAudibleMs": 3168,
+        "completedMs": 5295
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_2EeV14o3OObys5epiKCZ4192",
+        "stage": "answer",
+        "text": "玻璃外头那一小群鱼，正贴着窗边游过。",
+        "state": "ended",
+        "firstAudibleMs": 34944,
+        "completedMs": 38443
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-07bccc6d-a86d-4b2f-8446-9344976e4c75",
+          "stage": "ack",
+          "text": "可以呀，先挪到窗边。",
+          "state": "ended",
+          "firstAudibleMs": 3168,
+          "completedMs": 5295
+        },
+        {
+          "partId": "speech-call_00_7CrP6YsXK8o9ij2RkisY9268",
+          "stage": "answer",
+          "text": "那条光斜着搭在窗棂上，正好照见玻璃外头一小群鱼游过去。",
+          "state": "aborted",
+          "firstAudibleMs": 23973,
+          "completedMs": null
+        },
+        {
+          "partId": "speech-call_00_2EeV14o3OObys5epiKCZ4192",
+          "stage": "answer",
+          "text": "玻璃外头那一小群鱼，正贴着窗边游过。",
+          "state": "ended",
+          "firstAudibleMs": 34944,
+          "completedMs": 38443
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 10,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:10",
+      "firstResponse": {
+        "partId": "quick-85304a0b-9525-4f46-b548-6f6bfef8d84f",
+        "stage": "ack",
+        "text": "小灯，他留下来大概是有牵挂，我接着往下讲。",
+        "state": "ended",
+        "firstAudibleMs": 5835,
+        "completedMs": 10521
+      },
+      "acknowledgement": {
+        "partId": "quick-85304a0b-9525-4f46-b548-6f6bfef8d84f",
+        "stage": "ack",
+        "text": "小灯，他留下来大概是有牵挂，我接着往下讲。",
+        "state": "ended",
+        "firstAudibleMs": 5835,
+        "completedMs": 10521
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_Z6udLDemqe6cI2RMEqv02503",
+        "stage": "answer",
+        "text": "小灯，他留下来大概是有牵挂，我接着往下讲。",
+        "state": "ended",
+        "firstAudibleMs": 10569,
+        "completedMs": 14573
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_H8hNA414PLd77NCn05Ff4832",
+        "stage": "finish",
+        "text": "一年一年地等，人就走不开了。",
+        "state": "ended",
+        "firstAudibleMs": 28345,
+        "completedMs": 31119
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-85304a0b-9525-4f46-b548-6f6bfef8d84f",
+          "stage": "ack",
+          "text": "小灯，他留下来大概是有牵挂，我接着往下讲。",
+          "state": "ended",
+          "firstAudibleMs": 5835,
+          "completedMs": 10521
+        },
+        {
+          "partId": "speech-call_00_Z6udLDemqe6cI2RMEqv02503",
+          "stage": "answer",
+          "text": "小灯，他留下来大概是有牵挂，我接着往下讲。",
+          "state": "ended",
+          "firstAudibleMs": 10569,
+          "completedMs": 14573
+        },
+        {
+          "partId": "speech-call_00_zoZ5N10D11hFIJs4iMze0268",
+          "stage": "answer",
+          "text": "牵挂这事啊，我得从信上那个没署名说起。",
+          "state": "ended",
+          "firstAudibleMs": 18216,
+          "completedMs": 21936
+        },
+        {
+          "partId": "speech-call_00_6T4cJOs05Pfy9JGdEfeK3776",
+          "stage": "answer",
+          "text": "信上没署名，只写了一句：窗边的灯，我每年都替你点着。",
+          "state": "aborted",
+          "firstAudibleMs": 22151,
+          "completedMs": null
+        },
+        {
+          "partId": "speech-call_00_H8hNA414PLd77NCn05Ff4832",
+          "stage": "finish",
+          "text": "一年一年地等，人就走不开了。",
+          "state": "ended",
+          "firstAudibleMs": 28345,
+          "completedMs": 31119
+        },
+        {
+          "partId": "speech-call_00_vXmmKcXDYamvjDWKZBKU6408",
+          "stage": "finish",
+          "text": "那封信拢共就这一句，落款糊了，也没人认。",
+          "state": "ended",
+          "firstAudibleMs": 33968,
+          "completedMs": 37739
+        },
+        {
+          "partId": "speech-call_00_PwDTLJ4uZBK1ygnDb0a50559",
+          "stage": "answer",
+          "text": "信纸折了三道，边角让海水洇出一圈毛边。",
+          "state": "ended",
+          "firstAudibleMs": 43301,
+          "completedMs": 47311
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 11,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:11",
+      "firstResponse": {
+        "partId": "quick-5698819a-1129-406f-8bf9-361082a1c42d",
+        "stage": "ack",
+        "text": "暖灯可以加，窗边一下就暖起来了。",
+        "state": "ended",
+        "firstAudibleMs": 5478,
+        "completedMs": 8667
+      },
+      "acknowledgement": {
+        "partId": "quick-5698819a-1129-406f-8bf9-361082a1c42d",
+        "stage": "ack",
+        "text": "暖灯可以加，窗边一下就暖起来了。",
+        "state": "ended",
+        "firstAudibleMs": 5478,
+        "completedMs": 8667
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_SL9OMWSjKjvUPU42pf1G2681",
+        "stage": "answer",
+        "text": "挂外头，玻璃上就多一团黄晕。",
+        "state": "ended",
+        "firstAudibleMs": 11539,
+        "completedMs": 14295
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-5698819a-1129-406f-8bf9-361082a1c42d",
+          "stage": "ack",
+          "text": "暖灯可以加，窗边一下就暖起来了。",
+          "state": "ended",
+          "firstAudibleMs": 5478,
+          "completedMs": 8667
+        },
+        {
+          "partId": "speech-call_00_SL9OMWSjKjvUPU42pf1G2681",
+          "stage": "answer",
+          "text": "挂外头，玻璃上就多一团黄晕。",
+          "state": "ended",
+          "firstAudibleMs": 11539,
+          "completedMs": 14295
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 12,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:12",
+      "firstResponse": {
+        "partId": "speech-call_00_lOAp2xNeT9FYA4j0ObpZ4089",
+        "stage": "ack",
+        "text": "旧杯子好，搁桌角缺个口那种。",
+        "state": "ended",
+        "firstAudibleMs": 12498,
+        "completedMs": 15033
+      },
+      "acknowledgement": {
+        "partId": "speech-call_00_lOAp2xNeT9FYA4j0ObpZ4089",
+        "stage": "ack",
+        "text": "旧杯子好，搁桌角缺个口那种。",
+        "state": "ended",
+        "firstAudibleMs": 12498,
+        "completedMs": 15033
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_pW6hLISyeDp7UOkPW7HV1506",
+        "stage": "answer",
+        "text": "桌上那只杯子就让它空着，不摆花也不倒茶。",
+        "state": "ended",
+        "firstAudibleMs": 15084,
+        "completedMs": 18933
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "speech-call_00_lOAp2xNeT9FYA4j0ObpZ4089",
+          "stage": "ack",
+          "text": "旧杯子好，搁桌角缺个口那种。",
+          "state": "ended",
+          "firstAudibleMs": 12498,
+          "completedMs": 15033
+        },
+        {
+          "partId": "speech-call_00_pW6hLISyeDp7UOkPW7HV1506",
+          "stage": "answer",
+          "text": "桌上那只杯子就让它空着，不摆花也不倒茶。",
+          "state": "ended",
+          "firstAudibleMs": 15084,
+          "completedMs": 18933
+        },
+        {
+          "partId": "speech-call_00_QQG6GBp6TaE1JUmQCTj59239",
+          "stage": "answer",
+          "text": "空杯子搁在那儿，像是有人刚起身走开。",
+          "state": "ended",
+          "firstAudibleMs": 19001,
+          "completedMs": 22540
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 13,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:13",
+      "firstResponse": {
+        "partId": "quick-36116d76-ecdd-4e45-a7a8-448ad01faf43",
+        "stage": "ack",
+        "text": "小鱼群这就游到窗边啦。",
+        "state": "ended",
+        "firstAudibleMs": 4310,
+        "completedMs": 6481
+      },
+      "acknowledgement": {
+        "partId": "quick-36116d76-ecdd-4e45-a7a8-448ad01faf43",
+        "stage": "ack",
+        "text": "小鱼群这就游到窗边啦。",
+        "state": "ended",
+        "firstAudibleMs": 4310,
+        "completedMs": 6481
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_yLFOMfKfvl5pXHZQ6KwQ3658",
+        "stage": "answer",
+        "text": "一群小的，绕着暖灯转，别太密，疏疏地过。",
+        "state": "ended",
+        "firstAudibleMs": 7409,
+        "completedMs": 11538
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-36116d76-ecdd-4e45-a7a8-448ad01faf43",
+          "stage": "ack",
+          "text": "小鱼群这就游到窗边啦。",
+          "state": "ended",
+          "firstAudibleMs": 4310,
+          "completedMs": 6481
+        },
+        {
+          "partId": "speech-call_00_yLFOMfKfvl5pXHZQ6KwQ3658",
+          "stage": "answer",
+          "text": "一群小的，绕着暖灯转，别太密，疏疏地过。",
+          "state": "ended",
+          "firstAudibleMs": 7409,
+          "completedMs": 11538
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 14,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:14",
+      "firstResponse": {
+        "partId": "quick-6b414483-fa33-41b3-8173-7e33e948c9e4",
+        "stage": "ack",
+        "text": "小灯这名字起得好，灯也温柔点——我这就调暗一档。",
+        "state": "ended",
+        "firstAudibleMs": 3683,
+        "completedMs": 8417
+      },
+      "acknowledgement": {
+        "partId": "quick-6b414483-fa33-41b3-8173-7e33e948c9e4",
+        "stage": "ack",
+        "text": "小灯这名字起得好，灯也温柔点——我这就调暗一档。",
+        "state": "ended",
+        "firstAudibleMs": 3683,
+        "completedMs": 8417
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_7QFjQAILuxKLIVIrqG729259",
+        "stage": "finish",
+        "text": "光柔下来，信上那行字反而更难认了。",
+        "state": "ended",
+        "firstAudibleMs": 16019,
+        "completedMs": 19635
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_7QFjQAILuxKLIVIrqG729259",
+        "stage": "finish",
+        "text": "光柔下来，信上那行字反而更难认了。",
+        "state": "ended",
+        "firstAudibleMs": 16019,
+        "completedMs": 19635
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-6b414483-fa33-41b3-8173-7e33e948c9e4",
+          "stage": "ack",
+          "text": "小灯这名字起得好，灯也温柔点——我这就调暗一档。",
+          "state": "ended",
+          "firstAudibleMs": 3683,
+          "completedMs": 8417
+        },
+        {
+          "partId": "speech-call_00_7QFjQAILuxKLIVIrqG729259",
+          "stage": "finish",
+          "text": "光柔下来，信上那行字反而更难认了。",
+          "state": "ended",
+          "firstAudibleMs": 16019,
+          "completedMs": 19635
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 15,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:15",
+      "firstResponse": {
+        "partId": "quick-ba414ed5-1a27-4783-a997-2c5adc15fe7c",
+        "stage": "ack",
+        "text": "没署名的信？",
+        "state": "ended",
+        "firstAudibleMs": 4177,
+        "completedMs": 5438
+      },
+      "acknowledgement": {
+        "partId": "quick-ba414ed5-1a27-4783-a997-2c5adc15fe7c",
+        "stage": "ack",
+        "text": "没署名的信？",
+        "state": "ended",
+        "firstAudibleMs": 4177,
+        "completedMs": 5438
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_S1p0PvNjVxU0kM3hTeOV4455",
+        "stage": "answer",
+        "text": "谁知道呢，落款那儿空着，只画了一条歪歪的小鱼。",
+        "state": "ended",
+        "firstAudibleMs": 9939,
+        "completedMs": 14732
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_GEnhIteq9QskO9Ct6x4X2067",
+        "stage": "finish",
+        "text": "纸边上还沾着点沙，是从门缝底下塞进来的。",
+        "state": "ended",
+        "firstAudibleMs": 16220,
+        "completedMs": 20777
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-ba414ed5-1a27-4783-a997-2c5adc15fe7c",
+          "stage": "ack",
+          "text": "没署名的信？",
+          "state": "ended",
+          "firstAudibleMs": 4177,
+          "completedMs": 5438
+        },
+        {
+          "partId": "speech-call_00_S1p0PvNjVxU0kM3hTeOV4455",
+          "stage": "answer",
+          "text": "谁知道呢，落款那儿空着，只画了一条歪歪的小鱼。",
+          "state": "ended",
+          "firstAudibleMs": 9939,
+          "completedMs": 14732
+        },
+        {
+          "partId": "speech-call_00_GEnhIteq9QskO9Ct6x4X2067",
+          "stage": "finish",
+          "text": "纸边上还沾着点沙，是从门缝底下塞进来的。",
+          "state": "ended",
+          "firstAudibleMs": 16220,
+          "completedMs": 20777
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 16,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:16",
+      "firstResponse": {
+        "partId": "quick-ab80cf9e-1ce9-4ee9-9af8-8a5d57afe4d6",
+        "stage": "ack",
+        "text": "旧书？行啊，先留着这房间——我瞅瞅这本。",
+        "state": "ended",
+        "firstAudibleMs": 6529,
+        "completedMs": 10846
+      },
+      "acknowledgement": {
+        "partId": "quick-ab80cf9e-1ce9-4ee9-9af8-8a5d57afe4d6",
+        "stage": "ack",
+        "text": "旧书？行啊，先留着这房间——我瞅瞅这本。",
+        "state": "ended",
+        "firstAudibleMs": 6529,
+        "completedMs": 10846
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_zCearlTVG6Up0Y1WlzAo0049",
+        "stage": "answer",
+        "text": "书脊都软了，翻开有股潮气。",
+        "state": "ended",
+        "firstAudibleMs": 15562,
+        "completedMs": 18109
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_YvNXtnGTBKsnqMaf6QnX9326",
+        "stage": "finish",
+        "text": "不是信——是张书签，上面也画了那条歪小鱼。",
+        "state": "ended",
+        "firstAudibleMs": 21493,
+        "completedMs": 25860
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-ab80cf9e-1ce9-4ee9-9af8-8a5d57afe4d6",
+          "stage": "ack",
+          "text": "旧书？行啊，先留着这房间——我瞅瞅这本。",
+          "state": "ended",
+          "firstAudibleMs": 6529,
+          "completedMs": 10846
+        },
+        {
+          "partId": "speech-call_00_zCearlTVG6Up0Y1WlzAo0049",
+          "stage": "answer",
+          "text": "书脊都软了，翻开有股潮气。",
+          "state": "ended",
+          "firstAudibleMs": 15562,
+          "completedMs": 18109
+        },
+        {
+          "partId": "speech-call_00_KM7eUmPC8KfomSHWYLzv3193",
+          "stage": "answer",
+          "text": "翻到中间，夹着一张对折的纸。",
+          "state": "ended",
+          "firstAudibleMs": 18214,
+          "completedMs": 21116
+        },
+        {
+          "partId": "speech-call_00_YvNXtnGTBKsnqMaf6QnX9326",
+          "stage": "finish",
+          "text": "不是信——是张书签，上面也画了那条歪小鱼。",
+          "state": "ended",
+          "firstAudibleMs": 21493,
+          "completedMs": 25860
+        },
+        {
+          "partId": "speech-call_00_FiCdvLJKh6rAJl677hfF6116",
+          "stage": "answer",
+          "text": "书签夹在讲到一半那页，",
+          "state": "ended",
+          "firstAudibleMs": 42177,
+          "completedMs": 44271
+        },
+        {
+          "partId": "speech-call_00_cmvYtAS1OrWXexfuHmtu6734",
+          "stage": "answer",
+          "text": "好，说回那张书签——它夹在讲到一半那页。",
+          "state": "ended",
+          "firstAudibleMs": 60777,
+          "completedMs": 64678
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 17,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:17",
+      "firstResponse": {
+        "partId": "quick-9df9c045-0c3e-4318-b652-fa4ed110cc02",
+        "stage": "ack",
+        "text": "留一格，给小灯17的空位。",
+        "state": "ended",
+        "firstAudibleMs": 5174,
+        "completedMs": 7507
+      },
+      "acknowledgement": {
+        "partId": "quick-9df9c045-0c3e-4318-b652-fa4ed110cc02",
+        "stage": "ack",
+        "text": "留一格，给小灯17的空位。",
+        "state": "ended",
+        "firstAudibleMs": 5174,
+        "completedMs": 7507
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_q9WKvRFqS4Qenhtl7JxD5837",
+        "stage": "answer",
+        "text": "书架那一格先空着，谁也不动它。",
+        "state": "ended",
+        "firstAudibleMs": 37199,
+        "completedMs": 39987
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-9df9c045-0c3e-4318-b652-fa4ed110cc02",
+          "stage": "ack",
+          "text": "留一格，给小灯17的空位。",
+          "state": "ended",
+          "firstAudibleMs": 5174,
+          "completedMs": 7507
+        },
+        {
+          "partId": "speech-call_00_q9WKvRFqS4Qenhtl7JxD5837",
+          "stage": "answer",
+          "text": "书架那一格先空着，谁也不动它。",
+          "state": "ended",
+          "firstAudibleMs": 37199,
+          "completedMs": 39987
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 18,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:18",
+      "firstResponse": {
+        "partId": "quick-9de1235d-1951-4f19-90d0-565d0d1ecaae",
+        "stage": "ack",
+        "text": "当然可以，安静一点的配色听着就舒服。",
+        "state": "ended",
+        "firstAudibleMs": 4199,
+        "completedMs": 7628
+      },
+      "acknowledgement": {
+        "partId": "quick-9de1235d-1951-4f19-90d0-565d0d1ecaae",
+        "stage": "ack",
+        "text": "当然可以，安静一点的配色听着就舒服。",
+        "state": "ended",
+        "firstAudibleMs": 4199,
+        "completedMs": 7628
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_7ug0WhtXL16kgs4fTbi80080",
+        "stage": "answer",
+        "text": "配色我记下了，回头把书房整个往灰蓝调压一压。",
+        "state": "ended",
+        "firstAudibleMs": 12570,
+        "completedMs": 17158
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-9de1235d-1951-4f19-90d0-565d0d1ecaae",
+          "stage": "ack",
+          "text": "当然可以，安静一点的配色听着就舒服。",
+          "state": "ended",
+          "firstAudibleMs": 4199,
+          "completedMs": 7628
+        },
+        {
+          "partId": "speech-call_00_7ug0WhtXL16kgs4fTbi80080",
+          "stage": "answer",
+          "text": "配色我记下了，回头把书房整个往灰蓝调压一压。",
+          "state": "ended",
+          "firstAudibleMs": 12570,
+          "completedMs": 17158
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 19,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:19",
+      "firstResponse": {
+        "partId": "quick-92fcbbbf-f383-4448-b8bb-408a7f6f7664",
+        "stage": "ack",
+        "text": "窗边那盏小灯对吧，我挪过去——正好照着那封没署名的信。",
+        "state": "ended",
+        "firstAudibleMs": 8351,
+        "completedMs": 17117
+      },
+      "acknowledgement": {
+        "partId": "quick-92fcbbbf-f383-4448-b8bb-408a7f6f7664",
+        "stage": "ack",
+        "text": "窗边那盏小灯对吧，我挪过去——正好照着那封没署名的信。",
+        "state": "ended",
+        "firstAudibleMs": 8351,
+        "completedMs": 17117
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_f6Q4pV9l73dTYIujUpY46080",
+        "stage": "finish",
+        "text": "那行字也归位了，光一照，倒像他专门留的。",
+        "state": "ended",
+        "firstAudibleMs": 37414,
+        "completedMs": 41312
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_f6Q4pV9l73dTYIujUpY46080",
+        "stage": "finish",
+        "text": "那行字也归位了，光一照，倒像他专门留的。",
+        "state": "ended",
+        "firstAudibleMs": 37414,
+        "completedMs": 41312
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-92fcbbbf-f383-4448-b8bb-408a7f6f7664",
+          "stage": "ack",
+          "text": "窗边那盏小灯对吧，我挪过去——正好照着那封没署名的信。",
+          "state": "ended",
+          "firstAudibleMs": 8351,
+          "completedMs": 17117
+        },
+        {
+          "partId": "speech-call_00_v9c5YUoARbPRA9qtK1lP3373",
+          "stage": "answer",
+          "text": "光挪到窗边没问题，正好把那行字照清楚一点。",
+          "state": "aborted",
+          "firstAudibleMs": 21966,
+          "completedMs": null
+        },
+        {
+          "partId": "speech-call_00_f6Q4pV9l73dTYIujUpY46080",
+          "stage": "finish",
+          "text": "那行字也归位了，光一照，倒像他专门留的。",
+          "state": "ended",
+          "firstAudibleMs": 37414,
+          "completedMs": 41312
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 20,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:20",
+      "firstResponse": {
+        "partId": "quick-857c9475-5916-4dc2-943a-99d0c5ac416d",
+        "stage": "ack",
+        "text": "留在这儿，多半是心里还有没放下的事吧。",
+        "state": "ended",
+        "firstAudibleMs": 3994,
+        "completedMs": 7242
+      },
+      "acknowledgement": {
+        "partId": "quick-857c9475-5916-4dc2-943a-99d0c5ac416d",
+        "stage": "ack",
+        "text": "留在这儿，多半是心里还有没放下的事吧。",
+        "state": "ended",
+        "firstAudibleMs": 3994,
+        "completedMs": 7242
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_3ST16aGYHCNvISl66tDO4998",
+        "stage": "answer",
+        "text": "他留下，是因为信上没写名字",
+        "state": "ended",
+        "firstAudibleMs": 7603,
+        "completedMs": 10199
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_GR7k7oYwuBkRActMdlZy9471",
+        "stage": "finish",
+        "text": "他想等那个人，自己把名字补上。",
+        "state": "ended",
+        "firstAudibleMs": 13085,
+        "completedMs": 15917
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-857c9475-5916-4dc2-943a-99d0c5ac416d",
+          "stage": "ack",
+          "text": "留在这儿，多半是心里还有没放下的事吧。",
+          "state": "ended",
+          "firstAudibleMs": 3994,
+          "completedMs": 7242
+        },
+        {
+          "partId": "speech-call_00_3ST16aGYHCNvISl66tDO4998",
+          "stage": "answer",
+          "text": "他留下，是因为信上没写名字",
+          "state": "ended",
+          "firstAudibleMs": 7603,
+          "completedMs": 10199
+        },
+        {
+          "partId": "speech-call_00_GBF9w8dTNKo6b6C7Cnid0521",
+          "stage": "answer",
+          "text": "他留下，是因为信上没写名字，",
+          "state": "ended",
+          "firstAudibleMs": 10275,
+          "completedMs": 13032
+        },
+        {
+          "partId": "speech-call_00_GR7k7oYwuBkRActMdlZy9471",
+          "stage": "finish",
+          "text": "他想等那个人，自己把名字补上。",
+          "state": "ended",
+          "firstAudibleMs": 13085,
+          "completedMs": 15917
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 21,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:21",
+      "firstResponse": {
+        "partId": "quick-72929481-2c3d-49e5-823e-9f8d849ae5b9",
+        "stage": "ack",
+        "text": "暖灯先记上，等会儿就挪到窗边。",
+        "state": "ended",
+        "firstAudibleMs": 4068,
+        "completedMs": 7262
+      },
+      "acknowledgement": {
+        "partId": "quick-72929481-2c3d-49e5-823e-9f8d849ae5b9",
+        "stage": "ack",
+        "text": "暖灯先记上，等会儿就挪到窗边。",
+        "state": "ended",
+        "firstAudibleMs": 4068,
+        "completedMs": 7262
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_gMFgs2dZQ9xEHWPdeBT42248",
+        "stage": "answer",
+        "text": "暖灯可以，灯芯别开太亮，小灯13那群鱼还要绕着转。",
+        "state": "ended",
+        "firstAudibleMs": 7305,
+        "completedMs": 12565
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-72929481-2c3d-49e5-823e-9f8d849ae5b9",
+          "stage": "ack",
+          "text": "暖灯先记上，等会儿就挪到窗边。",
+          "state": "ended",
+          "firstAudibleMs": 4068,
+          "completedMs": 7262
+        },
+        {
+          "partId": "speech-call_00_gMFgs2dZQ9xEHWPdeBT42248",
+          "stage": "answer",
+          "text": "暖灯可以，灯芯别开太亮，小灯13那群鱼还要绕着转。",
+          "state": "ended",
+          "firstAudibleMs": 7305,
+          "completedMs": 12565
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 22,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:22",
+      "firstResponse": {
+        "partId": "quick-01cd00d8-5970-4599-a693-8d249c739d61",
+        "stage": "ack",
+        "text": "旧杯子好呀，摆书桌正合适。",
+        "state": "ended",
+        "firstAudibleMs": 6262,
+        "completedMs": 8785
+      },
+      "acknowledgement": {
+        "partId": "quick-01cd00d8-5970-4599-a693-8d249c739d61",
+        "stage": "ack",
+        "text": "旧杯子好呀，摆书桌正合适。",
+        "state": "ended",
+        "firstAudibleMs": 6262,
+        "completedMs": 8785
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_zJfW4sdEE9sS4SlEWkUM4104",
+        "stage": "answer",
+        "text": "而且得是喝到一半搁下的那种，杯口留个印子。",
+        "state": "ended",
+        "firstAudibleMs": 17932,
+        "completedMs": 22501
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-01cd00d8-5970-4599-a693-8d249c739d61",
+          "stage": "ack",
+          "text": "旧杯子好呀，摆书桌正合适。",
+          "state": "ended",
+          "firstAudibleMs": 6262,
+          "completedMs": 8785
+        },
+        {
+          "partId": "speech-call_00_zJfW4sdEE9sS4SlEWkUM4104",
+          "stage": "answer",
+          "text": "而且得是喝到一半搁下的那种，杯口留个印子。",
+          "state": "ended",
+          "firstAudibleMs": 17932,
+          "completedMs": 22501
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 23,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:23",
+      "firstResponse": {
+        "partId": "quick-baeb06b6-417c-42ea-925a-fc93b2695d8b",
+        "stage": "ack",
+        "text": "窗边有小鱼游过来，这个画面我太喜欢了。",
+        "state": "ended",
+        "firstAudibleMs": 9504,
+        "completedMs": 13230
+      },
+      "acknowledgement": {
+        "partId": "quick-baeb06b6-417c-42ea-925a-fc93b2695d8b",
+        "stage": "ack",
+        "text": "窗边有小鱼游过来，这个画面我太喜欢了。",
+        "state": "ended",
+        "firstAudibleMs": 9504,
+        "completedMs": 13230
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_uTCMz8tzz68uNqdfvbNG3519",
+        "stage": "answer",
+        "text": "能啊，一小群就够，别多，多了像鱼缸。",
+        "state": "ended",
+        "firstAudibleMs": 15913,
+        "completedMs": 19399
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_bzjcdC7d2WT6qXO3St8v6680",
+        "stage": "finish",
+        "text": "窗前已经游过一小群了，就几条，不挤。",
+        "state": "ended",
+        "firstAudibleMs": 97981,
+        "completedMs": 101358
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-baeb06b6-417c-42ea-925a-fc93b2695d8b",
+          "stage": "ack",
+          "text": "窗边有小鱼游过来，这个画面我太喜欢了。",
+          "state": "ended",
+          "firstAudibleMs": 9504,
+          "completedMs": 13230
+        },
+        {
+          "partId": "speech-call_00_uTCMz8tzz68uNqdfvbNG3519",
+          "stage": "answer",
+          "text": "能啊，一小群就够，别多，多了像鱼缸。",
+          "state": "ended",
+          "firstAudibleMs": 15913,
+          "completedMs": 19399
+        },
+        {
+          "partId": "speech-call_00_bzjcdC7d2WT6qXO3St8v6680",
+          "stage": "finish",
+          "text": "窗前已经游过一小群了，就几条，不挤。",
+          "state": "ended",
+          "firstAudibleMs": 97981,
+          "completedMs": 101358
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 24,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:24",
+      "firstResponse": {
+        "partId": "speech-call_00_b2MJs6RUDjb13ZxSgJfz5853",
+        "stage": "ack",
+        "text": "灯光调柔，这个我举手赞成。",
+        "state": "ended",
+        "firstAudibleMs": 11562,
+        "completedMs": 14315
+      },
+      "acknowledgement": {
+        "partId": "speech-call_00_b2MJs6RUDjb13ZxSgJfz5853",
+        "stage": "ack",
+        "text": "灯光调柔，这个我举手赞成。",
+        "state": "ended",
+        "firstAudibleMs": 11562,
+        "completedMs": 14315
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_7KKA5gpC90hsDEU8LsXV4562",
+        "stage": "answer",
+        "text": "刚才那盏别熄，就调低一格，像台灯罩了层米色的布。",
+        "state": "ended",
+        "firstAudibleMs": 14357,
+        "completedMs": 18994
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "speech-call_00_b2MJs6RUDjb13ZxSgJfz5853",
+          "stage": "ack",
+          "text": "灯光调柔，这个我举手赞成。",
+          "state": "ended",
+          "firstAudibleMs": 11562,
+          "completedMs": 14315
+        },
+        {
+          "partId": "speech-call_00_7KKA5gpC90hsDEU8LsXV4562",
+          "stage": "answer",
+          "text": "刚才那盏别熄，就调低一格，像台灯罩了层米色的布。",
+          "state": "ended",
+          "firstAudibleMs": 14357,
+          "completedMs": 18994
+        },
+        {
+          "partId": "speech-call_00_cBISNx9tN1RXdKhTm7q64588",
+          "stage": "answer",
+          "text": "说到杯子——那封信纸边上的水渍，也是这么一圈。",
+          "state": "ended",
+          "firstAudibleMs": 19053,
+          "completedMs": 23555
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 25,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:25",
+      "firstResponse": {
+        "partId": "quick-ad6e3a81-2cd1-404f-811a-1ee78fe7dc4c",
+        "stage": "ack",
+        "text": "小灯，我没写错吧——现在轮到我猜是谁写的了？",
+        "state": "ended",
+        "firstAudibleMs": 6383,
+        "completedMs": 11549
+      },
+      "acknowledgement": {
+        "partId": "quick-ad6e3a81-2cd1-404f-811a-1ee78fe7dc4c",
+        "stage": "ack",
+        "text": "小灯，我没写错吧——现在轮到我猜是谁写的了？",
+        "state": "ended",
+        "firstAudibleMs": 6383,
+        "completedMs": 11549
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_rwIuSVMvwWncgN3LSZWD4224",
+        "stage": "answer",
+        "text": "要我说——写信的人大概不是别人，是他自己。",
+        "state": "ended",
+        "firstAudibleMs": 17370,
+        "completedMs": 21137
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_4EswrRforodiYdnEqlBJ9627",
+        "stage": "finish",
+        "text": "你想想，写完不署名，还压在自己桌上——那多半是写给还没想清楚的自己。",
+        "state": "ended",
+        "firstAudibleMs": 21182,
+        "completedMs": 27599
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-ad6e3a81-2cd1-404f-811a-1ee78fe7dc4c",
+          "stage": "ack",
+          "text": "小灯，我没写错吧——现在轮到我猜是谁写的了？",
+          "state": "ended",
+          "firstAudibleMs": 6383,
+          "completedMs": 11549
+        },
+        {
+          "partId": "speech-call_00_rwIuSVMvwWncgN3LSZWD4224",
+          "stage": "answer",
+          "text": "要我说——写信的人大概不是别人，是他自己。",
+          "state": "ended",
+          "firstAudibleMs": 17370,
+          "completedMs": 21137
+        },
+        {
+          "partId": "speech-call_00_4EswrRforodiYdnEqlBJ9627",
+          "stage": "finish",
+          "text": "你想想，写完不署名，还压在自己桌上——那多半是写给还没想清楚的自己。",
+          "state": "ended",
+          "firstAudibleMs": 21182,
+          "completedMs": 27599
+        },
+        {
+          "partId": "speech-call_00_Wnszpyc9gtZXN5Jgsb5A9508",
+          "stage": "answer",
+          "text": "好了，房间安静下来了。说回那封信——",
+          "state": "ended",
+          "firstAudibleMs": 98489,
+          "completedMs": 102292
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 26,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:26",
+      "firstResponse": {
+        "partId": "quick-a08f3f20-9dc6-4853-b655-fd6eb42348bc",
+        "stage": "ack",
+        "text": "小灯想听旧书？",
+        "state": "ended",
+        "firstAudibleMs": 7964,
+        "completedMs": 9409
+      },
+      "acknowledgement": {
+        "partId": "quick-a08f3f20-9dc6-4853-b655-fd6eb42348bc",
+        "stage": "ack",
+        "text": "小灯想听旧书？",
+        "state": "ended",
+        "firstAudibleMs": 7964,
+        "completedMs": 9409
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_wx1RPhKUxBAFNjh0gu095686",
+        "stage": "answer",
+        "text": "讲到这儿，桌上那本旧书就绕不开了。",
+        "state": "ended",
+        "firstAudibleMs": 11991,
+        "completedMs": 15294
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-a08f3f20-9dc6-4853-b655-fd6eb42348bc",
+          "stage": "ack",
+          "text": "小灯想听旧书？",
+          "state": "ended",
+          "firstAudibleMs": 7964,
+          "completedMs": 9409
+        },
+        {
+          "partId": "speech-call_00_wx1RPhKUxBAFNjh0gu095686",
+          "stage": "answer",
+          "text": "讲到这儿，桌上那本旧书就绕不开了。",
+          "state": "ended",
+          "firstAudibleMs": 11991,
+          "completedMs": 15294
+        },
+        {
+          "partId": "speech-call_00_Q1aGjo71sBRRhweFAPdL2178",
+          "stage": "answer",
+          "text": "它搁在桌角，封皮磨得发白，边角都起毛了。",
+          "state": "ended",
+          "firstAudibleMs": 15344,
+          "completedMs": 19486
+        },
+        {
+          "partId": "speech-call_00_moxQ0ueJtGPsMYCHK0GN8150",
+          "stage": "answer",
+          "text": "翻开第一页，有铅笔写的一个日期——很多年前了。",
+          "state": "ended",
+          "firstAudibleMs": 19542,
+          "completedMs": 24126
+        },
+        {
+          "partId": "speech-call_00_cTHZeCtCNEieFWwXuc7e2702",
+          "stage": "answer",
+          "text": "不过旧书这事先记着，我还没讲完呢。",
+          "state": "ended",
+          "firstAudibleMs": 29410,
+          "completedMs": 32668
+        },
+        {
+          "partId": "speech-call_00_a96CeqTKF24fRnrnj0kv0657",
+          "stage": "answer",
+          "text": "说回那本旧书——",
+          "state": "ended",
+          "firstAudibleMs": 40840,
+          "completedMs": 42238
+        },
+        {
+          "partId": "speech-call_00_rGNQG2oBjOMc2hFrdLLL4527",
+          "stage": "answer",
+          "text": "那个日期和信纸上的水渍，到底谁先谁后，我还真说不准。",
+          "state": "ended",
+          "firstAudibleMs": 42899,
+          "completedMs": 47947
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 27,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:27",
+      "firstResponse": {
+        "partId": "quick-924bea82-3923-4e86-9dc0-64ff65838384",
+        "stage": "ack",
+        "text": "留一格空位，好主意。",
+        "state": "ended",
+        "firstAudibleMs": 7816,
+        "completedMs": 9816
+      },
+      "acknowledgement": {
+        "partId": "quick-924bea82-3923-4e86-9dc0-64ff65838384",
+        "stage": "ack",
+        "text": "留一格空位，好主意。",
+        "state": "ended",
+        "firstAudibleMs": 7816,
+        "completedMs": 9816
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_tFyka0UpoKFXIfTfWAzR9073",
+        "stage": "answer",
+        "text": "那格空位就留着，等哪天有本还没写的书放进去。",
+        "state": "ended",
+        "firstAudibleMs": 13170,
+        "completedMs": 17397
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-924bea82-3923-4e86-9dc0-64ff65838384",
+          "stage": "ack",
+          "text": "留一格空位，好主意。",
+          "state": "ended",
+          "firstAudibleMs": 7816,
+          "completedMs": 9816
+        },
+        {
+          "partId": "speech-call_00_tFyka0UpoKFXIfTfWAzR9073",
+          "stage": "answer",
+          "text": "那格空位就留着，等哪天有本还没写的书放进去。",
+          "state": "ended",
+          "firstAudibleMs": 13170,
+          "completedMs": 17397
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 28,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:28",
+      "firstResponse": {
+        "partId": "speech-call_00_wlhs0XsmKTZ7BXX4uRge3665",
+        "stage": "ack",
+        "text": "安静配色，我举双手同意。",
+        "state": "ended",
+        "firstAudibleMs": 19465,
+        "completedMs": 21985
+      },
+      "acknowledgement": {
+        "partId": "speech-call_00_wlhs0XsmKTZ7BXX4uRge3665",
+        "stage": "ack",
+        "text": "安静配色，我举双手同意。",
+        "state": "ended",
+        "firstAudibleMs": 19465,
+        "completedMs": 21985
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_mlapCTBc5GCxLm77r5yN9322",
+        "stage": "answer",
+        "text": "就是别把颜色全抽走，不然成清水缸了。",
+        "state": "ended",
+        "firstAudibleMs": 22051,
+        "completedMs": 25667
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "speech-call_00_wlhs0XsmKTZ7BXX4uRge3665",
+          "stage": "ack",
+          "text": "安静配色，我举双手同意。",
+          "state": "ended",
+          "firstAudibleMs": 19465,
+          "completedMs": 21985
+        },
+        {
+          "partId": "speech-call_00_mlapCTBc5GCxLm77r5yN9322",
+          "stage": "answer",
+          "text": "就是别把颜色全抽走，不然成清水缸了。",
+          "state": "ended",
+          "firstAudibleMs": 22051,
+          "completedMs": 25667
+        },
+        {
+          "partId": "speech-call_00_VLymvrQqv6pqULDhLeuD1329",
+          "stage": "answer",
+          "text": "配色和光都安静下来了，正好把书桌那片收一收。",
+          "state": "aborted",
+          "firstAudibleMs": 42567,
+          "completedMs": null
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 29,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:29",
+      "firstResponse": {
+        "partId": "quick-3af21d91-dcb6-47c7-8617-f71885c03b85",
+        "stage": "ack",
+        "text": "收到，挪到窗边这想法不错。",
+        "state": "ended",
+        "firstAudibleMs": 6235,
+        "completedMs": 8834
+      },
+      "acknowledgement": {
+        "partId": "quick-3af21d91-dcb6-47c7-8617-f71885c03b85",
+        "stage": "ack",
+        "text": "收到，挪到窗边这想法不错。",
+        "state": "ended",
+        "firstAudibleMs": 6235,
+        "completedMs": 8834
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_Jo907ZbgyaYVMwhbnjhH6181",
+        "stage": "answer",
+        "text": "挪到窗边正好，光扫过鱼群那一下最好看。",
+        "state": "ended",
+        "firstAudibleMs": 12809,
+        "completedMs": 18858
+      },
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-3af21d91-dcb6-47c7-8617-f71885c03b85",
+          "stage": "ack",
+          "text": "收到，挪到窗边这想法不错。",
+          "state": "ended",
+          "firstAudibleMs": 6235,
+          "completedMs": 8834
+        },
+        {
+          "partId": "speech-call_00_Jo907ZbgyaYVMwhbnjhH6181",
+          "stage": "answer",
+          "text": "挪到窗边正好，光扫过鱼群那一下最好看。",
+          "state": "ended",
+          "firstAudibleMs": 12809,
+          "completedMs": 18858
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    },
+    {
+      "index": 30,
+      "eventId": "bilibili:a1cce5e0-c7c1-4740-a6b7-a64bd93fe8ef:30",
+      "firstResponse": {
+        "partId": "quick-2f2d34dc-55cc-4514-abc5-e537151db70b",
+        "stage": "ack",
+        "text": "他留在这儿，八成是舍不得窗边那点光吧。",
+        "state": "ended",
+        "firstAudibleMs": 5687,
+        "completedMs": 9176
+      },
+      "acknowledgement": {
+        "partId": "quick-2f2d34dc-55cc-4514-abc5-e537151db70b",
+        "stage": "ack",
+        "text": "他留在这儿，八成是舍不得窗边那点光吧。",
+        "state": "ended",
+        "firstAudibleMs": 5687,
+        "completedMs": 9176
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_ELutC45kjbNHmuUqEM4C4528",
+        "stage": "answer",
+        "text": "留在这儿这事儿啊，我猜不是走不了。",
+        "state": "ended",
+        "firstAudibleMs": 9240,
+        "completedMs": 12359
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_nY2SPhy5VX4nnjbPkHKD7971",
+        "stage": "finish",
+        "text": "信封上没写名字，只画了一条小鲸鱼。",
+        "state": "ended",
+        "firstAudibleMs": 32786,
+        "completedMs": 36095
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-2f2d34dc-55cc-4514-abc5-e537151db70b",
+          "stage": "ack",
+          "text": "他留在这儿，八成是舍不得窗边那点光吧。",
+          "state": "ended",
+          "firstAudibleMs": 5687,
+          "completedMs": 9176
+        },
+        {
+          "partId": "speech-call_00_ELutC45kjbNHmuUqEM4C4528",
+          "stage": "answer",
+          "text": "留在这儿这事儿啊，我猜不是走不了。",
+          "state": "ended",
+          "firstAudibleMs": 9240,
+          "completedMs": 12359
+        },
+        {
+          "partId": "speech-call_00_W8JgTqL2zRFZwPYCvrPy2279",
+          "stage": "answer",
+          "text": "不是走不掉那种留，是有理由的留。",
+          "state": "ended",
+          "firstAudibleMs": 12413,
+          "completedMs": 15532
+        },
+        {
+          "partId": "speech-call_00_xZiR7A3xonLQxrniE4n59376",
+          "stage": "answer",
+          "text": "书桌上摊着的书翻到中间那页，就再没翻过去。",
+          "state": "ended",
+          "firstAudibleMs": 15582,
+          "completedMs": 19921
+        },
+        {
+          "partId": "speech-call_00_ylX37IwtCXtkcahhakIg3056",
+          "stage": "answer",
+          "text": "书桌上那本旧书翻到中间页，就再没翻过去。",
+          "state": "ended",
+          "firstAudibleMs": 20057,
+          "completedMs": 24092
+        },
+        {
+          "partId": "speech-call_00_9C7bRYJksTbimhIBiFnY0107",
+          "stage": "answer",
+          "text": "书签还夹在同一条缝里，像在等人回来接着读。",
+          "state": "ended",
+          "firstAudibleMs": 24257,
+          "completedMs": 28438
+        },
+        {
+          "partId": "speech-call_00_Ma2RoKwwr3OsS8CEJind1067",
+          "stage": "answer",
+          "text": "巧了——那封信就是从海底邮局寄出来的。",
+          "state": "ended",
+          "firstAudibleMs": 28886,
+          "completedMs": 32734
+        },
+        {
+          "partId": "speech-call_00_nY2SPhy5VX4nnjbPkHKD7971",
+          "stage": "finish",
+          "text": "信封上没写名字，只画了一条小鲸鱼。",
+          "state": "ended",
+          "firstAudibleMs": 32786,
+          "completedMs": 36095
+        },
+        {
+          "partId": "speech-call_00_CxEu9TYx20D4VhVZr1vK5400",
+          "stage": "answer",
+          "text": "我拆信的时候手有点抖，里面就一张纸。",
+          "state": "ended",
+          "firstAudibleMs": 36571,
+          "completedMs": 39881
+        },
+        {
+          "partId": "speech-call_00_cYYOimWZR02f3f1FRhnm2093",
+          "stage": "finish",
+          "text": "纸上就一句话：今天的窗边，有人陪我看鱼吗。",
+          "state": "ended",
+          "firstAudibleMs": 41757,
+          "completedMs": 45795
+        },
+        {
+          "partId": "speech-call_00_yjq9VI8PjyJ1YCIvDiuT9482",
+          "stage": "finish",
+          "text": "我当时还嘀咕，这算什么信啊，连个名字都不给。",
+          "state": "ended",
+          "firstAudibleMs": 45836,
+          "completedMs": 49872
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null
+    }
+  ],
+  "quickRequests": {
+    "quick-ack-generation-start": 30,
+    "quick-ack-first-token": 29,
+    "quick-ack-committed": 27,
+    "quick-ack-fallback": 3
+  },
+  "functionalHandoff": {
+    "scope": "scripted roles, real TTS and actual browser",
+    "elapsedMs": 19957,
+    "sourceState": "aborted",
+    "continuation": {
+      "id": "continue-probe-A",
+      "revision": 1,
+      "directionEpoch": 1,
+      "sourcePartId": "probe-A",
+      "interruptId": "ee6a9403-1952-4f21-8e69-eb5aa0d64bb9",
+      "responseTo": "sim:probe-question",
+      "firstUnreadChar": 36,
+      "lastHeardExcerpt": "刚才那封没有署名的信，封口压着一小片干海草，纸角还有被水浸开的蓝色墨迹，",
+      "unreadText": "像有人在很远的地方停了一会儿，才想好第一句话要写什么。",
+      "topic": "初始方向",
+      "stoppedAtShowTime": 294002.5,
+      "sourceOfferedAt": 284752.2000000477,
+      "boundaryReached": true,
+      "status": "resumed"
+    },
+    "response": "ended",
+    "resumePartId": "probe-A-new",
+    "originalPlaybackStarts": 1,
+    "events": [
+      {
+        "sequence": 6,
+        "at": 1793790622487,
+        "showTime": 286752,
+        "phase": "audio-playing",
+        "fields": {
+          "partId": "probe-A"
+        }
+      },
+      {
+        "sequence": 12,
+        "at": 1793790629741,
+        "showTime": 294002.5,
+        "phase": "audio-interrupted",
+        "fields": {
+          "partId": "probe-A"
+        }
+      },
+      {
+        "sequence": 14,
+        "at": 1793790630043,
+        "showTime": 294252.40000009537,
+        "phase": "audio-playing",
+        "fields": {
+          "partId": "probe-ack",
+          "responseTo": "sim:probe-question",
+          "stage": "ack"
+        }
+      },
+      {
+        "sequence": 16,
+        "at": 1793790632269,
+        "showTime": 296502,
+        "phase": "audio-ended",
+        "fields": {
+          "partId": "probe-ack",
+          "responseTo": "sim:probe-question",
+          "stage": "ack"
+        }
+      },
+      {
+        "sequence": 22,
+        "at": 1793790634239,
+        "showTime": 298501.7999999523,
+        "phase": "audio-playing",
+        "fields": {
+          "partId": "probe-answer",
+          "responseTo": "sim:probe-question",
+          "stage": "finish"
+        }
+      },
+      {
+        "sequence": 24,
+        "at": 1793790636483,
+        "showTime": 300752,
+        "phase": "audio-playing",
+        "fields": {
+          "partId": "probe-answer",
+          "responseTo": "sim:probe-question",
+          "stage": "finish"
+        }
+      },
+      {
+        "sequence": 26,
+        "at": 1793790638970,
+        "showTime": 303251.7999999523,
+        "phase": "audio-ended",
+        "fields": {
+          "partId": "probe-answer",
+          "responseTo": "sim:probe-question",
+          "stage": "finish"
+        }
+      },
+      {
+        "sequence": 32,
+        "at": 1793790640387,
+        "showTime": 304752.5,
+        "phase": "audio-playing",
+        "fields": {
+          "partId": "probe-A-new"
+        }
+      }
+    ]
+  },
+  "verification": {
+    "pluginPassed": 414,
+    "pluginSkipped": 17,
+    "sceneHostPassed": 22,
+    "scenePackagePassed": 18,
+    "nodePublicPassed": 4,
+    "nodePublicSkipped": 5
+  },
+  "limitations": [
+    "5-second P95 not met",
+    "Long trial precedes final trailing-punctuation guard, direct-ack reservation guard, continuation/input binding check and semantic-context corrections",
+    "A finish tag records actual playback of model-declared completion, not a semantic correctness guarantee",
+    "Visual fulfilment requires linked painted receipts; two linked visual fulfilments in the long trial do not certify all requested changes",
+    "Advisor text audit found repetition, false completed-visual claims and story-return/answer mislabelling in the long trial",
+    "Final smoke is only a bounded check of the corrected code, not another 30-input semantic acceptance",
+    "No external platform or viewer-retention claim"
+  ]
+}

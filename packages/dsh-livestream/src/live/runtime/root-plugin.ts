@@ -81,7 +81,7 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
   ctx.effect(() => {
     const seen = new Set<string>();
     const inputs = new RuntimeInputs(runtime.kernel, (role, text, urgent) => team.wake(role, text, urgent),
-      (eventId,receivedAt,urgent)=>runtime.recordTiming('input-ingested',{eventId,receivedAt,urgent}));
+      (eventId,receivedAt,urgent)=>{runtime.recordTiming('input-ingested',{eventId,receivedAt,urgent});if(urgent)team.acknowledgeAudience(eventId);});
     const reader = new StageJournalConsumer(
       (args) => stage.call('harness.inputs', args),
       (raw) => inputs.ingest(raw),

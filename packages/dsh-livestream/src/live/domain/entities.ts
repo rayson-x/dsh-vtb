@@ -171,6 +171,7 @@ export interface SpeechPart {
   plannedBeatRef?: string;
   responseTo?:string;
   responseStage?:'ack'|'answer'|'finish';
+  isAcknowledgement?:boolean;
   interruption?:{id:string;responseTo:string;replyPartId?:string};
   cancelledInterruptions?:Array<{id:string;responseTo:string;replyPartId?:string}>;
   resumesContinuationIds?:string[];
@@ -190,6 +191,7 @@ export interface SpeechContinuation {
   stoppedAtShowTime:number;sourceOfferedAt:number;boundaryReached:boolean;
   status:'pending'|'resuming'|'resumed'|'superseded';resumePartId?:string;
   parentContinuationIds?:string[];
+  sourceResponseTo?:string;sourceResponseStage?:'ack'|'answer'|'finish';
 }
 
 export type CueStatus = 'future' | 'dispatched' | 'invalidated' | 'executed';
@@ -319,6 +321,7 @@ export interface WindDownLease {
 
 export interface AudienceInputRecord {
   eventId: string;
+  replyRef?:string;
   audienceId: string;
   text: string;
   kind: 'proposal' | 'silence' | 'debate' | 'opposition' | 'master-claim';

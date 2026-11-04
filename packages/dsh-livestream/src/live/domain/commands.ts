@@ -88,7 +88,7 @@ export type ShowCommand =
       next: { directionId?: string; commitment: string; coreQuestion: string } | { transition: true };
     }
   | { type: 'requestInteraction'; requestId: string; text: string }
-  | { type: 'offerSpeech'; partId: string; text: string; plannedBeatRef?: string; replacePending?: {partId:string;expectedRevision:number};responseTo?:string;responseStage?:'ack'|'answer'|'finish';resumesContinuationIds?:string[] }
+  | { type: 'offerSpeech'; partId: string; text: string; plannedBeatRef?: string; replacePending?: {partId:string;expectedRevision:number};responseTo?:string;responseStage?:'ack'|'answer'|'finish';resumesContinuationIds?:string[];isAcknowledgement?:boolean }
   | { type:'requestSpeechInterrupt';partId:string;interruptId:string;responseTo:string;replyPartId?:string }
   | { type:'cancelSpeechInterrupt';partId:string;interruptId:string }
   | { type:'receiptSpeechInterrupted';partId:string;interruptId:string;audioRef:string;mediaTimeMs:number }

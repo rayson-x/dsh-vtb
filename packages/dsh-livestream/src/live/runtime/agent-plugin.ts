@@ -24,8 +24,8 @@ export function applyRoleAgent(ctx: any, role: AgentRole) {
                 : `${tool}：在本岗位权限内提交操作。payload填写JSON对象文本，类型固定为工具名；身份由运行时绑定。从附带即时快照或最新简报取得目标、revision和epoch。错误须据最新状态修正，不盲重试。`,
             parameters: tool==='acknowledgeInput'?{
               directionEpoch:{type:'integer',required:true,description:'即时快照里的当前epoch'},
-              inputId:{type:'string',required:true,description:'pendingReplies中的eventId'},
-              text:{type:'string',required:true,description:'先用一个具体短语接住，通常8–18字；不提前说未完成的制作已完成'},
+              inputId:{type:'string',required:true,description:'pendingReplies中的inputId短引用，例如q123；不必抄长eventId'},
+              text:{type:'string',required:true,description:'先接住具体内容，通常6–14字；不必先点名、夸赞或复述整题。不是完整答案，不提前说制作已完成'},
               complete:{type:'boolean',description:'只有这个短语本身已足以完整回答时才true；不代表画面已兑现'},
             }:{
               payload: {

@@ -1,6 +1,6 @@
 /** DSH adapter simulation: registry and agents are ports; no model requests or stage playback. */
 import { afterEach, expect, it, vi } from 'vitest';
-import { DshLiveTeam, type DshAgentPort } from '../src/live/runtime/dsh-team';
+import { DshLiveTeam, type DshAgentPort,type RoleRuntime } from '../src/live/runtime/dsh-team';
 class Agent implements DshAgentPort {
   status = 'idle';
   calls: string[] = [];
@@ -24,27 +24,42 @@ afterEach(async () => {
   for (const team of teams.splice(0)) await team.stop();
   vi.useRealTimers();
 });
-function setup(select: (id: string) => Promise<void> = async () => {}) {
+function setup(select: (id: string) => Promise<void> = async () => {},selection={provider:'fixture',model:'fixture'},extras:{runtime?:Partial<RoleRuntime>;llm?:unknown}={}) {
   const agents = new Map<string, Agent>();
+  const optionsByRole=new Map<string,any>();
   const services = {
+    llm:extras.llm,
     agents: {
       async create(options: any) {
+        optionsByRole.set(options.meta.agentPreset,options.agentOptions);
         const agent = new Agent({ id: options.sessionId });
         agents.set(options.meta.agentPreset, agent);
         return { agent };
       },
     },
-    agentDefaultModel: { currentSelection: () => ({ provider: 'fixture', model: 'fixture' }) },
+    agentDefaultModel: { currentSelection: () => selection },
     agentPresets: { select: (_agent: unknown, id: string) => select(id) },
   };
   const team = new DshLiveTeam(
     { get: (name: string) => services[name as keyof typeof services] },
-    { brief: () => ({}), invoke: async () => ({}) },
+    { brief: () => ({}), invoke: async () => ({}),...extras.runtime },
     process.cwd(),
   );
   teams.push(team);
-  return { team, agents };
+  return { team, agents,optionsByRole };
 }
+it('uses the DeepSeek non-thinking route for the live speaker while keeping background role reasoning',async()=>{
+ const {team,optionsByRole}=setup(undefined,{provider:'deepseek',model:'deepseek-v4-flash'});await team.start();
+ expect(optionsByRole.get('live-v2-performer').reasoningEffort).toBe('off');
+ expect(optionsByRole.get('live-v2-production').reasoningEffort).toBe('low');
+});
+it('starts a one-shot acknowledgement while the main speaker is busy, without a tool round trip',async()=>{
+ let release!:()=>void;const gate=new Promise<void>(done=>{release=done;}),offer=vi.fn(async()=>({ok:true})),requests:any[]=[];
+ const {team,agents}=setup(undefined,{provider:'deepseek',model:'deepseek-flash'},{llm:{async*stream(options:any){requests.push(options);await gate;yield{type:'text-delta',text:'暖灯留窗边。'};yield{type:'finish',reason:{kind:'stop'}};}},runtime:{quickAcknowledgementContext:id=>({epoch:2,inputId:id,text:'窗边加暖灯？',topic:'书房',heard:'正读信',instructions:[]}),reserveAcknowledgement:()=>()=>{},offerQuickAcknowledgement:offer}});
+ await team.start();const actor=agents.get('live-v2-performer')!;actor.calls=[];actor.status='running';team.observeStream(actor,{type:'start',attemptId:'busy'});
+ expect(team.acknowledgeAudience('viewer')).toBe(true);await vi.waitFor(()=>expect(requests).toHaveLength(1));expect(actor.calls).toEqual([]);expect(requests[0].tools).toBeUndefined();
+ release();await vi.waitFor(()=>expect(offer).toHaveBeenCalledWith('viewer','暖灯留窗边。',2));expect(actor.calls).toEqual([]);
+});
 it('lets the performer and director work while editorial preset setup is still waiting', async () => {
   let release!: () => void;
   const pending = new Promise<void>((done) => (release = done));

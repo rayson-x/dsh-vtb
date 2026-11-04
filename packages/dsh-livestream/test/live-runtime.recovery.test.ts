@@ -231,7 +231,10 @@ it('can acknowledge first, preserve the unfinished answer, and complete it in la
  const end=async(partId:string)=>{const op=peer.observed.find(op=>op.type==='speech'&&op.payload.partId===partId);peer.ws.send(JSON.stringify({type:'audio',kind:'ended',partId,epoch,audioRef:op.payload.audioRef,mediaTimeMs:1000,sequence:2}));await vi.waitFor(()=>expect(r.kernel.view().speech[partId].state).toBe('ended'));};
  await offer('current','先讲完眼前这一小句。');await vi.waitFor(()=>expect(r.kernel.view().speech.current.state).toBe('playing'));
  await offer('ordinary-future','旧内容'.repeat(18));
- expect(await r.invoke('performer','acknowledgeInput',{directionEpoch:epoch,inputId:'viewer-1',text:'阿灯，窗边就选暖光。',partId:'ack'})).toMatchObject({ok:true});
+ const inputRef=r.kernel.view().audience[0].replyRef!;
+ expect(inputRef).toMatch(/^q\d+$/);
+ expect(await r.invoke('performer','acknowledgeInput',{directionEpoch:epoch,inputId:inputRef,text:'阿灯，窗边就选暖光。',partId:'ack'})).toMatchObject({ok:true});
+ expect(r.kernel.view().speech.ack.responseTo).toBe('viewer-1');
  expect(r.kernel.view().speech['ordinary-future'].state).toBe('cancelled');expect(r.kernel.view().speech.current.state).toBe('playing');
  expect(r.brief('performer').responses.find((x:any)=>x.eventId==='viewer-1')).toMatchObject({acknowledged:false,verbalComplete:false});
  expect(await r.invoke('performer','acknowledgeInput',{directionEpoch:epoch,inputId:'viewer-1',text:'又接住一次'})).toMatchObject({ok:false});
@@ -245,6 +248,7 @@ it('can acknowledge first, preserve the unfinished answer, and complete it in la
  expect(r.brief('performer').responses.find((x:any)=>x.eventId==='viewer-1')).toMatchObject({acknowledged:true,verbalComplete:true});
  await r.stop();runtime=new ProductionRuntime({repoRoot:folder!,dataDir:join(folder!,'data'),port:0,secret:()=>undefined});
  expect(runtime.brief('performer').responses.find((x:any)=>x.eventId==='viewer-1')).toMatchObject({acknowledged:true,verbalComplete:true});
+ expect(runtime.kernel.view().audience[0].replyRef).toBe(inputRef);
 });
 it.each([false,true])('hands A to a ready reply and resumes rewritten A, preserving a late stop after withdrawal=%s',async(withdraw)=>{
  const r=await openRuntime(),peer=browser();await peer.prepared;const epoch=r.kernel.epoch(),target={kind:'show' as const,id:r.kernel.view().project.id};
@@ -292,6 +296,33 @@ it('keeps a failed producer voice occupied until the actual browser stop, includ
  expect(r.kernel.view().speech.active.state).toBe('playing');
  peer.ws.send(JSON.stringify({type:'audio',kind:'aborted',partId:'active',epoch:r.kernel.epoch(),audioRef,mediaTimeMs:100,sequence:3}));
  await vi.waitFor(()=>expect(r.kernel.view().speech.active.state).toBe('failed'));expect(r.kernel.view().speech.active.spokenChars).toBe(1);
+});
+it('reserves first contact for the separate generator without letting a full answer jump ahead',async()=>{
+ const r=await openRuntime(),peer=browser();await peer.prepared;const epoch=r.kernel.epoch(),target={kind:'show' as const,id:r.kernel.view().project.id};
+ r.kernel.submit({commandId:'input',idempotencyKey:'input',actorId:'live:input',directionEpoch:epoch,target,expectedRevision:r.kernel.revision(target),payload:{type:'ingestAudience',eventId:'viewer',audienceId:'lamp',text:'暖灯？',kind:'proposal',priority:'urgent'}});
+ const release=r.reserveAcknowledgement('viewer');
+ expect(await r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId:'bypass',text:'暖灯留窗边。',responseTo:'viewer',responseStage:'ack'})).toMatchObject({ok:false,reject:'ACK_PENDING'});
+ expect(await r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId:'long-first',text:'先讲一段完整答案',responseTo:'viewer',responseStage:'answer'})).toMatchObject({ok:true});
+ expect(r.kernel.view().speech['long-first'].state).toBe('offered');expect(peer.observed.some(op=>op.type==='speech')).toBe(false);expect(vi.mocked(fetch)).not.toHaveBeenCalled();expect(r.quickAcknowledgementContext('viewer')).toBeDefined();
+ expect((await r.offerQuickAcknowledgement('viewer','暖灯留窗边。',epoch)).ok).toBe(true);release();
+ await vi.waitFor(()=>expect(Object.values(r.kernel.view().speech).some(p=>p.responseTo==='viewer'&&p.state==='playing')).toBe(true));
+ expect(peer.observed.find(op=>op.type==='speech').payload.partId).not.toBe('long-first');
+});
+it('lets a new first contact enter an unfinished answer at a pause, preserving which input to continue',async()=>{
+ const r=await openRuntime(),peer=browser();await peer.prepared;const epoch=r.kernel.epoch(),target={kind:'show' as const,id:r.kernel.view().project.id};
+ for(const id of['older','newer'])r.kernel.submit({commandId:id,idempotencyKey:id,actorId:'live:input',directionEpoch:epoch,target,expectedRevision:r.kernel.revision(target),payload:{type:'ingestAudience',eventId:id,audienceId:id,text:'灯光问题',kind:'proposal',priority:'urgent'}});
+ await r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId:'answer-old',responseTo:'older',responseStage:'answer',text:'窗边有盏灯，接着看杯子。'});await vi.waitFor(()=>expect(r.kernel.view().speech['answer-old'].state).toBe('playing'));
+ await r.invoke('performer','acknowledgeInput',{directionEpoch:epoch,inputId:'newer',partId:'ack-new',text:'暖灯留窗边。'});await vi.waitFor(()=>expect(peer.observed.some(op=>op.type==='interruptSpeech')).toBe(true));
+ const interrupt=peer.observed.find(op=>op.type==='interruptSpeech'),window=interrupt.payload.windows[0];peer.ws.send(JSON.stringify({type:'audio',kind:'interrupted',partId:'answer-old',epoch,interruptId:interrupt.payload.interruptId,audioRef:interrupt.payload.audioRef,mediaTimeMs:(window.fromMs+window.toMs)/2,sequence:3}));
+ await vi.waitFor(()=>expect(r.kernel.view().speech['ack-new'].state).toBe('playing'));const note=Object.values(r.kernel.view().continuations)[0];expect(note.sourceResponseTo).toBe('older');
+ const result=r.kernel.submit({commandId:'no-ack-cut',idempotencyKey:'no-ack-cut',actorId:'live:runtime',directionEpoch:epoch,target:{kind:'speechPart',id:'ack-new'},expectedRevision:r.kernel.view().speech['ack-new'].revision,payload:{type:'requestSpeechInterrupt',partId:'ack-new',interruptId:'bad',responseTo:'older'}});expect(result.ok).toBe(false);
+});
+it('does not interrupt an answer for its own next answer segment',async()=>{
+ const r=await openRuntime(),peer=browser();await peer.prepared;const epoch=r.kernel.epoch(),target={kind:'show' as const,id:r.kernel.view().project.id};
+ r.kernel.submit({commandId:'input',idempotencyKey:'input',actorId:'live:input',directionEpoch:epoch,target,expectedRevision:r.kernel.revision(target),payload:{type:'ingestAudience',eventId:'viewer',audienceId:'lamp',text:'暖灯？',kind:'proposal',priority:'urgent'}});
+ await r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId:'answer-one',text:'暖光留在窗边，亮度别太高。',responseTo:'viewer',responseStage:'answer'});await vi.waitFor(()=>expect(r.kernel.view().speech['answer-one'].state).toBe('playing'));
+ await r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId:'answer-two',text:'杯子放另一侧。',responseTo:'viewer',responseStage:'finish'});await vi.waitFor(()=>expect(r.timingsSince().events.some(e=>e.phase==='tts-ready'&&e.fields.partId==='answer-two')).toBe(true));
+ expect(peer.observed.some(op=>op.type==='interruptSpeech')).toBe(false);expect(r.kernel.view().speech['answer-one'].interruption).toBeUndefined();
 });
 it.each([1,2])('accepts a known late stop after %s soft switches without restoring the old topic',async(switches)=>{
  const r=await openRuntime(),peer=browser();await peer.prepared;const epoch=r.kernel.epoch(),target={kind:'show' as const,id:r.kernel.view().project.id};

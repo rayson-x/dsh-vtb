@@ -38,6 +38,7 @@ describe('review regressions at their owner boundaries', () => {
     const continuation=Object.values(k.view().continuations)[0];
     expect(k.view().speech.A).toMatchObject({state:'aborted',spokenChars:6,unreadFrom:6});expect(k.view().cues.tail.status).toBe('invalidated');
     expect(continuation).toMatchObject({sourcePartId:'A',firstUnreadChar:6,unreadText:'接着聊来信。',status:'pending',boundaryReached:true});
+    expect(send(A.performer,{kind:'speechPart',id:'wrong-reply'},{type:'offerSpeech',partId:'wrong-reply',text:'接着读信。',responseTo:'question',responseStage:'finish',resumesContinuationIds:[continuation.id]}).ok).toBe(false);
     const newTarget:CommandTarget={kind:'speechPart',id:'resume-A'};
     expect(send(A.performer,newTarget,{type:'offerSpeech',partId:'resume-A',text:'灯光定了，我们接着读信。',resumesContinuationIds:[continuation.id]}).ok).toBe(true);
     expect(k.view().continuations[continuation.id].status).toBe('resuming');

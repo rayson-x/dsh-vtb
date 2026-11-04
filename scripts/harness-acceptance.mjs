@@ -15,16 +15,17 @@ async function get(path){const r=await fetch(brain+path,{signal:AbortSignal.time
 async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});const j=await r.json();if(!r.ok||j.ok===false)throw Error(JSON.stringify({status:r.status,error:j.error}));return j;}
 let pid;try{pid=JSON.parse(await readFile('packages/dsh-livestream/.cache/brain.pid','utf8')).pid;}catch{}
 let memoryScope='launcher PID';try{pid=Number((await run('lsof',['-tiTCP:'+new URL(brain).port,'-sTCP:LISTEN'])).stdout.trim().split('\n')[0]);memoryScope='brain HTTP listener process';}catch{}
-let timingCursor=0;
+let timingCursor=0,initialAudienceIds;
 const seenPlaying=new Set(),actions=new Set();let sent=0,lastBrowser=0;
 while(Date.now()-report.startedAt<duration*1000){
  const elapsed=(Date.now()-report.startedAt)/1000;
  try{
   const h=await get('/live/harness'),s=h.state;
+  initialAudienceIds??=new Set(s.audience.map(row=>row.eventId));
   const timings=await get('/live/timings?after='+timingCursor);
   if(timingCursor&&timings.oldest>timingCursor+1)report.errors.push({phase:'timing-gap',after:timingCursor,oldest:timings.oldest});
   report.timings.push(...timings.events);timingCursor=timings.latest;
-  for(const input of report.inputs)input.eventId??=s.audience.find(row=>row.text?.includes(input.name))?.eventId;
+  for(const input of report.inputs)input.eventId??=s.audience.find(row=>!initialAudienceIds.has(row.eventId)&&row.text?.includes(input.name))?.eventId;
   report.responsePhases=projectResponseMeasurements(report.inputs,s,report.timings);
   report.continuations=Object.values(s.continuations??{});
   report.resumeParts=Object.values({...s.speechArchive,...s.speech}).filter(p=>p.resumesContinuationIds?.length);

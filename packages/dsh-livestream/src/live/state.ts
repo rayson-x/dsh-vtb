@@ -99,6 +99,7 @@ export function succeed(eventType: EventKind, facts: KernelFact[], effect: Kerne
 
 export function stampFacts(facts: KernelFact[], sequence: number): KernelFact[] {
   return facts.map((fact) => {
+    if(fact.op==='audience'&&!fact.record.replyRef)return {...fact,record:{...fact.record,replyRef:'q'+sequence}};
     if (fact.op === 'speech' && fact.stampCommit) {
       return { op: 'speech', part: { ...fact.part, committedSequence: sequence } };
     }
