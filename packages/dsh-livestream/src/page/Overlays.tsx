@@ -64,7 +64,7 @@ export function Subtitle({ state, now }: { state: StageState; now: number }) {
   const chars = [...sub.text];
   // 声音在放就跟着声音走；还在加载、没接语音时按服务端时间
   const t = playedMs(sub.id) ?? (sub.audio && now - sub.startedAt < AUDIO_WAIT_MS ? 0 : now - sub.startedAt);
-  const at = (i: number) => sub.starts?.[i] ?? (i / Math.max(1, chars.length)) * sub.ms;
+  const at = (i: number) => sub.starts?.[i] ?? (sub.realOnly?Infinity:(i / Math.max(1, chars.length)) * sub.ms);
   let lit = 0;
   while (lit < chars.length && at(lit) <= t) lit++;
   const tone = sub.tone ?? 'plain';

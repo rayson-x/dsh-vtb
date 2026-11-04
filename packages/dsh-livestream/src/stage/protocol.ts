@@ -80,6 +80,8 @@ export interface Subtitle {
   accents?: Accent[];
   /** 每个字开始念的时刻（毫秒，相对 startedAt，已按语速换算）；没有就按字数平摊 */
   starts?: number[];
+  /** 流式语音缺少时标的字保持未念，不按整句均摊冒充实时进度。 */
+  realOnly?:boolean;
   /** 播放语速（1 是原速）：舞台页按这个倍速放，音高不变 */
   rate?: number;
 }

@@ -9,6 +9,7 @@ export class RuntimeInputs {
   constructor(
     private readonly kernel: EngineeringKernel,
     private readonly wake: (role: AgentRole, text: string, urgent: boolean) => void,
+    private readonly observe?: (eventId:string,receivedAt:number,urgent:boolean)=>void,
   ) {}
   ingest(raw: RawPlatformInput) {
     const input = normalizeInput(raw, this.kernel.epoch());
@@ -41,6 +42,7 @@ export class RuntimeInputs {
       throw Error(result.message);
     }
     if (!decision.deliver) return;
+    this.observe?.(input.eventId,input.receivedAt,input.urgent);
     for (const destination of routeAggregate(decision.item))
       if (destination.wake)
         this.wake(

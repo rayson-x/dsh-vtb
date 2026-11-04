@@ -23,3 +23,7 @@ doctor 从固定 Git 对象读取 runtime manifest 和 pnpm lockfile，逐一解
 ## 许可边界
 
 doctor中的license是包自身声明的清单，不是商业授权结论。Remotion等依赖的适用条款、组织规模与运营用途须按实际情况确认；本地源码可读、无用户或测试通过，都不能证明已购买商业授权。项目没有把私有SDK实现公开发布，也没有自动替用户购买或接受额外商业许可。
+
+## 2026-11-04 远端验证
+
+只读Deploy key与Actions Secret已配置；[workflow run 41766787217](https://github.com/rayson-x/dsh-vtb/actions/runs/41766787217) 的public和private-sdk均成功。私有源固定提交检出、46项依赖版本核对以及真实SDK/Film Node检查已在干净Ubuntu runner运行。此前冷缓存的并发初始化暴露ENOTEMPTY目录发布冲突，已通过独立临时目录和原子发布处理；新增三进程冷缓存回归。本记录证明技术重建与访问链路，不扩大私有源码公开范围，也不代替依赖商业许可判断。

@@ -157,11 +157,14 @@ function connect() {
             break;
           case 'abortSpeech':
             break;
+          case 'speechTiming':
+            if(partId===op.payload.partId){speechInfo={...speechInfo,starts:op.payload.starts,ms:op.payload.ms};notifyParent('alignment');}
+            break;
           case 'speech': {
             if (audio) throw Error('Voice lane occupied');
             partId = op.payload.partId;
             audioEpoch = epoch;
-            speechInfo = { text: op.payload.text, ms: op.payload.ms, starts: op.payload.starts };
+            speechInfo = { text: op.payload.text, ms: op.payload.ms, starts: op.payload.starts,realOnly:op.payload.realOnly };
             if (parentOrigin && parent !== window) caption.style.display = 'none';
             const element = new Audio(op.payload.audioRef);
             audio = element;
@@ -169,11 +172,12 @@ function connect() {
             audioNode = context.createMediaElementSource(element);
             audioNode.connect(programmeOutput(context));
             element.preload = 'auto';
-            for (const kind of ['playing', 'timeupdate', 'pause', 'ended', 'error'])
+            for (const kind of ['playing', 'timeupdate', 'pause', 'waiting', 'ended', 'error'])
               element.addEventListener(kind, () => {
                 if (audio !== element) return;
                 if (kind === 'playing') caption.textContent = String(speechInfo.text ?? '');
                 audioReceipt(kind);
+                if(kind==='waiting')notifyParent('pause');
                 if (kind === 'ended' || kind === 'error') {
                   audioNode?.disconnect();
                   audioNode = undefined;

@@ -406,6 +406,7 @@ export class DomainFixture {
     switch (payload.type) {
       case 'rejectSpeech':
       case 'progressSpeech':
+      case 'appendSpeechTiming':
       case 'noteLiveCapabilities':
       case 'receiptScenePatchFailed':
       case 'receiptScenePatch':

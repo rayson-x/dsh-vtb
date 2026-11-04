@@ -4,21 +4,28 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve, join } from 'node:path';
 const run=promisify(execFile),brain=process.argv[2]??'http://127.0.0.1:3972',stage=process.argv[3]??'http://127.0.0.1:3974',duration=Number(process.argv[4]??1800),space=process.argv[5];
+const browserPage=process.argv[6]??'p1';if(!/^p\d+$/.test(browserPage))throw Error('Invalid Ego page label');
 if(!Number.isFinite(duration)||duration<60)throw Error('Use a bounded duration >=60 seconds');
 for(const url of [brain,stage])if(new URL(url).hostname!=='127.0.0.1')throw Error('Local acceptance endpoints only');
 const output=resolve('.deps/acceptance',String(Date.now()));await mkdir(output,{recursive:true});
-const report={kind:'real-local-team-with-scripted-audience',startedAt:Date.now(),durationSeconds:duration,externalBroadcast:false,samples:[],inputs:[],actions:[],errors:[],browser:[]};
+const report={kind:'real-local-team-with-scripted-audience',startedAt:Date.now(),durationSeconds:duration,externalBroadcast:false,samples:[],inputs:[],actions:[],errors:[],browser:[],timings:[]};
 const prompts=['窗外能先加一盏暖灯吗？','书桌上放一只旧杯子怎么样？','我想让窗外有一小群鱼，可以吗？','能把灯光调得柔和一点吗？','书房里如果有封来信，会是谁写的？','先保留这个房间，讲讲桌上的一本旧书好吗？','能给书架留一格空位吗？','我更喜欢安静一点的配色，可以试一下吗？','刚才那条光可以移到窗边吗？','故事里的主人公为什么留在这里？'];
 async function get(path){const r=await fetch(brain+path,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Brain HTTP '+r.status);return r.json();}
 async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});const j=await r.json();if(!r.ok||j.ok===false)throw Error(JSON.stringify({status:r.status,error:j.error}));return j;}
 let pid;try{pid=JSON.parse(await readFile('packages/dsh-livestream/.cache/brain.pid','utf8')).pid;}catch{}
+let memoryScope='launcher PID';try{pid=Number((await run('lsof',['-tiTCP:'+new URL(brain).port,'-sTCP:LISTEN'])).stdout.trim().split('\n')[0]);memoryScope='brain HTTP listener process';}catch{}
+let timingCursor=0;
 const seenPlaying=new Set(),actions=new Set();let sent=0,lastBrowser=0;
 while(Date.now()-report.startedAt<duration*1000){
  const elapsed=(Date.now()-report.startedAt)/1000;
  try{
   const h=await get('/live/harness'),s=h.state;
+  const timings=await get('/live/timings?after='+timingCursor);
+  if(timingCursor&&timings.oldest>timingCursor+1)report.errors.push({phase:'timing-gap',after:timingCursor,oldest:timings.oldest});
+  report.timings.push(...timings.events);timingCursor=timings.latest;
+  for(const input of report.inputs)input.eventId??=s.audience.find(row=>row.text?.includes(input.name))?.eventId;
   let rssKb=null;if(pid)try{rssKb=Number((await run('ps',['-o','rss=','-p',String(pid)])).stdout.trim());}catch{}
-  const speech=Object.entries(s.speech);const sample={at:Date.now(),elapsed,rssKb,roles:h.roles.map(r=>({role:r.role,ready:r.ready,paused:r.paused,phase:r.phase,sessionId:r.sessionId})),epoch:s.project.currentEpoch,channel:s.project.channel.mode,assets:Object.keys(s.assets).length,tasks:Object.keys(s.tasks).length,scenes:Object.keys(s.scenes).length,speech:speech.reduce((a,[,p])=>(a[p.state]=(a[p.state]??0)+1,a),{})};
+  const speech=Object.entries(s.speech);const sample={at:Date.now(),elapsed,rssKb,memoryScope,roles:h.roles.map(r=>({role:r.role,ready:r.ready,paused:r.paused,phase:r.phase,sessionId:r.sessionId})),epoch:s.project.currentEpoch,channel:s.project.channel.mode,assets:Object.keys(s.assets).length,tasks:Object.keys(s.tasks).length,scenes:Object.keys(s.scenes).length,speech:speech.reduce((a,[,p])=>(a[p.state]=(a[p.state]??0)+1,a),{})};
   if(!report.samples.length||sample.at-report.samples.at(-1).at>=15000)report.samples.push(sample);
   // A named actual speaking part is semantic evidence; unrelated speech is not counted as a reply.
   for(const [id,part] of speech)if(['playing','ended'].includes(part.state)&&!seenPlaying.has(id)){
@@ -33,7 +40,7 @@ while(Date.now()-report.startedAt<duration*1000){
   for(const action of schedule)if(elapsed>=action.at&&!actions.has(action.key)){await post(brain+action.url,action.body);actions.add(action.key);report.actions.push({key:action.key,at:Date.now()});}
   if(space&&Date.now()-lastBrowser>=60000){lastBrowser=Date.now();try{
    const browserFile=join(output,'browser-current.json');
-   const script=`const fs=await import('node:fs/promises');const t=await taskSpace(${Number(space)}),p=t.page('p1');await p.cdp('Performance.enable');const metrics=await p.cdp('Performance.getMetrics');const data={at:Date.now(),metrics:metrics.metrics.filter(x=>['JSHeapUsedSize','Nodes','Documents','Frames','TaskDuration'].includes(x.name)),page:await p.evaluate(()=>({iframes:document.querySelectorAll('iframe').length,images:document.images.length}))};await fs.writeFile(${JSON.stringify(browserFile)},JSON.stringify(data));`;
+   const script=`const fs=await import('node:fs/promises');const t=await taskSpace(${Number(space)}),p=t.page(${JSON.stringify(browserPage)});await p.cdp('Performance.enable');const metrics=await p.cdp('Performance.getMetrics');const data={at:Date.now(),metrics:metrics.metrics.filter(x=>['JSHeapUsedSize','Nodes','Documents','Frames','TaskDuration'].includes(x.name)),page:await p.evaluate(()=>({iframes:document.querySelectorAll('iframe').length,images:document.images.length}))};await fs.writeFile(${JSON.stringify(browserFile)},JSON.stringify(data));`;
    await run('ego-browser',['nodejs','-e',script],{timeout:20000,maxBuffer:200000});
    const row=JSON.parse(await readFile(browserFile,'utf8'));if(report.browser.at(-1)?.at===row.at)throw Error('Stale browser metrics');report.browser.push(row);
   }catch(error){report.errors.push({at:Date.now(),phase:'browser-metrics',error:String(error).slice(0,250)});}}

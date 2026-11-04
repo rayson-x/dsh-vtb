@@ -21,12 +21,12 @@ export function applyRoleAgent(ctx: any, role: AgentRole) {
             description:
               tool.startsWith('read') || tool === 'inspectCandidate'
                 ? '读取本岗位最新的真实工程简报/候选；不推进制作，不改变演出。'
-                : `${tool}：在本岗位权限内提交操作。payload填写JSON对象文本，类型固定为工具名；身份由运行时绑定。先读简报取得目标、revision和epoch。错误须据最新状态修正，不盲重试。`,
+                : `${tool}：在本岗位权限内提交操作。payload填写JSON对象文本，类型固定为工具名；身份由运行时绑定。从附带即时快照或最新简报取得目标、revision和epoch。错误须据最新状态修正，不盲重试。`,
             parameters: {
               payload: {
                 type: 'string',
                 description:
-                  'JSON对象。读可省略。写入必须directionEpoch。offerSpeech:{directionEpoch,text,partId可选}；requestProduction:{directionEpoch,task:{id,goal,priority,inputs:[],dependsOn:[]}}；workspaceBuildPreview:{directionEpoch,taskId,taskVersion,source或template或effectPath三选一,props,width,height,durationInFrames}，effectPath使用searchEffects返回的路径直接复用；publishCandidate:{directionEpoch,taskId,assetVersionId,expectedRevision}；prepareScene:{directionEpoch,instanceId,assetVersionId,segmentId,label}；take:{directionEpoch,instanceId,expectedRevision}。其他工具先读简报内toolContracts。命令ID/新实体ID可由运行时分配。',
+                  'JSON对象。读可省略。写入必须directionEpoch。offerSpeech:{directionEpoch,text,partId可选,replacePending可选:{partId:未开口旧句ID,expectedRevision:旧句revision}}；requestProduction:{directionEpoch,task:{id,goal,priority,inputs:[],dependsOn:[]}}；workspaceBuildPreview:{directionEpoch,taskId,taskVersion,source或template或effectPath三选一,props,width,height,durationInFrames}，effectPath使用searchEffects返回的路径直接复用；publishCandidate:{directionEpoch,taskId,assetVersionId,expectedRevision}；prepareScene:{directionEpoch,instanceId,assetVersionId,segmentId,label}；take:{directionEpoch,instanceId,expectedRevision}。其他工具先读简报内toolContracts。命令ID/新实体ID可由运行时分配。',
               },
             },
             output: {

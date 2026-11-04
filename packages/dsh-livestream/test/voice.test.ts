@@ -1,7 +1,7 @@
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { speechMs, StageController, type SpeakResult } from '../src/host/controller';
 import { ElevenLabsVoice, mp3DurationMs, type SpeechClip, type Voice } from '../src/host/voice';
 import { initialState } from '../src/stage/protocol';
@@ -157,6 +157,21 @@ describe('字幕带上音频', () => {
 });
 
 describe('ElevenLabs 合成（不打网络）', () => {
+  it('delivers real aligned audio prefixes before the final streaming packet and caches only the completed clip',async()=>{
+    let controller!:ReadableStreamDefaultController<Uint8Array>;
+    const encoder=new TextEncoder(),audio=tinyMp3();let calls=0;
+    const packet=(char:string,start:number,end:number)=>encoder.encode(JSON.stringify({audio_base64:audio.toString('base64'),alignment:{characters:[char],character_start_times_seconds:[start],character_end_times_seconds:[end]}})+'\n');
+    const voice=await tempVoice(async()=>{calls++;return new Response(new ReadableStream({start(c){controller=c;}}));});
+    const received:import('../src/host/voice').SpeechAudioChunk[]=[];
+    let completed=false;const pending=voice.synthesizeStream('你好',new AbortController().signal,c=>received.push(c)).then(c=>{completed=true;return c;});
+    await vi.waitFor(()=>expect(controller).toBeDefined());
+    const first=packet('你',0,.2);controller.enqueue(first.slice(0,15));controller.enqueue(first.slice(15));
+    await vi.waitFor(()=>expect(received).toHaveLength(1));expect(completed).toBe(false);expect(received[0]!.starts).toEqual([0]);
+    controller.enqueue(packet('好',.2,.4));controller.close();
+    const clip=await pending;expect(clip.starts).toEqual([0,200]);expect(clip.ms).toBe(400);
+    const cached:import('../src/host/voice').SpeechAudioChunk[]=[];await voice.synthesizeStream('你好',new AbortController().signal,c=>cached.push(c));
+    expect(calls).toBe(1);expect(cached[0]!.audio.byteLength).toBe(audio.byteLength*2);
+  });
   it('用对齐信息的时长，同一句再合成不重复请求', async () => {
     const audio = tinyMp3();
     let calls = 0;

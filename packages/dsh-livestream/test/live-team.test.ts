@@ -4,12 +4,15 @@ import { DshLiveTeam, type DshAgentPort } from '../src/live/runtime/dsh-team';
 class Agent implements DshAgentPort {
   status = 'idle';
   calls: string[] = [];
+  messages: any[] = [];
   constructor(readonly session: { id: string }) {}
-  followup() {
+  followup(message: unknown) {
     this.calls.push('followup');
+    this.messages.push(message);
   }
-  steer() {
+  steer(message: unknown) {
     this.calls.push('steer');
+    this.messages.push(message);
   }
   cancel() {
     this.calls.push('cancel');
@@ -76,6 +79,15 @@ it('pauses editorial without cancelling the performer or production worker', asy
   expect(agents.get('live-v2-editorial')!.calls).toEqual(['cancel']);
   expect(agents.get('live-v2-performer')!.calls).toEqual(['followup']);
   expect(agents.get('live-v2-production')!.calls).toEqual([]);
+});
+
+it('delivers an urgent performer wake with current engineering facts so a reply needs no extra read round', async () => {
+  const {team,agents}=setup();await team.start();
+  vi.spyOn(team.runtime,'brief').mockReturnValue({epoch:7,brief:{recentInteractions:[{eventId:'viewer-new',summary:'窗边加暖灯'}]},revisions:{speech:{next:{revision:3,state:'offered'}}},masterNotes:[{text:'保留书房方向'}]});
+  team.wake('performer','观众简报：窗边加暖灯',true);
+  const message=agents.get('live-v2-performer')!.messages.at(-1);
+  const text=message.content.map((p:any)=>p.text??'').join('');
+  expect(text).toContain('"epoch":7');expect(text).toContain('viewer-new');expect(text).toContain('"revision":3');expect(text).toContain('保留书房方向');
 });
 
 it('does not stop live seats when editorial setup fails, and can retry only that seat', async () => {

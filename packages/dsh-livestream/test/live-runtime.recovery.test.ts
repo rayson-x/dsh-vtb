@@ -8,6 +8,7 @@ import { ProductionRuntime } from '../src/live/runtime/production';
 let runtime: ProductionRuntime | undefined;
 let folder: string | undefined;
 const sockets: WebSocket[] = [];
+const fetchHttp=globalThis.fetch;
 afterEach(async () => {
   for (const socket of sockets.splice(0)) socket.terminate();
   await runtime?.stop();
@@ -132,10 +133,13 @@ it('synthesizes the one queued part while the current part plays, without sendin
   await vi.waitFor(() => expect(r.kernel.view().speech.current.state).toBe('playing'));
   await offer('next');
   await vi.waitFor(() => expect(vi.mocked(fetch).mock.calls.length).toBe(2));
+  await vi.waitFor(()=>expect(r.timingsSince().events.some(e=>e.phase==='tts-ready'&&e.fields.partId==='next')).toBe(true));
+  expect(r.timingsSince().events.some(e=>e.phase==='audio-playing'&&e.fields.partId==='next')).toBe(false);
   expect(peer.observed.filter(op => op.type === 'speech').length).toBe(1);
   const first = peer.observed.find(op => op.type === 'speech');
   peer.ws.send(JSON.stringify({ type:'audio',kind:'ended',partId:'current',epoch:r.kernel.epoch(),audioRef:first.payload.audioRef,mediaTimeMs:1000,sequence:2 }));
   await vi.waitFor(() => expect(r.kernel.view().speech.next.state).toBe('playing'));
+  expect(r.timingsSince().events.some(e=>e.phase==='audio-playing'&&e.fields.partId==='next')).toBe(true);
   expect(vi.mocked(fetch).mock.calls.length).toBe(2);
 });
 it('withdrawing an unplayed queued part frees its slot without cutting current audio', async () => {
@@ -160,6 +164,50 @@ it('a direction switch releases obsolete future synthesis slots while retaining 
   expect((await r.switchDirection('Next direction')).ok).toBe(true);
   expect(await offer('new-direction')).toMatchObject({ok:true});
   expect(r.kernel.view().speech.current.state).toBe('playing');
+});
+it('atomically replaces only an uncommitted future sentence, with revision checks and no cut to current audio',async()=>{
+ const r=await openRuntime(),peer=browser();await peer.prepared;
+ const epoch=r.kernel.epoch();
+ const offer=(partId:string,replacePending?:{partId:string;expectedRevision:number})=>r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId,text:partId,...(replacePending?{replacePending}:{})});
+ await offer('current');await vi.waitFor(()=>expect(r.kernel.view().speech.current.state).toBe('playing'));
+ await offer('old-future');
+ const replace={partId:'old-future',expectedRevision:r.kernel.view().speech['old-future'].revision};
+ expect(await offer('stale',{...replace,expectedRevision:999})).toMatchObject({ok:false,reject:'REVISION_CONFLICT'});
+ expect(r.kernel.view().speech['old-future'].state).toBe('offered');expect(r.kernel.view().speech.stale).toBeUndefined();
+ expect(await offer('response',replace)).toMatchObject({ok:true});
+ expect(r.kernel.view().speech['old-future'].state).toBe('cancelled');expect(r.kernel.view().speech.current.state).toBe('playing');
+ expect(peer.observed.filter(op=>op.type==='speech')).toHaveLength(1);
+ const current=peer.observed.find(op=>op.type==='speech');peer.ws.send(JSON.stringify({type:'audio',kind:'ended',partId:'current',epoch,audioRef:current.payload.audioRef,mediaTimeMs:1000,sequence:2}));
+ await vi.waitFor(()=>expect(r.kernel.view().speech.response.state).toBe('playing'));
+ expect(await offer('cut-current',{partId:'response',expectedRevision:r.kernel.view().speech.response.revision})).toMatchObject({ok:false,reject:'TOO_LATE'});
+ expect(r.kernel.view().speech['cut-current']).toBeUndefined();
+});
+it('sends playable HTTP bytes before synthesis finishes, extends real timing, and preserves the current stream on a soft switch',async()=>{
+ const r=await openRuntime(),peer=browser();await peer.prepared;
+ let producer!:ReadableStreamDefaultController<Uint8Array>;
+ vi.mocked(fetch).mockImplementation(async()=>new Response(new ReadableStream({start(c){producer=c;}})));
+ const encode=(char:string,start:number,end:number)=>new TextEncoder().encode(JSON.stringify({audio_base64:Buffer.alloc(5000,1).toString('base64'),alignment:{characters:[char],character_start_times_seconds:[start],character_end_times_seconds:[end]}})+'\n');
+ await r.invoke('performer','offerSpeech',{directionEpoch:r.kernel.epoch(),partId:'streamed',text:'你好'});
+ await vi.waitFor(()=>expect(producer).toBeDefined());producer.enqueue(encode('你',0,.2));
+ await vi.waitFor(()=>expect(r.kernel.view().speech.streamed.state).toBe('playing'));
+ const spoken=peer.observed.find(op=>op.type==='speech');
+ const media=await fetchHttp(spoken.payload.audioRef),reader=media.body!.getReader();
+ expect((await reader.read()).value?.byteLength).toBe(5000);
+ expect(r.timingsSince().events.some(e=>e.phase==='tts-ready'&&e.fields.partId==='streamed')).toBe(false);
+ expect((await r.switchDirection('next')).ok).toBe(true);
+ expect(vi.mocked(fetch).mock.calls[0][1]?.signal?.aborted).toBe(false);
+ producer.enqueue(encode('好',.2,.4));producer.close();
+ await vi.waitFor(()=>expect(r.kernel.view().speech.streamed.alignment.starts).toEqual([0,200]));
+ expect((await reader.read()).value?.byteLength).toBe(5000);expect((await reader.read()).done).toBe(true);
+ expect(r.kernel.view().speech.streamed.state).toBe('playing');
+});
+it('admits several short future phrases, then applies bounded backpressure without claiming they were played',async()=>{
+ const r=await openRuntime(),peer=browser();await peer.prepared;
+ const offer=(partId:string,text=partId)=>r.invoke('performer','offerSpeech',{directionEpoch:r.kernel.epoch(),partId,text});
+ await offer('current');await vi.waitFor(()=>expect(r.kernel.view().speech.current.state).toBe('playing'));
+ for(const id of['a','b','c','d'])expect(await offer(id)).toMatchObject({ok:true});
+ expect(await offer('overflow')).toMatchObject({ok:false,reject:'SPEECH_QUEUE_FULL'});
+ expect(r.kernel.view().speech.overflow).toBeUndefined();expect(peer.observed.filter(op=>op.type==='speech')).toHaveLength(1);
 });
 it('keeps write receipts thin and production briefs bounded while retaining full engineering history', async () => {
  const r=await openRuntime();

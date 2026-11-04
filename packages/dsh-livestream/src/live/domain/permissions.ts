@@ -176,6 +176,7 @@ export function toolFor(command: ShowCommand): DomainTool {
     case 'startSpeech':
       return 'scheduleSpeech';
     case 'progressSpeech':
+    case 'appendSpeechTiming':
     case 'noteLiveCapabilities':
     case 'receiptScenePatchFailed':
     case 'receiptScenePatch':

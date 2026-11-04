@@ -29,6 +29,7 @@ export interface SpeechClip {
 
 /** 一段话被拆开合成时，前后文给合成器参考，拼起来语气连贯 */
 export interface SpeechContext { before?: string; after?: string }
+export interface SpeechAudioChunk { audio: Uint8Array; file: string; starts?: number[]; ms: number }
 
 export interface Voice {
   synthesize(text: string, signal: AbortSignal, context?: SpeechContext): Promise<SpeechClip>;
@@ -78,6 +79,61 @@ export class ElevenLabsVoice implements Voice {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** Audio is delivered before the response ends; only provider-aligned prefixes are real timing. */
+  async synthesizeStream(text:string,signal:AbortSignal,onChunk:(chunk:SpeechAudioChunk)=>void):Promise<SpeechClip>{
+    const apiKey=await this.read(API_KEY),voiceId=await this.read(VOICE_ID),model=(await this.read(MODEL_ID))||DEFAULT_MODEL;
+    if(!apiKey||!voiceId)throw Error('没配 ElevenLabs 密钥或音色');
+    if(signal.aborted)throw abortError();
+    const file=cacheName(voiceId,model,text),cached=await this.readCache(file);
+    if(cached){const audio=await readFile(join(this.dir,file));if(signal.aborted)throw abortError();onChunk({audio,file,starts:cached.starts,ms:cached.ms});return cached;}
+    const timeout=new AbortController(),chunks:Buffer[]=[],characters:string[]=[],starts:number[]=[],ends:number[]=[];
+    let bytes=0,pending='',timer:ReturnType<typeof setTimeout>,valid=true;
+    const reset=()=>{clearTimeout(timer);timer=setTimeout(()=>timeout.abort(),REQUEST_MS);timer.unref?.();};
+    reset();const total=setTimeout(()=>timeout.abort(),120000);total.unref?.();
+    const original=[...text];
+    const consume=(line:string)=>{
+      if(!line.trim())return;
+      let data:any;try{data=JSON.parse(line);}catch{throw Error('ElevenLabs 流返回无效响应');}
+      if(typeof data.audio_base64!=='string')throw Error('ElevenLabs 流缺少音频字段');
+      const audio=Buffer.from(data.audio_base64,'base64');bytes+=audio.length;
+      if(bytes>16*1024*1024)throw Error('Speech stream exceeds the bounded audio buffer');
+      if(audio.length)chunks.push(audio);
+      const a=data.alignment;
+      if(a){
+        if(!Array.isArray(a.characters)||!Array.isArray(a.character_start_times_seconds)||!Array.isArray(a.character_end_times_seconds)||a.characters.length!==a.character_start_times_seconds.length||a.characters.length!==a.character_end_times_seconds.length)valid=false;
+        else for(let i=0;i<a.characters.length;i++){
+          const start=a.character_start_times_seconds[i],end=a.character_end_times_seconds[i];
+          if(a.characters[i]!==original[characters.length]||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<start||start*1000<(starts.at(-1)??0))valid=false;
+          characters.push(a.characters[i]);starts.push(Math.round(start*1000));ends.push(Math.round(end*1000));
+        }
+      }
+      onChunk({audio,file,...(valid&&starts.length?{starts:[...starts]}:{}),ms:valid?(ends.at(-1)??0):0});
+    };
+    try{
+      const response=await this.fetchImpl(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/stream/with-timestamps?output_format=mp3_44100_128`,{method:'POST',signal:AbortSignal.any([signal,timeout.signal]),headers:{'xi-api-key':apiKey,'content-type':'application/json',accept:'application/x-ndjson'},body:JSON.stringify({text,model_id:model})});
+      if(!response.ok){await response.body?.cancel().catch(()=>{});throw Error(`ElevenLabs HTTP ${response.status}`);}
+      if(!response.body)throw Error('ElevenLabs 返回空音频流');
+      const decoder=new TextDecoder();
+      for await(const chunk of response.body){
+        if(signal.aborted)throw abortError();reset();pending+=decoder.decode(chunk,{stream:true});
+        if(pending.length>4*1024*1024)throw Error('ElevenLabs 流消息过大');
+        for(let at;(at=pending.indexOf('\n'))>=0;){const line=pending.slice(0,at);pending=pending.slice(at+1);consume(line);}
+      }
+      pending+=decoder.decode();consume(pending);
+      if(!bytes)throw Error('ElevenLabs 返回空音频');
+      const audio=Buffer.concat(chunks),ms=(valid?ends.at(-1):0)||mp3DurationMs(audio);
+      if(!ms)throw Error('算不出音频时长');
+      const realStarts=valid&&characters.length===original.length?starts:undefined;
+      await this.writeCache(file,audio,ms,realStarts);
+      if(signal.aborted)throw abortError();
+      return clip(file,ms,realStarts);
+    }catch(error){
+      if(signal.aborted)throw abortError();if(timeout.signal.aborted)throw Error('ElevenLabs 流超时');
+      if(error instanceof Error&&/^ElevenLabs |^Speech stream|^算不出/.test(error.message))throw error;
+      throw Error('ElevenLabs 流请求失败');
+    }finally{clearTimeout(timer!);clearTimeout(total);}
   }
 
   private async request(text: string, voiceId: string, model: string, apiKey: string, file: string, signal: AbortSignal, timeout: AbortSignal, context: SpeechContext): Promise<SpeechClip> {

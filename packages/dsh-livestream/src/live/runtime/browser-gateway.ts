@@ -3,6 +3,7 @@ import { createServer, type Server } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { WebSocketServer, WebSocket } from 'ws';
+import type { ProgressiveAudio } from './progressive-audio';
 
 export interface BrowserOperation {
   opId: string;
@@ -20,6 +21,7 @@ export class BrowserGateway {
   private readonly server: Server;
   private readonly ws = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
   private readonly bundles = new Map<string, string>();
+  private readonly streams=new Map<string,ProgressiveAudio>();
   private readonly media = new Map<string, string>();
   get origin(): string {
     const address = this.server?.address();
@@ -40,6 +42,8 @@ export class BrowserGateway {
         res.end();
         return;
       }
+      const stream=this.streams.get(path);
+      if(stream){void stream.serve(res).catch(()=>res.destroy());return;}
       const file = path.startsWith('/bundles/')
         ? this.bundles.get(path)
         : path.startsWith('/voice/')
@@ -134,9 +138,12 @@ export class BrowserGateway {
   }
   publishMedia(id: string, file: string) {
     const url = `/voice/${encodeURIComponent(id)}.mp3`;
+    this.streams.delete(url);
     this.media.set(url, resolve(file));
     return this.origin + url;
   }
+  publishStream(id:string,stream:ProgressiveAudio){const url=`/voice/${encodeURIComponent(id)}.mp3`;this.streams.set(url,stream);return this.origin+url;}
+  revokeStream(id:string){const url=`/voice/${encodeURIComponent(id)}.mp3`;this.streams.get(url)?.fail();this.streams.delete(url);}
   connected() {
     return this.socket?.readyState === WebSocket.OPEN;
   }
@@ -167,6 +174,7 @@ export class BrowserGateway {
     });
   }
   async stop() {
+    for(const stream of this.streams.values())stream.fail();this.streams.clear();
     this.socket?.terminate();
     for (const wait of this.waits.values()) {
       clearTimeout(wait.timer);

@@ -56,6 +56,14 @@ export function planCommand(command: CommandEnvelope, ctx: PlanContext): Plan {
       const locked=targetIs(command,'speechPart',part.partId)??requireEpoch(ctx.state,command);if(locked)return locked;
       return succeed('show.command',[{op:'speech',part:reviseSpeech(part,{state:'rejected',rejectionReason:payload.reason})},...invalidateCueFacts(ctx,cuesBrokenBySpeech(Object.values(ctx.state.cues),part.partId,0,'tail'),'Speech admission failed before playback')]);
     }
+    case 'appendSpeechTiming': {
+      const part=speechOf(ctx.state,payload.partId);
+      if(!part||!SPEECH_LIVE.has(part.state)||part.audioRef!==payload.audioRef)return fail('ILLEGAL_TRANSITION','Timing must belong to the active audio');
+      const locked=targetIs(command,'speechPart',part.partId)??requireEpoch(ctx.state,command);if(locked)return locked;
+      const prior=part.alignment.starts??[],starts=payload.starts;
+      if(!Array.isArray(starts)||starts.length<prior.length||starts.length>[...part.text].length||starts.some((at,i)=>!Number.isFinite(at)||at<0||(i>0&&at<starts[i-1])||(i<prior.length&&at!==prior[i])))return fail('ILLEGAL_TRANSITION','Real timing may only extend its verified prefix');
+      return succeed('execution.receipt',[{op:'speech',part:reviseSpeech(part,{alignment:{mode:'real',starts:[...starts]}})}]);
+    }
     case 'progressSpeech': {
       const part = speechOf(ctx.state, payload.partId);
       if (!part || part.state !== 'playing') return fail('ILLEGAL_TRANSITION', 'Progress requires playing audio');
@@ -598,6 +606,16 @@ function planOffer(command: CommandEnvelope, payload: Extract<ShowCommand, { typ
   const stale = requireEpoch(ctx.state, command) ?? targetIs(command, 'speechPart', payload.partId);
   if (stale) return stale;
   if (speechOf(ctx.state, payload.partId)) return fail('REVISION_CONFLICT', '口播编号已存在');
+  let replaced:KernelFact[]=[];
+  if(payload.replacePending){
+    const old=speechOf(ctx.state,payload.replacePending.partId);
+    if(!old)return fail('UNKNOWN_TARGET','待替换口播不存在');
+    if(old.revision!==payload.replacePending.expectedRevision)return fail('REVISION_CONFLICT','待替换口播版本已变化');
+    const wrongEpoch=requirePartEpoch(ctx.state,old);if(wrongEpoch)return wrongEpoch;
+    if(speechCommitted(old.state))return fail('TOO_LATE','已提交的口播不能替换');
+    if(!SPEECH_OPEN.has(old.state))return fail('ILLEGAL_TRANSITION','只能替换尚未提交的口播');
+    replaced=[{op:'speech',part:reviseSpeech(old,{state:'cancelled',unreadFrom:old.spokenChars})},...invalidateCueFacts(ctx,cuesBrokenBySpeech(Object.values(ctx.state.cues),old.partId,old.spokenChars,'tail'),'未念口播由主播替换')];
+  }
   const part: SpeechPart = {
     partId: payload.partId,
     revision: 1,
@@ -608,7 +626,7 @@ function planOffer(command: CommandEnvelope, payload: Extract<ShowCommand, { typ
     spokenChars: 0,
     ...(payload.plannedBeatRef ? { plannedBeatRef: payload.plannedBeatRef } : {}),
   };
-  return succeed('show.command', [{ op: 'speech', part }]);
+  return succeed('show.command', [...replaced,{ op: 'speech', part }]);
 }
 
 function planMove(

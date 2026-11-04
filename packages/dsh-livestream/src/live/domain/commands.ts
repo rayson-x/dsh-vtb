@@ -86,8 +86,9 @@ export type ShowCommand =
       next: { directionId?: string; commitment: string; coreQuestion: string } | { transition: true };
     }
   | { type: 'requestInteraction'; requestId: string; text: string }
-  | { type: 'offerSpeech'; partId: string; text: string; plannedBeatRef?: string }
+  | { type: 'offerSpeech'; partId: string; text: string; plannedBeatRef?: string; replacePending?: {partId:string;expectedRevision:number} }
   | { type: 'progressSpeech'; partId: string; mediaTimeMs: number; audioRef: string }
+  | { type: 'appendSpeechTiming'; partId:string;audioRef:string;starts:number[] }
   | { type: 'noteLiveCapabilities'; instanceId: string; supportsInPlaceInputUpdate: boolean }
   | { type: 'receiptScenePatch'; operationId:string; observedAtShowTime?:number; frame?:number; instanceId: string; codeVersion: string; inputsRevision: number; inputs: Record<string, unknown> }
   | { type: 'receiptScenePatchFailed';instanceId:string;operationId:string;reason:string }

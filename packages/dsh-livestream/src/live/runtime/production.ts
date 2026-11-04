@@ -15,6 +15,9 @@ import type { ActorRecord } from '../domain/entities';
 import type { CommandEnvelope, CommandTarget, ShowCommand } from '../domain/commands';
 import type { RoleRuntime } from './dsh-team';
 import { ElevenLabsVoice, type SpeechClip, type SecretReader } from '../../host/voice';
+import { ProgressiveAudio } from './progressive-audio';
+type PreparedClip=SpeechClip&{audioRef?:string;streaming?:boolean};
+interface PreparedSpeech {controller:AbortController;promise:Promise<PreparedClip>;complete?:boolean}
 
 const runFile = promisify(execFile);
 async function storeJson(path: string, value: unknown) {
@@ -58,12 +61,22 @@ export class ProductionRuntime implements RoleRuntime {
   private readonly log: FileEventLog;
   private readonly candidates = new Map<string, Candidate>();
   private readonly voice: ElevenLabsVoice;
-  private readonly clips = new Map<string, SpeechClip & { audioRef: string; epoch: number }>();
+  private readonly clips = new Map<string, PreparedClip & { audioRef: string; epoch: number }>();
   private readonly speechQueue: string[] = [];
   private speaking?: string;
   private synthController?: AbortController;
   private masterNotes: Array<{id:string;text:string;at:number}> = [];
-  private readonly syntheses = new Map<string, { controller: AbortController; promise: Promise<SpeechClip> }>();
+  private readonly syntheses = new Map<string, PreparedSpeech>();
+  private synthesisActive=0;
+  private readonly synthesisWaiting:Array<{run:()=>void}>=[];
+  private speechSlot(signal:AbortSignal,priority:boolean):Promise<()=>void>{
+    return new Promise((resolve,reject)=>{
+      const abort=()=>{const at=this.synthesisWaiting.indexOf(waiter);if(at>=0)this.synthesisWaiting.splice(at,1);reject(Object.assign(Error('Speech synthesis cancelled'),{name:'AbortError'}));};
+      const waiter={run:()=>{signal.removeEventListener('abort',abort);this.synthesisActive++;let released=false;resolve(()=>{if(released)return;released=true;this.synthesisActive--;this.synthesisWaiting.shift()?.run();});}};
+      if(signal.aborted){abort();return;}
+      if(this.synthesisActive<2)waiter.run();else{signal.addEventListener('abort',abort,{once:true});if(priority)this.synthesisWaiting.unshift(waiter);else this.synthesisWaiting.push(waiter);}
+    });
+  }
   private sdk: any;
   private sdkLoading?: Promise<any>;
   private sdkError?: string;
@@ -74,6 +87,13 @@ export class ProductionRuntime implements RoleRuntime {
   private readonly dispatched = new Set<number>();
   private lastVetoCheck = -10000;
   private tickBusy = false;
+  private timingSequence = 0;
+  private readonly timings: Array<{sequence:number;at:number;showTime:number;phase:string;fields:Record<string,string|number|boolean>}> = [];
+  recordTiming(phase:string,fields:Record<string,string|number|boolean>){
+    this.timings.push({sequence:++this.timingSequence,at:Date.now(),showTime:this.clock.now(),phase,fields});
+    if(this.timings.length>2048)this.timings.splice(0,this.timings.length-2048);
+  }
+  timingsSince(after=0){return {oldest:this.timings[0]?.sequence??0,latest:this.timingSequence,events:this.timings.filter(e=>e.sequence>after)};}
   onWake?: (role: AgentRole, text: string, urgent?: boolean) => void;
   onError?: (message: string) => void;
   constructor(
@@ -88,7 +108,7 @@ export class ProductionRuntime implements RoleRuntime {
     );
     this.kernel = EngineeringKernel.hydrate(this.log, { clock: this.clock, actors });
     for (const event of this.log.snapshot().events) this.dispatched.add(event.sequence);
-    this.voice = new ElevenLabsVoice({ dir: join(options.dataDir, 'voice'), secret: options.secret });
+    this.voice = new ElevenLabsVoice({ dir: join(options.dataDir, 'voice'), secret: async name=>name==='ELEVENLABS_MODEL_ID'?(await options.secret('ELEVENLABS_LIVE_MODEL_ID'))||(await options.secret(name)):options.secret(name) });
     this.gateway = new BrowserGateway({
       port: options.port,
       browserDir: join(options.repoRoot, 'packages/scene-host/dist'),
@@ -150,6 +170,7 @@ export class ProductionRuntime implements RoleRuntime {
   private error(e: unknown) {
     this.onError?.(e instanceof Error ? e.message : String(e));
   }
+  private queuedSpeechMs(except?:string){return this.speechQueue.filter(id=>id!==except).reduce((ms,id)=>ms+[...(this.kernel.view().speech[id]?.text??'')].length*160,0);}
   brief(role: AgentRole) {
     const state = this.kernel.view();
     const tail = <T>(items:T[],cap:number) => items.slice(-cap);
@@ -170,6 +191,7 @@ export class ProductionRuntime implements RoleRuntime {
       epoch: this.kernel.epoch(),
       presentation: this.options.presentation?.(),
       role,
+      voiceQueue:{currentPartId:this.speaking,upcoming:[...this.speechQueue],estimatedUpcomingMs:this.queuedSpeechMs(),maxUpcomingMs:10000,maxUpcomingParts:4,estimateOnly:true},
       playbackConnected: this.gateway.connected(),
       sceneErrors: Object.fromEntries([...this.sceneErrors].filter(([,e])=>e.epoch===current).slice(-8)),
       sdk: {
@@ -203,7 +225,7 @@ export class ProductionRuntime implements RoleRuntime {
       commandFormat:
         'Brief text fields are excerpts. Use readTask({taskId,offset}) or readProgramme({instanceId}) for targeted detail; masterOffset pages durable master instructions. Always directionEpoch. New records get target/revision/id from runtime; updates require expectedRevision from revisions.',
       toolContracts: {
-        offerSpeech: '{directionEpoch,text,partId?}',
+        offerSpeech: '{directionEpoch,text,partId?,replacePending?:{partId,expectedRevision}}',
         requestProduction:
           '{directionEpoch,task:{id,goal,priority,inputs:[],dependsOn:[],intendedDirectionId?},proposalId?}',
         publishEditorialProposal:
@@ -262,11 +284,12 @@ export class ProductionRuntime implements RoleRuntime {
       const guide=examples[path]?await readFile(join(this.options.repoRoot,'examples/scenes',examples[path]),'utf8'):await sdk.readGuide(path);const offset=Math.max(0,Number(args.offset)||0);const end=offset+16000;return {guide:guide.slice(offset,end),offset,nextOffset:end<guide.length?end:null,pin:sdk.provenance.commit,integrationExamples:Object.keys(examples)};
     }
     if (tool === 'searchEffects') return this.effects(String(args.query ?? ''),args.includeSource===true);
-    if (tool === 'offerSpeech' && this.speechQueue.length >= 1)
+    const remainingQueue=this.speechQueue.filter(id=>id!==args.replacePending?.partId);
+    if (tool === 'offerSpeech' && (remainingQueue.length>=4||(remainingQueue.length>0&&this.queuedSpeechMs(args.replacePending?.partId)+[...String(args.text??'')].length*160>10000)))
       return {
         ok: false,
         reject: 'SPEECH_QUEUE_FULL',
-        message: '下一段已在队列；先观察现场，不继续锁未来口播。',
+        message: '未播语音缓冲已满（最多约10秒/4句）；等待消费，或明确替换未开口旧句，不继续锁未来口播。',
       };
     if (tool === 'workspaceBuildPreview') return this.build(args);
     if (!Number.isSafeInteger(args.directionEpoch))
@@ -338,8 +361,14 @@ export class ProductionRuntime implements RoleRuntime {
     this.dispatched.add(result.acceptSequence);
     // One command owner dispatches effects; fixture Desks are never part of this path.
     if (tool === 'offerSpeech') {
-      this.speechQueue.push(args.partId);
-      this.prepareSpeech(args.partId);
+      this.recordTiming('speech-offered',{partId:args.partId,chars:[...args.text].length});
+      if(args.replacePending){
+        const oldId=String(args.replacePending.partId),index=this.speechQueue.indexOf(oldId);
+        if(index>=0)this.speechQueue.splice(index,1);
+        this.syntheses.get(oldId)?.controller.abort();this.syntheses.delete(oldId);
+      }
+      if(args.replacePending)this.speechQueue.unshift(args.partId);else this.speechQueue.push(args.partId);
+      this.prepareSpeech(args.partId,!!args.replacePending);
       void this.pumpSpeech().catch((e) => this.error(e));
     } else if (tool === 'yieldSpeech') {
       const index = this.speechQueue.indexOf(args.partId);
@@ -638,26 +667,76 @@ export class ProductionRuntime implements RoleRuntime {
       note: 'Read/copy source via authorized SDK workspace; no database is required for these local components',
     };
   }
-  private prepareSpeech(partId: string) {
+  private prepareSpeech(partId: string,priority=false) {
     const prior = this.syntheses.get(partId);
     if (prior) return prior;
     const part = this.kernel.view().speech[partId];
     const controller = new AbortController();
-    const promise = Promise.resolve().then(async () => {
-      if (!part || part.state !== 'offered' || part.directionEpoch !== this.kernel.epoch() || this.isClosing)
-        throw Error('Speech is no longer eligible for synthesis');
-      return this.voice.synthesize(part.text, controller.signal);
-    });
-    // One current part plus the bounded future queue; preparation never sends media.
-    void promise.catch(() => {});
-    const entry = { controller, promise };
+    const source=new ProgressiveAudio();
+    let ready=false,prepared:PreparedClip|undefined,resolveReady!:(clip:PreparedClip)=>void,rejectReady!:(error:unknown)=>void;
+    const promise=new Promise<PreparedClip>((resolve,reject)=>{resolveReady=resolve;rejectReady=reject;});
+    const entry:PreparedSpeech={controller,promise,complete:false};
     this.syntheses.set(partId, entry);
+    void promise.catch(()=>{});
+    void Promise.resolve().then(async()=>{
+      if(!part||part.state!=='offered'||part.directionEpoch!==this.kernel.epoch()||this.isClosing)throw Error('Speech is no longer eligible for synthesis');
+      this.recordTiming('tts-queued',{partId});
+      const release=await this.speechSlot(controller.signal,priority);
+      try{
+      this.recordTiming('tts-start',{partId});
+      const clip=await this.voice.synthesizeStream(part.text,controller.signal,chunk=>{
+        source.append(chunk.audio);
+        if(!ready&&source.bytes>=2048){
+          ready=true;this.recordTiming('tts-first-audio',{partId,bytes:source.bytes});
+          prepared={file:chunk.file,url:'',ms:chunk.ms,starts:chunk.starts,streaming:true,audioRef:this.gateway.publishStream(partId,source)};resolveReady(prepared);
+        }
+        if(prepared&&chunk.starts){prepared.starts=chunk.starts;prepared.ms=chunk.ms;}
+        this.extendSpeechTiming(partId,chunk.starts,chunk.ms);
+      });
+      if(this.isClosing||controller.signal.aborted)throw Object.assign(Error('Speech stream cancelled'),{name:'AbortError'});
+      entry.complete=true;
+      if(prepared)Object.assign(prepared,clip);
+      this.recordTiming('tts-ready',{partId,durationMs:clip.ms});
+      const audioRef=this.gateway.publishMedia(partId,join(this.options.dataDir,'voice',clip.file));
+      const retained=this.clips.get(partId);
+      if(retained){Object.assign(retained,clip);this.extendSpeechTiming(partId,clip.starts,clip.ms);await storeJson(join(this.options.dataDir,'clips',createHash('sha256').update(partId).digest('hex')+'.json'),{partId,clip:retained});}
+      source.finish();
+      if(!ready){ready=true;this.recordTiming('tts-first-audio',{partId,bytes:source.bytes});resolveReady({...clip,audioRef,streaming:true});}
+      if(this.speaking===partId||['cancelled','aborted','ended','failed','rejected'].includes(this.kernel.view().speech[partId]?.state))this.syntheses.delete(partId);
+      }finally{release();}
+    }).catch(error=>{
+      entry.complete=true;source.fail();this.gateway.revokeStream(partId);rejectReady(error);
+      this.recordTiming('tts-failed',{partId,aborted:controller.signal.aborted});
+      if(ready)void this.failStreamingSpeech(partId,error);
+    });
     return entry;
   }
-  private cancelSpeechPreparation() {
-    this.synthController?.abort();
-    for (const entry of this.syntheses.values()) entry.controller.abort();
-    this.syntheses.clear();
+  private extendSpeechTiming(partId:string,starts:number[]|undefined,ms:number){
+    const clip=this.clips.get(partId),part=this.kernel.view().speech[partId];
+    if(!clip||!starts?.length)return;
+    clip.starts=starts;clip.ms=ms;
+    if(part&&['starting','playing'].includes(part.state)){
+      if(part.audioRef===clip.audioRef)this.submit('runtime',{kind:'speechPart',id:partId},{type:'appendSpeechTiming',partId,audioRef:clip.audioRef,starts});
+      void this.gateway.execute('speechTiming',this.kernel.epoch(),{partId,starts,ms}).catch(()=>{});
+    }
+  }
+  private async failStreamingSpeech(partId:string,error:unknown){
+    if(this.isClosing)return;
+    const part=this.kernel.view().speech[partId];
+    if(part&&['starting','playing'].includes(part.state)){
+      this.submit('runtime',{kind:'speechPart',id:partId},{type:'receiptSpeech',partId,kind:'failed'});
+      this.clips.delete(partId);
+      if(this.speaking===partId){await this.gateway.execute('abortSpeech',this.kernel.epoch(),{}).catch(()=>{});this.speaking=undefined;}
+    }else if(part?.state==='offered')this.submit('runtime',{kind:'speechPart',id:partId},{type:'rejectSpeech',partId,reason:'Streaming synthesis failed'});
+    const index=this.speechQueue.indexOf(partId);if(index>=0)this.speechQueue.splice(index,1);
+    this.syntheses.delete(partId);
+    if(!(error instanceof Error&&error.name==='AbortError'))this.error(error);
+    void this.pumpSpeech().catch(e=>this.error(e));
+  }
+  private cancelSpeechPreparation(keepCurrent=false) {
+    const preserve=(id:string|undefined)=>keepCurrent&&!!id&&['starting','playing'].includes(this.kernel.view().speech[id]?.state);
+    if(!preserve(this.speaking))this.synthController?.abort();
+    for (const [id,entry] of this.syntheses)if(!preserve(id)){entry.controller.abort();this.syntheses.delete(id);this.gateway.revokeStream(id);}
     for (let i = this.speechQueue.length - 1; i >= 0; i--) {
       const part = this.kernel.view().speech[this.speechQueue[i]];
       if (this.isClosing || !part || part.directionEpoch !== this.kernel.epoch() || part.state !== 'offered')
@@ -682,12 +761,12 @@ export class ProductionRuntime implements RoleRuntime {
         this.kernel.view().speech[partId]?.state !== 'offered'
       )
         return;
-      const audioRef = this.gateway.publishMedia(partId, join(this.options.dataDir, 'voice', clip.file));
+      const audioRef = clip.audioRef??this.gateway.publishMedia(partId, join(this.options.dataDir, 'voice', clip.file));
       const retained = { ...clip, audioRef, epoch: part.directionEpoch };
       const clipDir = join(this.options.dataDir, 'clips');
       await mkdir(clipDir, { recursive: true });
       const clipPath = join(clipDir, createHash('sha256').update(partId).digest('hex') + '.json');
-      await storeJson(clipPath, { partId, clip: retained });
+      if(!clip.streaming||this.syntheses.get(partId)?.complete)await storeJson(clipPath, { partId, clip: retained });
       this.clips.set(partId, retained);
       for (const type of ['acceptSpeech', 'queueSpeech', 'startSpeech'] as const) {
         const r = this.submit('runtime', target, { type, partId });
@@ -699,6 +778,7 @@ export class ProductionRuntime implements RoleRuntime {
         audioRef,
         ms: clip.ms,
         starts: clip.starts,
+        realOnly:clip.streaming===true,
       });
       // The playing event, not this command acknowledgement, moves speech to playing.
       return;
@@ -726,7 +806,7 @@ export class ProductionRuntime implements RoleRuntime {
       this.speaking = undefined;
       this.error(error);
     } finally {
-      this.syntheses.delete(partId);
+      if(this.syntheses.get(partId)?.complete)this.syntheses.delete(partId);
       if (!['starting', 'playing'].includes(this.kernel.view().speech[partId]?.state ?? ''))
         this.speaking = undefined;
       if (!this.speaking && this.speechQueue.length && !this.isClosing)
@@ -800,6 +880,7 @@ export class ProductionRuntime implements RoleRuntime {
     const part = this.kernel.view().speech[event.partId];
     const clip = this.clips.get(event.partId);
     if (!part || !clip || event.audioRef !== clip.audioRef) return;
+    if(['playing','ended','error','aborted','waiting'].includes(event.kind))this.recordTiming('audio-'+event.kind,{partId:part.partId});
     const target: CommandTarget = { kind: 'speechPart', id: part.partId };
     if (event.kind === 'playing' && part.state === 'starting')
       this.submit('runtime', target, {
@@ -807,7 +888,7 @@ export class ProductionRuntime implements RoleRuntime {
         partId: part.partId,
         kind: 'playing',
         audioRef: clip.audioRef,
-        alignment: clip.starts ? 'real' : 'estimated',
+        ...(clip.starts?{alignment:'real' as const}:!clip.streaming?{alignment:'estimated' as const}:{}),
         ...(clip.starts ? { starts: clip.starts } : {}),
         spokenChars: 0,
       });
@@ -870,7 +951,7 @@ export class ProductionRuntime implements RoleRuntime {
         : { transition: true },
     });
     if (result.ok) {
-      this.cancelSpeechPreparation();
+      this.cancelSpeechPreparation(!hard);
     }
     if (result.ok && this.gateway.connected()) {
       await this.gateway.execute('setEpoch', this.kernel.epoch(), { keepSpeech: !hard });
@@ -961,7 +1042,7 @@ export class ProductionRuntime implements RoleRuntime {
         : { transition: true },
     });
     if (!switched.ok) return;
-    this.cancelSpeechPreparation();
+    this.cancelSpeechPreparation(true);
 
     if (this.gateway.connected()) {
       await this.gateway.execute('setEpoch', this.kernel.epoch(), { keepSpeech: true });

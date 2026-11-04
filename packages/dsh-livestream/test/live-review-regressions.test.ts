@@ -123,10 +123,15 @@ describe('review regressions at their owner boundaries', () => {
         kind: 'playing',
         audioRef: '/real.mp3',
         alignment: 'real',
-        starts: [0, 100, 200, 300],
+        starts: [0, 100],
         spokenChars: 0,
       }).ok,
     ).toBe(true);
+    expect(send(A.runtime,target,{type:'progressSpeech',partId:'p',audioRef:'/real.mp3',mediaTimeMs:350}).ok).toBe(true);
+    expect(k.view().speech.p.spokenChars).toBe(2);
+    expect(send(A.runtime,target,{type:'appendSpeechTiming',partId:'p',audioRef:'/real.mp3',starts:[0,110,200,300]}).ok).toBe(false);
+    expect(send(A.runtime,target,{type:'appendSpeechTiming',partId:'p',audioRef:'/wrong.mp3',starts:[0,100,200,300]}).ok).toBe(false);
+    expect(send(A.runtime,target,{type:'appendSpeechTiming',partId:'p',audioRef:'/real.mp3',starts:[0,100,200,300]}).ok).toBe(true);
     expect(
       send(A.runtime, target, {
         type: 'progressSpeech',

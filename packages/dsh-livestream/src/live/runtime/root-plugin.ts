@@ -80,7 +80,8 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
   );
   ctx.effect(() => {
     const seen = new Set<string>();
-    const inputs = new RuntimeInputs(runtime.kernel, (role, text, urgent) => team.wake(role, text, urgent));
+    const inputs = new RuntimeInputs(runtime.kernel, (role, text, urgent) => team.wake(role, text, urgent),
+      (eventId,receivedAt,urgent)=>runtime.recordTiming('input-ingested',{eventId,receivedAt,urgent}));
     const reader = new StageJournalConsumer(
       (args) => stage.call('harness.inputs', args),
       (raw) => inputs.ingest(raw),
@@ -130,6 +131,7 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
         if (![`127.0.0.1:${expectedPort}`, `localhost:${expectedPort}`].includes(String(req.headers.host)))
           return send(403, { ok: false });
         const url = new URL(req.url ?? '/', 'http://brain');
+        if(req.method==='GET'&&url.pathname==='/live/timings')return send(200,runtime.timingsSince(Math.max(0,Number(url.searchParams.get('after'))||0)));
         if (req.method === 'GET' && url.pathname === '/live/playback')
           return send(200, { snapshot: await runtime.gateway.execute('snapshot', runtime.kernel.epoch(), {}) });
         if (req.method === 'GET' && url.pathname === '/live/harness')
