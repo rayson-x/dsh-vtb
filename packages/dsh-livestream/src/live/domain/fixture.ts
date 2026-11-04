@@ -321,6 +321,7 @@ export class DomainFixture {
 
   revision(target: CommandTarget): number {
     switch (target.kind) {
+      case 'continuation':return 0;
       case 'show':
         return target.id === this.project.id ? this.project.revision : 0;
       case 'direction':
@@ -407,6 +408,10 @@ export class DomainFixture {
       case 'rejectSpeech':
       case 'progressSpeech':
       case 'appendSpeechTiming':
+      case 'requestSpeechInterrupt':
+      case 'cancelSpeechInterrupt':
+      case 'receiptSpeechInterrupted':
+      case 'discardContinuation':
       case 'noteLiveCapabilities':
       case 'receiptScenePatchFailed':
       case 'receiptScenePatch':
@@ -511,6 +516,7 @@ export class DomainFixture {
       audienceId: payload.audienceId,
       text: payload.text,
       kind: payload.kind,
+      ...(payload.priority?{priority:payload.priority}:{}),
       showTime: this.clock.now(),
       directionEpoch: this.project.currentEpoch,
     };
@@ -868,6 +874,7 @@ export class DomainFixture {
       alignment: { mode: 'absent' },
       spokenChars: 0,
       ...(payload.plannedBeatRef ? { plannedBeatRef: payload.plannedBeatRef } : {}),
+      ...(payload.responseTo?{responseTo:payload.responseTo,responseStage:payload.responseStage}:{}),
     };
     this.speech.set(part.partId, part);
     return this.ok(command, 'show.command', { partId: part.partId, state: part.state });

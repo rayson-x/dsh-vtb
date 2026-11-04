@@ -118,6 +118,7 @@ export class EngineeringKernel {
 
   revision(target: CommandTarget): number {
     switch (target.kind) {
+      case 'continuation':return this.state.continuations[target.id]?.revision??0;
       case 'show':
         return target.id === this.state.project.id ? this.state.project.revision : 0;
       case 'direction':

@@ -1,5 +1,6 @@
 import { createBrowserSceneHost } from './isolation';
 import { programmeOutput, startAudioCapture, stopAudioCapture, resumeProgrammeAudio } from '../recording/audio';
+import type { SpeechPauseWindow } from '../recording/speech-boundaries';
 let speechContext: AudioContext | undefined;
 const audioContext = () => speechContext ??= new AudioContext({ sampleRate: 48000 });
 let audioNode: MediaElementAudioSourceNode | undefined;
@@ -23,6 +24,7 @@ let partId: string | undefined;
 let audioEpoch = 0;
 let mediaSeq = 0;
 let speechInfo: Record<string, unknown> = {};
+let pendingInterrupt:{partId:string;interruptId:string;windows:SpeechPauseWindow[]}|undefined;
 let parentOrigin: string | undefined;
 try {
   const ref = new URL(document.referrer);
@@ -72,12 +74,14 @@ const audioReceipt = (kind: string) => {
     sequence: ++mediaSeq,
   });
 };
-const stopAudio = () => {
+const stopAudio = (interruptId?:string) => {
   if (!audio) return;
+  pendingInterrupt=undefined;
   audioNode?.disconnect();
   audioNode = undefined;
   audio.pause();
-  audioReceipt('aborted');
+  if(interruptId){notifyParent('aborted');send({type:'audio',kind:'interrupted',interruptId,partId,epoch:audioEpoch,mediaTimeMs:audio.currentTime*1000,audioRef:audio.src,showTime:host.now(),sequence:++mediaSeq});}
+  else audioReceipt('aborted');
   audio.removeAttribute('src');
   audio.load();
   audio.remove();
@@ -111,12 +115,13 @@ function connect() {
     }
     // Direction revocation bypasses slow prepare, invalidates it immediately.
     if (op.type === 'setEpoch' && op.epoch >= epoch) {
+      if(op.epoch!==epoch)pendingInterrupt=undefined;
       if (Number.isFinite(op.payload?.showTime)) host.synchronize(op.payload.showTime);
       epoch = op.epoch;
       if (audioEpoch !== epoch && !op.payload?.keepSpeech) stopAudio();
       void host.setEpoch(epoch);
     }
-    if (op.type === 'abortSpeech') stopAudio();
+    if (op.type === 'abortSpeech'&&(!op.payload?.partId||op.payload.partId===partId)) stopAudio();
     const key = ['speech', 'abortSpeech'].includes(op.type)
       ? 'audio'
       : String(op.payload?.instanceId ?? op.type);
@@ -157,6 +162,14 @@ function connect() {
             break;
           case 'abortSpeech':
             break;
+          case 'cancelSpeechInterrupt':
+            if(pendingInterrupt?.interruptId===op.payload.interruptId)pendingInterrupt=undefined;
+            break;
+          case 'interruptSpeech': {
+            const matches=!!audio&&partId===op.payload.partId&&audio.src===op.payload.audioRef;
+            if(matches&&Array.isArray(op.payload.windows)&&(!pendingInterrupt||pendingInterrupt.interruptId===op.payload.interruptId))pendingInterrupt={partId:partId!,interruptId:String(op.payload.interruptId),windows:op.payload.windows};
+            value={armed:matches};break;
+          }
           case 'speechTiming':
             if(partId===op.payload.partId){speechInfo={...speechInfo,starts:op.payload.starts,ms:op.payload.ms};notifyParent('alignment');}
             break;
@@ -179,6 +192,7 @@ function connect() {
                 audioReceipt(kind);
                 if(kind==='waiting')notifyParent('pause');
                 if (kind === 'ended' || kind === 'error') {
+                  pendingInterrupt=undefined;
                   audioNode?.disconnect();
                   audioNode = undefined;
                   audio = undefined;
@@ -220,6 +234,11 @@ function connect() {
 connect();
 let lastParentSample = 0;
 function sample(at: number) {
+  const interrupt=pendingInterrupt;
+  if(audio&&!audio.paused&&interrupt&&interrupt.partId===partId){
+    const ms=audio.currentTime*1000;
+    if(interrupt.windows.some(w=>Number.isFinite(w.fromMs)&&Number.isFinite(w.toMs)&&ms>=w.fromMs&&ms<=w.toMs))stopAudio(interrupt.interruptId);
+  }
   if (audio && !audio.paused && at - lastParentSample >= 50) {
     notifyParent('progress');
     lastParentSample = at;

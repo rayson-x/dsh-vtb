@@ -16,8 +16,9 @@ import type { CommandEnvelope, CommandTarget, ShowCommand } from '../domain/comm
 import type { RoleRuntime } from './dsh-team';
 import { ElevenLabsVoice, type SpeechClip, type SecretReader } from '../../host/voice';
 import { ProgressiveAudio } from './progressive-audio';
+import { speechPauseWindows } from '../../../../scene-host/src/recording/speech-boundaries';
 type PreparedClip=SpeechClip&{audioRef?:string;streaming?:boolean};
-interface PreparedSpeech {controller:AbortController;promise:Promise<PreparedClip>;complete?:boolean}
+interface PreparedSpeech {controller:AbortController;promise:Promise<PreparedClip>;complete?:boolean;readable?:boolean}
 
 const runFile = promisify(execFile);
 async function storeJson(path: string, value: unknown) {
@@ -67,6 +68,8 @@ export class ProductionRuntime implements RoleRuntime {
   private synthController?: AbortController;
   private masterNotes: Array<{id:string;text:string;at:number}> = [];
   private readonly syntheses = new Map<string, PreparedSpeech>();
+  private readonly interruptArms=new Map<string,string>();
+  private readonly streamFailures=new Set<string>();
   private synthesisActive=0;
   private readonly synthesisWaiting:Array<{run:()=>void}>=[];
   private speechSlot(signal:AbortSignal,priority:boolean):Promise<()=>void>{
@@ -171,7 +174,25 @@ export class ProductionRuntime implements RoleRuntime {
     this.onError?.(e instanceof Error ? e.message : String(e));
   }
   private queuedSpeechMs(except?:string){return this.speechQueue.filter(id=>id!==except).reduce((ms,id)=>ms+[...(this.kernel.view().speech[id]?.text??'')].length*160,0);}
-  brief(role: AgentRole) {
+  private responseBrief(){
+    const state=this.kernel.view(),byInput=new Map<string,typeof state.speech[string][]>();
+    for(const part of Object.values(state.speech))if(part.responseTo){const parts=byInput.get(part.responseTo)??[];parts.push(part);byInput.set(part.responseTo,parts);}
+    const responses=state.audience.filter(input=>input.directionEpoch===this.kernel.epoch()&&(input.priority==='urgent'||byInput.has(input.eventId))).map(input=>{
+      const parts=byInput.get(input.eventId)??[],effective=parts.filter(part=>!['cancelled','rejected','aborted','failed'].includes(part.state));
+      const acknowledged=effective.some(part=>part.state==='ended'),verbalComplete=effective.some(part=>part.responseStage==='finish'&&part.state==='ended');
+      const proposals=Object.values(state.proposals).filter(p=>p.eventIds.includes(input.eventId));
+      return {eventId:input.eventId,summary:input.text.slice(0,160),acknowledged,verbalComplete,needsAck:effective.length===0,
+        nextStep:verbalComplete?'done':effective.length===0?'ack':effective.every(part=>part.responseStage==='ack')?'answer':'continue',
+        parts:parts.slice(-4).map(part=>({partId:part.partId,stage:part.responseStage,state:part.state,text:part.text.slice(0,160)})),
+        proposalIds:proposals.slice(-4).map(p=>p.id),visualStatus:proposals.length?proposals.every(p=>p.status==='presented')?'presented':proposals.every(p=>p.status==='cancelled')?'cancelled':'pending':'not-requested'};
+    });
+    return {responses:responses.slice(-12),pendingReplies:[...responses.filter(r=>r.needsAck).slice(-4),...responses.filter(r=>!r.needsAck&&!r.verbalComplete).slice(-4)]};
+  }
+  brief(role:'performer'):Extract<ReturnType<ProductionRuntime['makeBrief']>,{role:'performer'}>;
+  brief(role:Exclude<AgentRole,'performer'>):Exclude<ReturnType<ProductionRuntime['makeBrief']>,{role:'performer'}>;
+  brief(role:AgentRole):ReturnType<ProductionRuntime['makeBrief']>;
+  brief(role:AgentRole){return this.makeBrief(role);}
+  private makeBrief(role: AgentRole) {
     const state = this.kernel.view();
     const tail = <T>(items:T[],cap:number) => items.slice(-cap);
     const map = <T>(items:T[],key:(item:T)=>string) => Object.fromEntries(items.map(item=>[key(item),item]));
@@ -187,10 +208,20 @@ export class ProductionRuntime implements RoleRuntime {
       timeline: {...state.timeline,segments:tail(state.timeline.segments,12)},
     };
     const briefs = projectRoleBriefs(view);
+    if(role==='performer'){
+      const speech=Object.fromEntries(Object.entries(state.speech).filter(([,part])=>['offered','accepted','queued','starting','playing'].includes(part.state)));
+      const continuations=Object.values(state.continuations).filter(note=>note.directionEpoch===current&&['pending','resuming'].includes(note.status)).sort((a,b)=>a.sourceOfferedAt-b.sourceOfferedAt).slice(0,6).map(note=>({...note,topic:note.topic.slice(0,300),unreadText:note.unreadText.slice(0,1000),unreadExcerpt:note.unreadText.length>1000,priorNotes:(note.parentContinuationIds??[]).slice(-2).flatMap(id=>{const old=state.continuations[id];return old?[{id,lastHeardExcerpt:old.lastHeardExcerpt,unreadText:old.unreadText.slice(0,400),unreadExcerpt:old.unreadText.length>400}]:[];})}));
+      return {epoch:current,role,playbackConnected:this.gateway.connected(),brief:briefs.performer,...this.responseBrief(),continuations,
+        voiceQueue:{currentPartId:this.speaking,upcoming:[...this.speechQueue],estimatedUpcomingMs:this.queuedSpeechMs(),maxUpcomingParts:4,urgentReserve:1,estimateOnly:true},
+        revisions:{speech},masterNotes:this.masterNotes.slice(-16).map(n=>({...n,text:n.text.slice(0,700),excerpt:n.text.length>700})),masterNoteCount:this.masterNotes.length,
+        commandFormat:'先接住，再逐段回答。已入队不等于观众已听见；acknowledged与verbalComplete只由实际播放派生。画面兑现另看visualStatus。',
+        toolContracts:{acknowledgeInput:'{directionEpoch,inputId,text,complete?}：先用短语接住；完整口头回答已能一句说完时才complete=true。',offerSpeech:'{directionEpoch,text,responseTo?,responseStage:answer|finish,partId?,replacePending?,resumesContinuationIds?}；以新台词自然接回A时带便签ID，不能重播旧音频。',yieldSpeech:'{directionEpoch,partId,expectedRevision}',discardContinuation:'{directionEpoch,continuationId,expectedRevision,reason}：原内容过时则明确放弃，不硬接。',requestInteraction:'{directionEpoch,requestId,text}',requestProduction:'{directionEpoch,task:{id,goal,priority,inputs:[],dependsOn:[]},proposalId?}'}};
+    }
     return {
       epoch: this.kernel.epoch(),
       presentation: this.options.presentation?.(),
       role,
+      continuations:role==='director'?Object.values(state.continuations).filter(n=>n.directionEpoch===current&&['pending','resuming'].includes(n.status)).slice(-6).map(({id,sourcePartId,sceneInstanceId,status})=>({id,sourcePartId,sceneInstanceId,status})):undefined,
       voiceQueue:{currentPartId:this.speaking,upcoming:[...this.speechQueue],estimatedUpcomingMs:this.queuedSpeechMs(),maxUpcomingMs:10000,maxUpcomingParts:4,estimateOnly:true},
       playbackConnected: this.gateway.connected(),
       sceneErrors: Object.fromEntries([...this.sceneErrors].filter(([,e])=>e.epoch===current).slice(-8)),
@@ -265,6 +296,16 @@ export class ProductionRuntime implements RoleRuntime {
   }
   async invoke(role: AgentRole, tool: string, args: Record<string, any>): Promise<unknown> {
     if (!(TOOL_PERMISSIONS[role] as readonly string[]).includes(tool)) throw Error('Role tool denied');
+    if(tool==='acknowledgeInput'){
+      tool='offerSpeech';args={...args,responseTo:args.inputId,responseStage:args.complete===true?'finish':'ack'};delete args.inputId;delete args.complete;
+    }
+    if(tool==='readLiveBrief'&&args.continuationId){const note=this.kernel.view().continuations[String(args.continuationId)],offset=Math.max(0,Number(args.offset)||0);return note?{...note,unreadText:note.unreadText.slice(offset,offset+2000),nextOffset:offset+2000<note.unreadText.length?offset+2000:null}:null;}
+    const hasResponse=!!args.responseTo&&Object.values(this.kernel.view().speech).some(part=>part.responseTo===args.responseTo&&!['failed','aborted','cancelled','rejected'].includes(part.state));
+    const firstResponse=tool==='offerSpeech'&&!!args.responseTo&&(args.responseStage==='ack'||(args.responseStage==='finish'&&!hasResponse));
+    if(firstResponse&&!args.replacePending){
+      const state=this.kernel.view(),id=this.speechQueue.find(id=>state.speech[id]?.responseStage!=='ack');
+      if(id)args.replacePending={partId:id,expectedRevision:state.speech[id].revision};
+    }
     if (tool.startsWith('read') && args.masterOffset!==undefined) {const offset=Math.max(0,Number(args.masterOffset)||0);return {epoch:this.kernel.epoch(),masterNotes:this.masterNotes.slice(offset,offset+4),nextOffset:offset+4<this.masterNotes.length?offset+4:null};}
     if(tool.startsWith('read')&&args.directionId){const d=this.kernel.view().directions[String(args.directionId)];const offset=Math.max(0,Number(args.offset)||0);return d?{id:d.id,revision:d.revision,epoch:d.epoch,commitment:d.commitment.slice(offset,offset+8000),coreQuestion:d.coreQuestion.slice(0,2000),nextOffset:offset+8000<d.commitment.length?offset+8000:null}:null;}
     if(tool==='readTask'&&args.taskId){const task=this.kernel.view().tasks[String(args.taskId)];const offset=Math.max(0,Number(args.offset)||0);return {epoch:this.kernel.epoch(),task:task?{...task,goal:task.goal.slice(offset,offset+8000)}:null,nextOffset:task&&offset+8000<task.goal.length?offset+8000:null};}
@@ -285,7 +326,7 @@ export class ProductionRuntime implements RoleRuntime {
     }
     if (tool === 'searchEffects') return this.effects(String(args.query ?? ''),args.includeSource===true);
     const remainingQueue=this.speechQueue.filter(id=>id!==args.replacePending?.partId);
-    if (tool === 'offerSpeech' && (remainingQueue.length>=4||(remainingQueue.length>0&&this.queuedSpeechMs(args.replacePending?.partId)+[...String(args.text??'')].length*160>10000)))
+    if (tool === 'offerSpeech' && (remainingQueue.length>=(firstResponse?5:4)||(!firstResponse&&remainingQueue.length>0&&this.queuedSpeechMs(args.replacePending?.partId)+[...String(args.text??'')].length*160>10000)))
       return {
         ok: false,
         reject: 'SPEECH_QUEUE_FULL',
@@ -361,20 +402,23 @@ export class ProductionRuntime implements RoleRuntime {
     this.dispatched.add(result.acceptSequence);
     // One command owner dispatches effects; fixture Desks are never part of this path.
     if (tool === 'offerSpeech') {
-      this.recordTiming('speech-offered',{partId:args.partId,chars:[...args.text].length});
+      this.recordTiming('speech-offered',{partId:args.partId,chars:[...args.text].length,...(args.responseTo?{responseTo:args.responseTo,stage:args.responseStage}:{})});
       if(args.replacePending){
         const oldId=String(args.replacePending.partId),index=this.speechQueue.indexOf(oldId);
         if(index>=0)this.speechQueue.splice(index,1);
         this.syntheses.get(oldId)?.controller.abort();this.syntheses.delete(oldId);
+        this.cancelInterruptFor(oldId);
       }
-      if(args.replacePending)this.speechQueue.unshift(args.partId);else this.speechQueue.push(args.partId);
-      this.prepareSpeech(args.partId,!!args.replacePending);
+      if(firstResponse){const at=this.speechQueue.findIndex(id=>this.kernel.view().speech[id]?.responseStage!=='ack');this.speechQueue.splice(at<0?this.speechQueue.length:at,0,args.partId);}
+      else if(args.replacePending)this.speechQueue.unshift(args.partId);else this.speechQueue.push(args.partId);
+      this.prepareSpeech(args.partId,firstResponse||!!args.replacePending);
       void this.pumpSpeech().catch((e) => this.error(e));
     } else if (tool === 'yieldSpeech') {
       const index = this.speechQueue.indexOf(args.partId);
       if (index >= 0) this.speechQueue.splice(index, 1);
       this.syntheses.get(args.partId)?.controller.abort();
       this.syntheses.delete(args.partId);
+      this.cancelInterruptFor(args.partId);
     } else if (tool === 'requestProduction')
       this.onWake?.('production', '有新的制作任务。读取任务与版本，后台制作不得阻塞现场。');
     else if (tool === 'publishCandidate')
@@ -434,6 +478,7 @@ export class ProductionRuntime implements RoleRuntime {
     return {ok:true,acceptSequence:result.acceptSequence,epoch:this.kernel.epoch(),target,revision:this.kernel.revision(target)};
   }
   private target(tool: string, args: Record<string, any>): CommandTarget {
+    if(tool==='discardContinuation')return {kind:'continuation',id:String(args.continuationId??'')};
     if (['offerSpeech', 'yieldSpeech'].includes(tool))
       return { kind: 'speechPart', id: String(args.partId ?? '') };
     if (['requestProduction', 'publishCandidate', 'reportProgress'].includes(tool))
@@ -492,6 +537,7 @@ export class ProductionRuntime implements RoleRuntime {
             { type: 'receiptSpeech', partId: part.partId, kind: 'failed' },
           );
           this.clips.delete(part.partId);
+          this.streamFailures.delete(part.partId);
           if (this.speaking === part.partId) this.speaking = undefined;
         }
     } else if (current.speech[snapshot.audio.partId] && this.clips.has(snapshot.audio.partId))
@@ -667,6 +713,31 @@ export class ProductionRuntime implements RoleRuntime {
       note: 'Read/copy source via authorized SDK workspace; no database is required for these local components',
     };
   }
+  private cancelInterruptFor(replyPartId:string){
+    const current=this.speaking?this.kernel.view().speech[this.speaking]:undefined,request=current?.interruption;
+    if(!current||request?.replyPartId!==replyPartId)return;
+    const result=this.submit('runtime',{kind:'speechPart',id:current.partId},{type:'cancelSpeechInterrupt',partId:current.partId,interruptId:request.id});
+    if(result.ok){this.interruptArms.delete(current.partId);void this.gateway.execute('cancelSpeechInterrupt',this.kernel.epoch(),{partId:current.partId,interruptId:request.id}).catch(()=>{});}
+  }
+  private interruptForReadyReply(){
+    if(this.isClosing||!this.gateway.connected())return;
+    const nextId=this.speechQueue[0],next=this.kernel.view().speech[nextId],current=this.speaking?this.kernel.view().speech[this.speaking]:undefined;
+    if(!next?.responseTo||next.state!=='offered'||!this.syntheses.get(nextId)?.readable||!current||current.state!=='playing'||current.responseTo||current.abortRequested||current.directionEpoch!==this.kernel.epoch())return;
+    if(!current.interruption){
+      const result=this.submit('runtime',{kind:'speechPart',id:current.partId},{type:'requestSpeechInterrupt',partId:current.partId,interruptId:randomUUID(),responseTo:next.responseTo,replyPartId:nextId});
+      if(!result.ok)return;
+    }
+    this.armSpeechInterrupt(current.partId);
+  }
+  private armSpeechInterrupt(partId:string){
+    const part=this.kernel.view().speech[partId],clip=this.clips.get(partId);
+    if(!part?.interruption||part.state!=='playing'||part.directionEpoch!==this.kernel.epoch()||!clip?.starts)return;
+    const windows=speechPauseWindows(part.text,clip.starts).filter(w=>w.firstUnreadChar>=part.spokenChars).slice(0,8);
+    if(!windows.length)return;
+    const signature=JSON.stringify({id:part.interruption.id,windows});if(this.interruptArms.get(partId)===signature)return;
+    this.interruptArms.set(partId,signature);
+    void this.gateway.execute('interruptSpeech',this.kernel.epoch(),{partId,interruptId:part.interruption.id,audioRef:clip.audioRef,windows}).catch(()=>{if(this.interruptArms.get(partId)===signature)this.interruptArms.delete(partId);});
+  }
   private prepareSpeech(partId: string,priority=false) {
     const prior = this.syntheses.get(partId);
     if (prior) return prior;
@@ -687,8 +758,9 @@ export class ProductionRuntime implements RoleRuntime {
       const clip=await this.voice.synthesizeStream(part.text,controller.signal,chunk=>{
         source.append(chunk.audio);
         if(!ready&&source.bytes>=2048){
-          ready=true;this.recordTiming('tts-first-audio',{partId,bytes:source.bytes});
+          ready=true;entry.readable=true;this.recordTiming('tts-first-audio',{partId,bytes:source.bytes});
           prepared={file:chunk.file,url:'',ms:chunk.ms,starts:chunk.starts,streaming:true,audioRef:this.gateway.publishStream(partId,source)};resolveReady(prepared);
+          queueMicrotask(()=>this.interruptForReadyReply());
         }
         if(prepared&&chunk.starts){prepared.starts=chunk.starts;prepared.ms=chunk.ms;}
         this.extendSpeechTiming(partId,chunk.starts,chunk.ms);
@@ -701,7 +773,7 @@ export class ProductionRuntime implements RoleRuntime {
       const retained=this.clips.get(partId);
       if(retained){Object.assign(retained,clip);this.extendSpeechTiming(partId,clip.starts,clip.ms);await storeJson(join(this.options.dataDir,'clips',createHash('sha256').update(partId).digest('hex')+'.json'),{partId,clip:retained});}
       source.finish();
-      if(!ready){ready=true;this.recordTiming('tts-first-audio',{partId,bytes:source.bytes});resolveReady({...clip,audioRef,streaming:true});}
+      if(!ready){ready=true;entry.readable=true;this.recordTiming('tts-first-audio',{partId,bytes:source.bytes});resolveReady({...clip,audioRef,streaming:true});queueMicrotask(()=>this.interruptForReadyReply());}
       if(this.speaking===partId||['cancelled','aborted','ended','failed','rejected'].includes(this.kernel.view().speech[partId]?.state))this.syntheses.delete(partId);
       }finally{release();}
     }).catch(error=>{
@@ -720,16 +792,19 @@ export class ProductionRuntime implements RoleRuntime {
     if(part&&['starting','playing'].includes(part.state)){
       if(part.audioRef===clip.audioRef)this.submit('runtime',{kind:'speechPart',id:partId},{type:'appendSpeechTiming',partId,audioRef:clip.audioRef,starts});
       void this.gateway.execute('speechTiming',this.kernel.epoch(),{partId,starts,ms}).catch(()=>{});
+      this.armSpeechInterrupt(partId);
     }
   }
   private async failStreamingSpeech(partId:string,error:unknown){
     if(this.isClosing)return;
     const part=this.kernel.view().speech[partId];
     if(part&&['starting','playing'].includes(part.state)){
-      this.submit('runtime',{kind:'speechPart',id:partId},{type:'receiptSpeech',partId,kind:'failed'});
-      this.clips.delete(partId);
-      if(this.speaking===partId){await this.gateway.execute('abortSpeech',this.kernel.epoch(),{}).catch(()=>{});this.speaking=undefined;}
+      this.streamFailures.add(partId);
+      if(this.speaking===partId)await this.gateway.execute('abortSpeech',this.kernel.epoch(),{partId}).catch(()=>{});
+      if(!(error instanceof Error&&error.name==='AbortError'))this.error(error);
+      return;
     }else if(part?.state==='offered')this.submit('runtime',{kind:'speechPart',id:partId},{type:'rejectSpeech',partId,reason:'Streaming synthesis failed'});
+    this.cancelInterruptFor(partId);
     const index=this.speechQueue.indexOf(partId);if(index>=0)this.speechQueue.splice(index,1);
     this.syntheses.delete(partId);
     if(!(error instanceof Error&&error.name==='AbortError'))this.error(error);
@@ -829,8 +904,8 @@ export class ProductionRuntime implements RoleRuntime {
         !!proposal.presentation &&
         proposal.presentation.sceneInstanceId === evidence.sceneInstanceId &&
         proposal.presentation?.inputsRevision === evidence.inputsRevision;
-      if (linked || patched)
-        this.submit(
+      if (linked || patched){
+        const result=this.submit(
           'runtime',
           { kind: 'audienceProposal', id: proposal.id },
           {
@@ -840,6 +915,8 @@ export class ProductionRuntime implements RoleRuntime {
             evidencePlaybackId: evidenceId,
           },
         );
+        if(result.ok)for(const eventId of proposal.eventIds)this.recordTiming('proposal-presented',{proposalId:proposal.id,responseTo:eventId,playbackEventId:evidenceId});
+      }
     }
   }
   private async receipt(event: Record<string, any>) {
@@ -882,9 +959,17 @@ export class ProductionRuntime implements RoleRuntime {
     const part = this.kernel.view().speech[event.partId];
     const clip = this.clips.get(event.partId);
     if (!part || !clip || event.audioRef !== clip.audioRef) return;
-    if(['playing','ended','error','aborted','waiting'].includes(event.kind))this.recordTiming('audio-'+event.kind,{partId:part.partId});
+    if(['playing','ended','error','aborted','waiting'].includes(event.kind))this.recordTiming('audio-'+event.kind,{partId:part.partId,...(part.responseTo?{responseTo:part.responseTo,stage:part.responseStage??'answer'}:{})});
     const target: CommandTarget = { kind: 'speechPart', id: part.partId };
-    if (event.kind === 'playing' && part.state === 'starting')
+    if(event.kind==='interrupted'&&['starting','playing'].includes(part.state)){
+      const known=part.interruption?.id===event.interruptId||part.cancelledInterruptions?.some(i=>i.id===event.interruptId);
+      if(!known)return;
+      const state=this.kernel.view();
+      const leased=part.abortRequested||state.windDown?.speechPartIds.includes(part.partId)||state.switches.some(s=>s.fromEpoch===part.directionEpoch&&(s.retainedSpeechPartIds.includes(part.partId)||s.revokedSpeechPartIds.includes(part.partId)));
+      const result=part.directionEpoch===this.kernel.epoch()?this.submit('runtime',target,{type:'receiptSpeechInterrupted',partId:part.partId,interruptId:event.interruptId,audioRef:clip.audioRef,mediaTimeMs:event.mediaTimeMs}):leased?this.submit('runtime',target,{type:'receiptSpeech',partId:part.partId,kind:'aborted',audioRef:clip.audioRef,mediaTimeMs:event.mediaTimeMs}):undefined;
+      if(!result?.ok)return;
+      this.recordTiming('audio-interrupted',{partId:part.partId});
+    }else if (event.kind === 'playing' && part.state === 'starting'){
       this.submit('runtime', target, {
         type: 'receiptSpeech',
         partId: part.partId,
@@ -894,35 +979,42 @@ export class ProductionRuntime implements RoleRuntime {
         ...(clip.starts ? { starts: clip.starts } : {}),
         spokenChars: 0,
       });
-    else if (event.kind === 'timeupdate' && part.state === 'playing' && clip.starts)
+      if(part.responseStage==='ack')this.onWake?.('performer','接住语句已实际开口。可趁此继续生成后续一小段或推进后台，不必等完整答案；不要把接住当作任务完成。');
+      this.interruptForReadyReply();
+    }else if (event.kind === 'timeupdate' && part.state === 'playing' && clip.starts){
       this.submit('runtime', target, {
         type: 'progressSpeech',
         partId: part.partId,
         mediaTimeMs: event.mediaTimeMs,
         audioRef: clip.audioRef,
       });
-    else if (event.kind === 'ended' && part.state === 'playing')
+      this.armSpeechInterrupt(part.partId);
+    }else if (event.kind === 'ended' && part.state === 'playing')
       this.submit('runtime', target, {
         type: 'receiptSpeech',
         partId: part.partId,
         kind: 'ended',
         audioRef: clip.audioRef,
+        mediaTimeMs:event.mediaTimeMs,
         spokenChars: [...part.text].length,
       });
     else if (event.kind === 'aborted' && ['starting', 'playing'].includes(part.state))
       this.submit('runtime', target, {
         type: 'receiptSpeech',
         partId: part.partId,
-        kind: 'aborted',
+        kind: this.streamFailures.has(part.partId)?'failed':'aborted',
         audioRef: clip.audioRef,
+        mediaTimeMs:event.mediaTimeMs,
       });
     else if (event.kind === 'error' && ['starting', 'playing'].includes(part.state))
-      this.submit('runtime', target, { type: 'receiptSpeech', partId: part.partId, kind: part.abortRequested?'aborted':'failed' });
-    if (['ended', 'error', 'aborted'].includes(event.kind)) {
+      this.submit('runtime', target, { type: 'receiptSpeech', partId: part.partId, kind: part.abortRequested?'aborted':'failed',audioRef:clip.audioRef,mediaTimeMs:event.mediaTimeMs });
+    if (['ended', 'error', 'aborted','interrupted'].includes(event.kind)) {
+      this.syntheses.get(part.partId)?.controller.abort();this.syntheses.delete(part.partId);this.gateway.revokeStream(part.partId);this.interruptArms.delete(part.partId);
       this.clips.delete(part.partId);
-      this.speaking = undefined;
+      this.streamFailures.delete(part.partId);
+      if(this.speaking===part.partId)this.speaking = undefined;
       void this.pumpSpeech();
-      this.onWake?.('performer', '上一段真实播放已结束；观察现场，自行判断接话或停留。');
+      this.onWake?.('performer', event.kind==='interrupted'?'原话题已实际停止，进度和未读部分保存在continuations。先根据pendingReplies接住或展开互动；新音频失败要重试。合适时以新台词自然接回，不重播旧音频。':'上一段真实播放已结束；读取pendingReplies与continuations，自行判断继续回答、自然接回原话题或停留。');
     }
   }
   async switchDirection(commitment: string, hard = false) {

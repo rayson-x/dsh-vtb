@@ -30,6 +30,8 @@ export const TOOL_PERMISSIONS = {
   ],
   performer: [
     'readLiveBrief',
+    'acknowledgeInput',
+    'discardContinuation',
     'offerSpeech',
     'yieldSpeech',
     'requestInteraction',
@@ -167,6 +169,7 @@ export function toolFor(command: ShowCommand): DomainTool {
       return 'requestInteraction';
     case 'offerSpeech':
       return 'offerSpeech';
+    case 'discardContinuation':return 'discardContinuation';
     case 'editSpeech':
     case 'yieldSpeech':
       return 'yieldSpeech';
@@ -174,6 +177,8 @@ export function toolFor(command: ShowCommand): DomainTool {
     case 'acceptSpeech':
     case 'queueSpeech':
     case 'startSpeech':
+    case 'requestSpeechInterrupt':
+    case 'cancelSpeechInterrupt':
       return 'scheduleSpeech';
     case 'progressSpeech':
     case 'appendSpeechTiming':
@@ -182,6 +187,7 @@ export function toolFor(command: ShowCommand): DomainTool {
     case 'receiptScenePatch':
     case 'receiptSceneLifecycle':
     case 'receiptSpeech':
+    case 'receiptSpeechInterrupted':
     case 'recordPlayback':
       return 'recordPlayback';
     case 'abortSpeech':

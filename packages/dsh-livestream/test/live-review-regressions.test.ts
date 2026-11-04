@@ -24,6 +24,41 @@ function sender(k: EngineeringKernel) {
   };
 }
 describe('review regressions at their owner boundaries', () => {
+  it('keeps A resumable across a real boundary stop, invalidates unread cues atomically and consumes resume only on playback',()=>{
+    const log=new MemoryEventLog(),k=new EngineeringKernel({log}),send=sender(k),target:CommandTarget={kind:'speechPart',id:'A'};
+    const text='窗边有盏灯，接着聊来信。';
+    expect(send(A.input,{kind:'show',id:k.view().project.id},{type:'ingestAudience',eventId:'question',audienceId:'viewer',text:'灯光换暖色？',kind:'proposal',priority:'urgent'}).ok).toBe(true);
+    expect(send(A.performer,target,{type:'offerSpeech',partId:'A',text}).ok).toBe(true);
+    for(const type of['acceptSpeech','queueSpeech','startSpeech']as const)send(A.runtime,target,{type,partId:'A'});
+    send(A.runtime,target,{type:'receiptSpeech',partId:'A',kind:'playing',audioRef:'/A.mp3',alignment:'real',starts:[...text].map((_,i)=>i*100)});
+    send(A.director,{kind:'cue',id:'tail'},{type:'bindCue',cue:{cueId:'tail',anchor:{kind:'speech',partId:'A',charIndex:8},payload:{}}});
+    expect(send(A.runtime,target,{type:'requestSpeechInterrupt',partId:'A',interruptId:'interrupt-1',responseTo:'question'}).ok).toBe(true);
+    expect(k.view().cues.tail.status).toBe('future');expect(Object.keys(k.view().continuations)).toHaveLength(0);
+    expect(send(A.runtime,target,{type:'receiptSpeechInterrupted',partId:'A',interruptId:'interrupt-1',audioRef:'/A.mp3',mediaTimeMs:550}).ok).toBe(true);
+    const continuation=Object.values(k.view().continuations)[0];
+    expect(k.view().speech.A).toMatchObject({state:'aborted',spokenChars:6,unreadFrom:6});expect(k.view().cues.tail.status).toBe('invalidated');
+    expect(continuation).toMatchObject({sourcePartId:'A',firstUnreadChar:6,unreadText:'接着聊来信。',status:'pending',boundaryReached:true});
+    const newTarget:CommandTarget={kind:'speechPart',id:'resume-A'};
+    expect(send(A.performer,newTarget,{type:'offerSpeech',partId:'resume-A',text:'灯光定了，我们接着读信。',resumesContinuationIds:[continuation.id]}).ok).toBe(true);
+    expect(k.view().continuations[continuation.id].status).toBe('resuming');
+    send(A.runtime,newTarget,{type:'rejectSpeech',partId:'resume-A',reason:'fixture synthesis failed'});
+    expect(k.view().continuations[continuation.id].status).toBe('pending');
+    const retry:CommandTarget={kind:'speechPart',id:'resume-new'};send(A.performer,retry,{type:'offerSpeech',partId:'resume-new',text:'暖灯留在窗边，刚才的信继续读。',resumesContinuationIds:[continuation.id]});
+    for(const type of['acceptSpeech','queueSpeech','startSpeech']as const)send(A.runtime,retry,{type,partId:'resume-new'});
+    send(A.runtime,retry,{type:'receiptSpeech',partId:'resume-new',kind:'playing',audioRef:'/new.mp3',alignment:'real',starts:[...'暖灯留在窗边，刚才的信继续读。'].map((_,i)=>i*100)});
+    expect(k.view().continuations[continuation.id].status).toBe('resumed');
+    const recovered=EngineeringKernel.hydrate(MemoryEventLog.fromSnapshot(log.snapshot()));expect(recovered.view().continuations[continuation.id].status).toBe('resumed');
+    send(A.runtime,retry,{type:'progressSpeech',partId:'resume-new',audioRef:'/new.mp3',mediaTimeMs:150});
+    send(A.runtime,retry,{type:'receiptSpeech',partId:'resume-new',kind:'failed',audioRef:'/new.mp3',mediaTimeMs:250});
+    expect(Object.values(k.view().continuations).filter(n=>n.status==='pending')).toHaveLength(1);
+    const pending=Object.values(k.view().continuations).find(n=>n.status==='pending')!;
+    expect(pending).toMatchObject({sourcePartId:'resume-new',firstUnreadChar:3,parentContinuationIds:[continuation.id]});
+    const direction:CommandTarget={kind:'direction',id:k.view().project.currentDirectionId};
+    expect(send(A.master,direction,{type:'issueSwitchAuthorization',authorizationId:'next',kind:'master-soft',reason:'new direction'}).ok).toBe(true);
+    expect(send(A.controller,direction,{type:'switchDirection',authorizationId:'next',strategy:'soft',next:{commitment:'海底邮局',coreQuestion:'下一封信'}}).ok).toBe(true);
+    expect(k.view().continuations[pending.id].status).toBe('superseded');
+    expect(send(A.performer,{kind:'speechPart',id:'stale-resume'},{type:'offerSpeech',partId:'stale-resume',text:'旧A不能回来了',resumesContinuationIds:[pending.id]}).ok).toBe(false);
+  });
   it('keeps different actors command IDs independent in the durable log', () => {
     const k = new EngineeringKernel();
     const send = (actorId: string, payload: ShowCommand, target: CommandTarget) =>

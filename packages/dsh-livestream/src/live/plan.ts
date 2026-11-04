@@ -16,6 +16,7 @@ import type {
 } from './domain/entities';
 import { judgeClaim, type MediaObservation } from './playback/audio-bus';
 import { reviseSpeech, speechCommitted, SPEECH_LIVE, SPEECH_OPEN, voiceOccupant } from './playback/speech';
+import { speechPauseWindows } from '../../../scene-host/src/recording/speech-boundaries';
 import { DEFAULT_GROUP_VETO_POLICY, evaluateGroupVeto } from './domain/policy';
 import { closeTaskForEpoch, openTask, publishOntoTask } from './production/registry';
 import {
@@ -54,7 +55,37 @@ export function planCommand(command: CommandEnvelope, ctx: PlanContext): Plan {
     case 'rejectSpeech': {
       const part=speechOf(ctx.state,payload.partId);if(!part||!SPEECH_OPEN.has(part.state))return fail('ILLEGAL_TRANSITION','Only unstarted speech can be rejected');
       const locked=targetIs(command,'speechPart',part.partId)??requireEpoch(ctx.state,command);if(locked)return locked;
-      return succeed('show.command',[{op:'speech',part:reviseSpeech(part,{state:'rejected',rejectionReason:payload.reason})},...invalidateCueFacts(ctx,cuesBrokenBySpeech(Object.values(ctx.state.cues),part.partId,0,'tail'),'Speech admission failed before playback')]);
+      return succeed('show.command',[{op:'speech',part:reviseSpeech(part,{state:'rejected',rejectionReason:payload.reason})},...resumeFacts(ctx,part,'pending'),...invalidateCueFacts(ctx,cuesBrokenBySpeech(Object.values(ctx.state.cues),part.partId,0,'tail'),'Speech admission failed before playback')]);
+    }
+    case 'requestSpeechInterrupt': {
+      const part=speechOf(ctx.state,payload.partId),input=ctx.state.audience.find(i=>i.eventId===payload.responseTo);
+      if(!part||!SPEECH_LIVE.has(part.state)||part.responseTo||part.abortRequested)return fail('ILLEGAL_TRANSITION','只能在普通口播的自然边界接入互动');
+      const stale=requireEpoch(ctx.state,command)??requirePartEpoch(ctx.state,part)??targetIs(command,'speechPart',part.partId);if(stale)return stale;
+      if(!input||input.directionEpoch!==ctx.state.project.currentEpoch)return fail('UNKNOWN_TARGET','中断关联输入已不存在或过期');
+      if(part.interruption)return fail('REVISION_CONFLICT','当前口播已有固定交接请求');
+      return succeed('show.command',[{op:'speech',part:reviseSpeech(part,{interruption:{id:payload.interruptId,responseTo:payload.responseTo,replyPartId:payload.replyPartId}})}]);
+    }
+    case 'cancelSpeechInterrupt': {
+      const part=speechOf(ctx.state,payload.partId);
+      if(!part||!SPEECH_LIVE.has(part.state)||part.interruption?.id!==payload.interruptId)return fail('ILLEGAL_TRANSITION','交接请求已结束或已变化');
+      const stale=requireEpoch(ctx.state,command)??targetIs(command,'speechPart',part.partId);if(stale)return stale;
+      return succeed('show.command',[{op:'speech',part:reviseSpeech(part,{interruption:undefined,cancelledInterruptions:[...(part.cancelledInterruptions??[]),part.interruption].slice(-8)})}]);
+    }
+    case 'receiptSpeechInterrupted': {
+      const part=speechOf(ctx.state,payload.partId);
+      const interrupt=part?.interruption?.id===payload.interruptId?part.interruption:part?.cancelledInterruptions?.find(i=>i.id===payload.interruptId);
+      if(!part||!interrupt||part.audioRef!==payload.audioRef||!Number.isFinite(payload.mediaTimeMs)||payload.mediaTimeMs<0)return fail('ILLEGAL_TRANSITION','交接回执与当前音频实例不匹配');
+      const result=planReceipt(command,{type:'receiptSpeech',partId:part.partId,kind:'aborted',audioRef:payload.audioRef,mediaTimeMs:payload.mediaTimeMs},ctx);
+      if(!result.ok)return result;
+      const stopped=result.facts.find(f=>f.op==='speech');
+      if(stopped?.op==='speech'&&part.directionEpoch===ctx.state.project.currentEpoch)result.facts.push(continuationFact(ctx,{...part,interruption:interrupt},stopped.part.spokenChars,speechPauseWindows(part.text,part.alignment.starts??[]).some(w=>payload.mediaTimeMs>=w.fromMs&&payload.mediaTimeMs<=w.toMs)));
+      return result;
+    }
+    case 'discardContinuation': {
+      const note=ctx.state.continuations[payload.continuationId];
+      if(!note||note.directionEpoch!==ctx.state.project.currentEpoch||note.status!=='pending')return fail('ILLEGAL_TRANSITION','只能放弃当前方向待恢复的内容');
+      const stale=requireEpoch(ctx.state,command)??targetIs(command,'continuation',note.id);if(stale)return stale;
+      return succeed('show.command',[{op:'continuation',continuation:{...note,revision:note.revision+1,status:'superseded'}}]);
     }
     case 'appendSpeechTiming': {
       const part=speechOf(ctx.state,payload.partId);
@@ -193,6 +224,7 @@ function planIngest(command: CommandEnvelope, payload: Extract<ShowCommand, { ty
     audienceId: payload.audienceId,
     text: payload.text,
     kind: payload.kind,
+    ...(payload.priority?{priority:payload.priority}:{}),
     showTime: ctx.now,
     directionEpoch: ctx.state.project.currentEpoch,
   };
@@ -445,6 +477,7 @@ function planSwitch(command: CommandEnvelope, payload: Extract<ShowCommand, { ty
   const fromEpoch = ctx.state.project.currentEpoch;
   const toEpoch = fromEpoch + 1;
   const facts: KernelFact[] = [{ op: 'authorization', authorization: { ...auth, consumed: true } }];
+  for(const note of Object.values(ctx.state.continuations))if(note.directionEpoch===fromEpoch&&['pending','resuming'].includes(note.status))facts.push({op:'continuation',continuation:{...note,revision:note.revision+1,status:'superseded'}});
   const revokedSpeech: string[] = [];
   const retainedSpeech: string[] = [];
   const abortPlaybackIds: string[] = [];
@@ -452,15 +485,16 @@ function planSwitch(command: CommandEnvelope, payload: Extract<ShowCommand, { ty
   for (const part of Object.values(ctx.state.speech)) {
     if (part.directionEpoch !== fromEpoch) continue;
     if (SPEECH_OPEN.has(part.state)) {
-      const next = reviseSpeech(part, { state: 'cancelled', unreadFrom: part.spokenChars });
+      const next = reviseSpeech(part, { state: 'cancelled', unreadFrom: part.spokenChars,interruption:undefined });
       facts.push({ op: 'speech', part: next });
       revokedSpeech.push(part.partId);
     } else if (SPEECH_LIVE.has(part.state) && hard) {
       // Revoke future work now; actual audio stop is recorded only after the browser acknowledges it.
-      const next = reviseSpeech(part, { abortRequested: true, unreadFrom: part.spokenChars });
+      const next = reviseSpeech(part, { abortRequested: true, unreadFrom: part.spokenChars,interruption:undefined,cancelledInterruptions:part.interruption?[...(part.cancelledInterruptions??[]),part.interruption].slice(-8):part.cancelledInterruptions });
       facts.push({ op: 'speech', part: next });
       revokedSpeech.push(part.partId);
     } else if (SPEECH_LIVE.has(part.state)) {
+      if(part.interruption)facts.push({op:'speech',part:reviseSpeech(part,{interruption:undefined,cancelledInterruptions:[...(part.cancelledInterruptions??[]),part.interruption].slice(-8)})});
       retainedSpeech.push(part.partId);
     }
   }
@@ -602,10 +636,26 @@ function planSpeechCommand(command: CommandEnvelope, payload: ShowCommand, ctx: 
   }
 }
 
+function resumeFacts(ctx:PlanContext,part:SpeechPart,status:'pending'|'resumed'):KernelFact[]{
+  return (part.resumesContinuationIds??[]).flatMap(id=>{const note=ctx.state.continuations[id];return note&&note.directionEpoch===ctx.state.project.currentEpoch&&note.status==='resuming'&&note.resumePartId===part.partId?[{op:'continuation' as const,continuation:{...note,revision:note.revision+1,status,...(status==='pending'?{resumePartId:undefined}:{})}}]:[];});
+}
+function continuationFact(ctx:PlanContext,part:SpeechPart,firstUnreadChar:number,boundaryReached:boolean):KernelFact{
+  const chars=[...part.text];return {op:'continuation',continuation:{id:'continue-'+part.partId,revision:1,directionEpoch:part.directionEpoch,sourcePartId:part.partId,interruptId:part.interruption?.id,responseTo:part.interruption?.responseTo,firstUnreadChar,lastHeardExcerpt:chars.slice(Math.max(0,firstUnreadChar-80),firstUnreadChar).join(''),unreadText:chars.slice(firstUnreadChar).join(''),topic:ctx.state.directions[ctx.state.project.currentDirectionId]?.commitment??'',sceneInstanceId:ctx.state.project.channel.programSceneInstanceId,stoppedAtShowTime:ctx.now,sourceOfferedAt:part.offeredAtShowTime??0,boundaryReached,status:'pending',...(part.resumesContinuationIds?.length?{parentContinuationIds:[...part.resumesContinuationIds]}:{})}};
+}
 function planOffer(command: CommandEnvelope, payload: Extract<ShowCommand, { type: 'offerSpeech' }>, ctx: PlanContext): Plan {
   const stale = requireEpoch(ctx.state, command) ?? targetIs(command, 'speechPart', payload.partId);
   if (stale) return stale;
   if (speechOf(ctx.state, payload.partId)) return fail('REVISION_CONFLICT', '口播编号已存在');
+  const resumes=payload.resumesContinuationIds??[];
+  if(!Array.isArray(resumes)||resumes.length>4||new Set(resumes).size!==resumes.length)return fail('ILLEGAL_TRANSITION','一次接回最多4份不同便签');
+  for(const id of resumes){const note=ctx.state.continuations[id];if(!note||note.directionEpoch!==ctx.state.project.currentEpoch||(note.status!=='pending'&&!(note.status==='resuming'&&note.resumePartId===payload.replacePending?.partId)))return fail('ILLEGAL_TRANSITION','恢复便签已过期、已消费或被其他语句占用');}
+  if(payload.responseTo!==undefined||payload.responseStage!==undefined){
+    const input=ctx.state.audience.find(input=>input.eventId===payload.responseTo);
+    if(!input)return fail('UNKNOWN_TARGET','回答关联的观众输入不存在');
+    if(input.directionEpoch!==ctx.state.project.currentEpoch)return fail('STALE_DIRECTION','回答关联的观众输入已过期');
+    if(!['ack','answer','finish'].includes(payload.responseStage??''))return fail('ILLEGAL_TRANSITION','必须明确接住、展开或口头回答结束阶段');
+    if(payload.responseStage==='ack'&&Object.values(ctx.state.speech).some(part=>part.responseTo===input.eventId&&((part.responseStage==='ack'&&!['cancelled','failed','aborted','rejected'].includes(part.state))||['starting','playing','ended'].includes(part.state))))return fail('ILLEGAL_TRANSITION','这条互动已有接住语句；继续展开，不重复接住');
+  }
   let replaced:KernelFact[]=[];
   if(payload.replacePending){
     const old=speechOf(ctx.state,payload.replacePending.partId);
@@ -615,6 +665,8 @@ function planOffer(command: CommandEnvelope, payload: Extract<ShowCommand, { typ
     if(speechCommitted(old.state))return fail('TOO_LATE','已提交的口播不能替换');
     if(!SPEECH_OPEN.has(old.state))return fail('ILLEGAL_TRANSITION','只能替换尚未提交的口播');
     replaced=[{op:'speech',part:reviseSpeech(old,{state:'cancelled',unreadFrom:old.spokenChars})},...invalidateCueFacts(ctx,cuesBrokenBySpeech(Object.values(ctx.state.cues),old.partId,old.spokenChars,'tail'),'未念口播由主播替换')];
+    replaced.push(...resumeFacts(ctx,old,'pending'));
+    if(payload.responseTo&&!old.responseTo&&!old.resumesContinuationIds?.length)replaced.push(continuationFact(ctx,old,0,true));
   }
   const part: SpeechPart = {
     partId: payload.partId,
@@ -624,9 +676,12 @@ function planOffer(command: CommandEnvelope, payload: Extract<ShowCommand, { typ
     state: 'offered',
     alignment: { mode: 'absent' },
     spokenChars: 0,
+    offeredAtShowTime:ctx.now,
+    ...(resumes.length?{resumesContinuationIds:[...resumes]}:{}),
     ...(payload.plannedBeatRef ? { plannedBeatRef: payload.plannedBeatRef } : {}),
+    ...(payload.responseTo?{responseTo:payload.responseTo,responseStage:payload.responseStage}:{}),
   };
-  return succeed('show.command', [...replaced,{ op: 'speech', part }]);
+  return succeed('show.command', [...replaced,{ op: 'speech', part },...resumes.map(id=>({op:'continuation' as const,continuation:{...ctx.state.continuations[id],revision:ctx.state.continuations[id].revision+1,status:'resuming' as const,resumePartId:part.partId}}))]);
 }
 
 function planMove(
@@ -690,6 +745,8 @@ function planReceipt(
   if (payload.alignment === 'real' && !payload.starts) {
     return fail('ILLEGAL_TRANSITION', '没有逐字时标不能标成 real');
   }
+  const observedChars=payload.mediaTimeMs!==undefined&&Number.isFinite(payload.mediaTimeMs)&&payload.mediaTimeMs>=0&&payload.audioRef===part.audioRef&&part.alignment.mode==='real'?Math.min([...part.text].length,(part.alignment.starts??[]).filter(at=>at<=payload.mediaTimeMs!).length):part.spokenChars;
+  const lastHeard=Math.max(part.spokenChars,observedChars);
   let next = part;
   if (payload.kind === 'playing') {
     if (part.state !== 'starting') return fail('ILLEGAL_TRANSITION', 'playing 回执只能接在 starting 之后');
@@ -711,11 +768,11 @@ function planReceipt(
     });
   } else if (payload.kind === 'aborted') {
     if (!SPEECH_LIVE.has(part.state)) return fail('ILLEGAL_TRANSITION', 'Abort receipt requires active audio');
-    next = reviseSpeech(part, { state: 'aborted', unreadFrom: part.spokenChars });
+    next = reviseSpeech(part, { state: 'aborted', spokenChars:lastHeard,unreadFrom:lastHeard,interruption:undefined });
   } else if (!SPEECH_LIVE.has(part.state)) {
     return fail('ILLEGAL_TRANSITION', '失败回执只记录已启动的口播');
   } else {
-    next = reviseSpeech(part, { state: 'failed', unreadFrom: part.spokenChars });
+    next = reviseSpeech(part, { state: 'failed', spokenChars:lastHeard,unreadFrom:lastHeard,interruption:undefined });
   }
   if (payload.alignment) {
     next = {
@@ -741,6 +798,13 @@ function planReceipt(
       },
     },
   ];
+  if(payload.kind==='playing')facts.push(...resumeFacts(ctx,part,'resumed'));
+  if(payload.kind==='aborted'||payload.kind==='failed'){
+    facts.push(...resumeFacts(ctx,part,'pending'));
+    facts.push(...invalidateCueFacts(ctx,cuesBrokenBySpeech(Object.values(ctx.state.cues),part.partId,next.spokenChars,'tail'),'实际停止，未念内容不再触发旧Cue'));
+    if(command.payload.type!=='receiptSpeechInterrupted'&&(part.resumesContinuationIds?.length||!part.responseTo)&&part.playback?.startedAtShowTime!==undefined&&part.directionEpoch===ctx.state.project.currentEpoch&&next.spokenChars<[...part.text].length)facts.push(continuationFact(ctx,part,next.spokenChars,false));
+  }
+  if(payload.kind==='ended'&&part.interruption&&part.directionEpoch===ctx.state.project.currentEpoch&&!part.abortRequested)facts.push(continuationFact(ctx,part,next.spokenChars,true));
   if (payload.kind === 'playing') {
     facts.push({ op: 'bus-claim', claim: { lane: 'voice', place: 'bus', surface: 'program' } });
     facts.push(mediaFact(`media-play-${part.partId}-${next.revision}`, 'playing', ctx.now, part.partId, payload.audioRef));
@@ -763,7 +827,7 @@ function planYield(command: CommandEnvelope, partId: string, ctx: PlanContext): 
   if (!SPEECH_OPEN.has(part.state)) return fail('ILLEGAL_TRANSITION', '这段口播不能撤回');
   const next = reviseSpeech(part, { state: 'cancelled', unreadFrom: part.spokenChars });
   const broken = cuesBrokenBySpeech(Object.values(ctx.state.cues), part.partId, part.spokenChars, 'tail');
-  return succeed('show.command', [{ op: 'speech', part: next }, ...invalidateCueFacts(ctx, broken, '未念的口播已撤回')]);
+  return succeed('show.command', [{ op: 'speech', part: next },...resumeFacts(ctx,part,'pending'), ...invalidateCueFacts(ctx, broken, '未念的口播已撤回')]);
 }
 
 function planAbort(command: CommandEnvelope, partId: string, ctx: PlanContext): Plan {

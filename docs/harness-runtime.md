@@ -137,3 +137,5 @@ npm run harness:film:capture -- <space ID> <page label> <export log file>
 ## 实时输出管线（2026-11-04）
 
 直播人声已接入逐块TTS传输、可撤换的有界未播队列和逐步追加的真实字时标。角色的未来内容规划与确定性播放消费分开，详见[实时输出队列](realtime-output-queue.md)。此前“整句合成完再送播”和“仅一条待播”的描述是旧实现。私有SDK远端CI也已通过，详见[重建说明](sdk-reproducibility.md#2026-11-04-远端验证)。延迟目标仍须用真实交互样本验证，不能由架构文字宣告达标。
+
+分阶段接话进一步将`acknowledgeInput`、`responseTo/responseStage`和持久`continuations`接到同一个运行时。接住可先播，后续答案与制作并行；普通话题在真实停顿处让位，随后由模型写新的衔接接回。运行时只控制交接和事实，不生成固定垫话。新增首响/答案/口头完成/画面兑现的分离测量，详见实时输出队列文档。

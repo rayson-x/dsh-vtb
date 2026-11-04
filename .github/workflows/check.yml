@@ -28,7 +28,7 @@ jobs:
       - run: npm --prefix packages/scene-package ci
       - run: npm run plugin:check && npm run scene-host:check && npm run scene-package:check
       - run: npm run plugin:test && npm run scene-host:test && npm run scene-package:test
-      - run: node --test scripts/sdk-source.test.mjs scripts/harness-recording.test.mjs scripts/programme-recording.test.mjs
+      - run: node --test scripts/sdk-source.test.mjs scripts/harness-recording.test.mjs scripts/programme-recording.test.mjs scripts/response-measurements.test.mjs
       - run: npm run harness:build
   private-sdk:
     if: github.event_name == 'workflow_dispatch' && inputs.sdk_integration
@@ -64,7 +64,7 @@ jobs:
       - name: Validate private SDK without publishing implementation diagnostics
         run: |
           node scripts/sdk-doctor.mjs
-          if ! node --test scripts/sdk-source.test.mjs scripts/harness-recording.test.mjs scripts/programme-recording.test.mjs > .deps/sdk-checks.log 2>&1; then
+          if ! node --test scripts/sdk-source.test.mjs scripts/harness-recording.test.mjs scripts/programme-recording.test.mjs scripts/response-measurements.test.mjs > .deps/sdk-checks.log 2>&1; then
             echo 'Private SDK checks failed; inspect in an authorized local checkout'
             exit 1
           fi

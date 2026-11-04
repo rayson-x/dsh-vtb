@@ -20,6 +20,7 @@ import type {
   TimelineSegment,
   ShowProject,
   SpeechPart,
+  SpeechContinuation,
   SwitchAuthorization,
   SwitchRecord,
   WindDownLease,
@@ -48,6 +49,7 @@ export type KernelEffect =
   | { kind: 'take'; instanceId: string };
 
 export type KernelFact =
+  | {op:'continuation';continuation:SpeechContinuation}
   | { op: 'speech'; part: SpeechPart; stampCommit?: boolean }
   | { op: 'archive-speech'; partId: string }
   | { op: 'cue'; cue: CueBinding; timelineRevision?: number; stampCommit?: boolean }
@@ -115,6 +117,7 @@ export function stampFacts(facts: KernelFact[], sequence: number): KernelFact[] 
 }
 
 export interface EngineeringState {
+  continuations:Record<string,SpeechContinuation>;
   project: ShowProject;
   directions: Record<string, DirectionSession>;
   timeline: ProgrammeTimeline;
@@ -173,6 +176,7 @@ export function createEngineeringState(): EngineeringState {
     playbackEventIds: [],
   };
   return {
+    continuations:{},
     project,
     directions: { [direction.id]: direction },
     timeline: emptyTimeline(FIXTURE_IDS.timeline),
@@ -221,6 +225,7 @@ export function applyFacts(state: EngineeringState, facts: readonly KernelFact[]
 
 function applyFact(state: EngineeringState, fact: KernelFact): void {
   switch (fact.op) {
+    case 'continuation':state.continuations={...state.continuations,[fact.continuation.id]:structuredClone(fact.continuation)};return;
     case 'speech':
       state.speech = { ...state.speech, [fact.part.partId]: structuredClone(fact.part) };
       return;

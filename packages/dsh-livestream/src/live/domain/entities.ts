@@ -169,6 +169,12 @@ export interface SpeechPart {
   abortRequested?: boolean;
   rejectionReason?: string;
   plannedBeatRef?: string;
+  responseTo?:string;
+  responseStage?:'ack'|'answer'|'finish';
+  interruption?:{id:string;responseTo:string;replyPartId?:string};
+  cancelledInterruptions?:Array<{id:string;responseTo:string;replyPartId?:string}>;
+  resumesContinuationIds?:string[];
+  offeredAtShowTime?:number;
   alignment: { mode: AlignmentMode; starts?: number[] };
   playback?: { startedAtShowTime?: ShowTimeMs; endedAtShowTime?: ShowTimeMs };
   /** 未念起点（Unicode 码位）。已念历史不改写。 */
@@ -176,6 +182,14 @@ export interface SpeechPart {
   spokenChars: number;
   /** starting / dispatch / take 一类提交序号。不是真实发声证明。 */
   committedSequence?: number;
+}
+
+export interface SpeechContinuation {
+  id:string;revision:number;directionEpoch:number;sourcePartId:string;interruptId?:string;responseTo?:string;
+  firstUnreadChar:number;lastHeardExcerpt:string;unreadText:string;topic:string;sceneInstanceId?:string;
+  stoppedAtShowTime:number;sourceOfferedAt:number;boundaryReached:boolean;
+  status:'pending'|'resuming'|'resumed'|'superseded';resumePartId?:string;
+  parentContinuationIds?:string[];
 }
 
 export type CueStatus = 'future' | 'dispatched' | 'invalidated' | 'executed';
@@ -308,6 +322,7 @@ export interface AudienceInputRecord {
   audienceId: string;
   text: string;
   kind: 'proposal' | 'silence' | 'debate' | 'opposition' | 'master-claim';
+  priority?:'urgent'|'live'|'background';
   showTime: ShowTimeMs;
   directionEpoch: number;
 }

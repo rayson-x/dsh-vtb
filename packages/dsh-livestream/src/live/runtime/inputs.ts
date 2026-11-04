@@ -32,6 +32,7 @@ export class RuntimeInputs {
         audienceId: input.audienceId,
         text: input.text,
         kind: input.kind,
+        priority:decision.item.priority,
         ...(input.kind === 'proposal'
           ? { proposalId: `proposal-${decision.item.bucketId}`, intent: input.text }
           : {}),

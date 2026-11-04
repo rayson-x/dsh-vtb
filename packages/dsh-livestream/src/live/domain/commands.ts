@@ -32,6 +32,7 @@ export type CommandTarget =
   | { kind: 'productionTask'; id: string }
   | { kind: 'timeline'; id: string }
   | { kind: 'speechPart'; id: string }
+  | { kind:'continuation';id:string }
   | { kind: 'sceneInstance'; id: string }
   | { kind: 'cue'; id: string };
 
@@ -55,6 +56,7 @@ export type ShowCommand =
       audienceId: string;
       text: string;
       kind: 'proposal' | 'silence' | 'debate' | 'opposition' | 'master-claim';
+      priority?:'urgent'|'live'|'background';
       proposalId?: string;
       intent?: string;
       relation?: AudienceProposal['relation'];
@@ -86,7 +88,11 @@ export type ShowCommand =
       next: { directionId?: string; commitment: string; coreQuestion: string } | { transition: true };
     }
   | { type: 'requestInteraction'; requestId: string; text: string }
-  | { type: 'offerSpeech'; partId: string; text: string; plannedBeatRef?: string; replacePending?: {partId:string;expectedRevision:number} }
+  | { type: 'offerSpeech'; partId: string; text: string; plannedBeatRef?: string; replacePending?: {partId:string;expectedRevision:number};responseTo?:string;responseStage?:'ack'|'answer'|'finish';resumesContinuationIds?:string[] }
+  | { type:'requestSpeechInterrupt';partId:string;interruptId:string;responseTo:string;replyPartId?:string }
+  | { type:'cancelSpeechInterrupt';partId:string;interruptId:string }
+  | { type:'receiptSpeechInterrupted';partId:string;interruptId:string;audioRef:string;mediaTimeMs:number }
+  | { type:'discardContinuation';continuationId:string;reason:string }
   | { type: 'progressSpeech'; partId: string; mediaTimeMs: number; audioRef: string }
   | { type: 'appendSpeechTiming'; partId:string;audioRef:string;starts:number[] }
   | { type: 'noteLiveCapabilities'; instanceId: string; supportsInPlaceInputUpdate: boolean }
@@ -105,6 +111,7 @@ export type ShowCommand =
       alignment?: 'estimated' | 'real';
       starts?: number[];
       audioRef?: string;
+      mediaTimeMs?:number;
     }
   | { type: 'yieldSpeech'; partId: string }
   | { type: 'abortSpeech'; partId: string }

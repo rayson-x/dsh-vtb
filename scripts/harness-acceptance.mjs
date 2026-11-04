@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve, join } from 'node:path';
+import {projectResponseMeasurements,summarizeResponseMeasurements} from './response-measurements.mjs';
 const run=promisify(execFile),brain=process.argv[2]??'http://127.0.0.1:3972',stage=process.argv[3]??'http://127.0.0.1:3974',duration=Number(process.argv[4]??1800),space=process.argv[5];
 const browserPage=process.argv[6]??'p1';if(!/^p\d+$/.test(browserPage))throw Error('Invalid Ego page label');
 if(!Number.isFinite(duration)||duration<60)throw Error('Use a bounded duration >=60 seconds');
@@ -24,6 +25,9 @@ while(Date.now()-report.startedAt<duration*1000){
   if(timingCursor&&timings.oldest>timingCursor+1)report.errors.push({phase:'timing-gap',after:timingCursor,oldest:timings.oldest});
   report.timings.push(...timings.events);timingCursor=timings.latest;
   for(const input of report.inputs)input.eventId??=s.audience.find(row=>row.text?.includes(input.name))?.eventId;
+  report.responsePhases=projectResponseMeasurements(report.inputs,s,report.timings);
+  report.continuations=Object.values(s.continuations??{});
+  report.resumeParts=Object.values({...s.speechArchive,...s.speech}).filter(p=>p.resumesContinuationIds?.length);
   let rssKb=null;if(pid)try{rssKb=Number((await run('ps',['-o','rss=','-p',String(pid)])).stdout.trim());}catch{}
   const speech=Object.entries(s.speech);const sample={at:Date.now(),elapsed,rssKb,memoryScope,roles:h.roles.map(r=>({role:r.role,ready:r.ready,paused:r.paused,phase:r.phase,sessionId:r.sessionId})),epoch:s.project.currentEpoch,channel:s.project.channel.mode,assets:Object.keys(s.assets).length,tasks:Object.keys(s.tasks).length,scenes:Object.keys(s.scenes).length,speech:speech.reduce((a,[,p])=>(a[p.state]=(a[p.state]??0)+1,a),{})};
   if(!report.samples.length||sample.at-report.samples.at(-1).at>=15000)report.samples.push(sample);
@@ -49,5 +53,6 @@ while(Date.now()-report.startedAt<duration*1000){
  await new Promise(r=>setTimeout(r,1000));
 }
 report.endedAt=Date.now();const values=report.inputs.filter(x=>x.replyMs!==undefined).map(x=>x.replyMs).sort((a,b)=>a-b);
+report.phaseResult=summarizeResponseMeasurements(report.responsePhases??[]);
 report.result={actualDurationSeconds:(report.endedAt-report.startedAt)/1000,inputCount:report.inputs.length,namedAudibleReplies:values.length,unmatched:report.inputs.filter(x=>x.replyMs===undefined).map(x=>x.index),replyLatencyMs:values.length?{p50:values[Math.floor(values.length*.5)],p95:values[Math.min(values.length-1,Math.floor(values.length*.95))],max:values.at(-1)}:null,note:'Latency uses observed real speaking/ended parts naming the scripted viewer; does not count unrelated speech or infer unnamed semantic replies. Browser metrics cover this page, not all browser/GPU processes.'};
 await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({output,result:report.result,errors:report.errors.length}));
