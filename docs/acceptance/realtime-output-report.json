@@ -1,0 +1,539 @@
+{
+  "schema": 1,
+  "date": "2026-11-04",
+  "runtimeCommit": "3728fb5509336e1b892a73b62f47a3cd3d4a2dc8",
+  "hardCutFixCommit": "0ab24e230c82d3ed43a95b1349d6c202c3273e12",
+  "externalBroadcast": false,
+  "audience": "scripted priority interactions; real four DSH sessions, models, TTS and browser",
+  "configuration": {
+    "ttsModelBefore": "eleven_v4",
+    "ttsModelAfter": "eleven_flash_v2_5",
+    "sameVoice": true,
+    "arrivalIntervalSeconds": 20,
+    "trialSeconds": 660.536
+  },
+  "trials": [
+    {
+      "name": "merged baseline, whole-phrase TTS",
+      "model": "eleven_v4",
+      "actualDurationSeconds": 1800.728,
+      "inputCount": 30,
+      "namedAudibleReplies": 30,
+      "unmatched": [],
+      "replyLatencyMs": {
+        "p50": 15228,
+        "p95": 32530,
+        "max": 39848
+      },
+      "note": "Latency uses observed real speaking/ended parts naming the scripted viewer; does not count unrelated speech or infer unnamed semantic replies. Browser metrics cover this page, not all browser/GPU processes."
+    },
+    {
+      "name": "short responses and attached brief, whole-phrase TTS",
+      "model": "eleven_v4",
+      "actualDurationSeconds": 660.918,
+      "inputCount": 30,
+      "namedAudibleReplies": 27,
+      "unmatched": [
+        10,
+        25,
+        30
+      ],
+      "replyLatencyMs": {
+        "p50": 13178,
+        "p95": 32746,
+        "max": 46936
+      },
+      "note": "Latency uses observed real speaking/ended parts naming the scripted viewer; does not count unrelated speech or infer unnamed semantic replies. Browser metrics cover this page, not all browser/GPU processes."
+    },
+    {
+      "name": "bounded progressive speech pipeline",
+      "model": "eleven_flash_v2_5",
+      "actualDurationSeconds": 660.536,
+      "inputCount": 30,
+      "namedAudibleReplies": 30,
+      "unmatched": [],
+      "replyLatencyMs": {
+        "p50": 7190,
+        "p95": 13262,
+        "max": 13419
+      },
+      "note": "Latency uses observed real speaking/ended parts naming the scripted viewer; does not count unrelated speech or infer unnamed semantic replies. Browser metrics cover this page, not all browser/GPU processes."
+    }
+  ],
+  "phaseMeasurements": {
+    "rows": [
+      {
+        "index": 1,
+        "sampledReplyMs": 5260,
+        "actualPlaybackReplyMs": 4964,
+        "inputToOfferMs": 3258,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1037,
+        "firstAudioToPlayingMs": 668,
+        "playingBeforeTtsCompleteMs": 162,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 435,
+        "otherPlaybackAdmissionMs": 233
+      },
+      {
+        "index": 2,
+        "sampledReplyMs": 5076,
+        "actualPlaybackReplyMs": 4720,
+        "inputToOfferMs": 2016,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1293,
+        "firstAudioToPlayingMs": 1411,
+        "playingBeforeTtsCompleteMs": -182,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 1353,
+        "otherPlaybackAdmissionMs": 58
+      },
+      {
+        "index": 3,
+        "sampledReplyMs": 5062,
+        "actualPlaybackReplyMs": 4447,
+        "inputToOfferMs": 2938,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1005,
+        "firstAudioToPlayingMs": 504,
+        "playingBeforeTtsCompleteMs": 960,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 504
+      },
+      {
+        "index": 4,
+        "sampledReplyMs": 6299,
+        "actualPlaybackReplyMs": 6178,
+        "inputToOfferMs": 2308,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 744,
+        "firstAudioToPlayingMs": 3126,
+        "playingBeforeTtsCompleteMs": -2207,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 3071,
+        "otherPlaybackAdmissionMs": 55
+      },
+      {
+        "index": 5,
+        "sampledReplyMs": 5049,
+        "actualPlaybackReplyMs": 4389,
+        "inputToOfferMs": 2460,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 369,
+        "firstAudioToPlayingMs": 1560,
+        "playingBeforeTtsCompleteMs": -863,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 1512,
+        "otherPlaybackAdmissionMs": 48
+      },
+      {
+        "index": 6,
+        "sampledReplyMs": 4054,
+        "actualPlaybackReplyMs": 3820,
+        "inputToOfferMs": 2341,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1420,
+        "firstAudioToPlayingMs": 59,
+        "playingBeforeTtsCompleteMs": 2211,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 59
+      },
+      {
+        "index": 7,
+        "sampledReplyMs": 13419,
+        "actualPlaybackReplyMs": 12879,
+        "inputToOfferMs": 10244,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1676,
+        "firstAudioToPlayingMs": 959,
+        "playingBeforeTtsCompleteMs": 3372,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 959
+      },
+      {
+        "index": 8,
+        "sampledReplyMs": 8270,
+        "actualPlaybackReplyMs": 7593,
+        "inputToOfferMs": 5165,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 2389,
+        "firstAudioToPlayingMs": 38,
+        "playingBeforeTtsCompleteMs": 2886,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 38
+      },
+      {
+        "index": 9,
+        "sampledReplyMs": 11528,
+        "actualPlaybackReplyMs": 11441,
+        "inputToOfferMs": 5692,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 3117,
+        "firstAudioToPlayingMs": 2630,
+        "playingBeforeTtsCompleteMs": 2233,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 2630
+      },
+      {
+        "index": 10,
+        "sampledReplyMs": 7285,
+        "actualPlaybackReplyMs": 6778,
+        "inputToOfferMs": 2191,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 2683,
+        "firstAudioToPlayingMs": 1903,
+        "playingBeforeTtsCompleteMs": 2781,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 1903
+      },
+      {
+        "index": 11,
+        "sampledReplyMs": 9158,
+        "actualPlaybackReplyMs": 8419,
+        "inputToOfferMs": 4006,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 336,
+        "firstAudioToPlayingMs": 4076,
+        "playingBeforeTtsCompleteMs": -1779,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 4002,
+        "otherPlaybackAdmissionMs": 74
+      },
+      {
+        "index": 12,
+        "sampledReplyMs": 6095,
+        "actualPlaybackReplyMs": 5817,
+        "inputToOfferMs": 4366,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1000,
+        "firstAudioToPlayingMs": 450,
+        "playingBeforeTtsCompleteMs": 833,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 450
+      },
+      {
+        "index": 13,
+        "sampledReplyMs": 5315,
+        "actualPlaybackReplyMs": 5013,
+        "inputToOfferMs": 3338,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1016,
+        "firstAudioToPlayingMs": 657,
+        "playingBeforeTtsCompleteMs": 1046,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 657
+      },
+      {
+        "index": 14,
+        "sampledReplyMs": 8157,
+        "actualPlaybackReplyMs": 8075,
+        "inputToOfferMs": 5322,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1699,
+        "firstAudioToPlayingMs": 1052,
+        "playingBeforeTtsCompleteMs": 1666,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 1052
+      },
+      {
+        "index": 15,
+        "sampledReplyMs": 7190,
+        "actualPlaybackReplyMs": 7057,
+        "inputToOfferMs": 4457,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 992,
+        "firstAudioToPlayingMs": 1607,
+        "playingBeforeTtsCompleteMs": -980,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 1566,
+        "otherPlaybackAdmissionMs": 41
+      },
+      {
+        "index": 16,
+        "sampledReplyMs": 7375,
+        "actualPlaybackReplyMs": 7307,
+        "inputToOfferMs": 3753,
+        "ttsQueueMs": 1,
+        "ttsFirstAudioMs": 2596,
+        "firstAudioToPlayingMs": 957,
+        "playingBeforeTtsCompleteMs": 1356,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 957
+      },
+      {
+        "index": 17,
+        "sampledReplyMs": 13262,
+        "actualPlaybackReplyMs": 12617,
+        "inputToOfferMs": 3328,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1328,
+        "firstAudioToPlayingMs": 7959,
+        "playingBeforeTtsCompleteMs": -7275,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 7726,
+        "otherPlaybackAdmissionMs": 233
+      },
+      {
+        "index": 18,
+        "sampledReplyMs": 8181,
+        "actualPlaybackReplyMs": 7593,
+        "inputToOfferMs": 6162,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 996,
+        "firstAudioToPlayingMs": 433,
+        "playingBeforeTtsCompleteMs": 264,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 433
+      },
+      {
+        "index": 19,
+        "sampledReplyMs": 7335,
+        "actualPlaybackReplyMs": 6884,
+        "inputToOfferMs": 2966,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 366,
+        "firstAudioToPlayingMs": 3550,
+        "playingBeforeTtsCompleteMs": -2719,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 3483,
+        "otherPlaybackAdmissionMs": 67
+      },
+      {
+        "index": 20,
+        "sampledReplyMs": 13260,
+        "actualPlaybackReplyMs": 12987,
+        "inputToOfferMs": 4240,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1688,
+        "firstAudioToPlayingMs": 7057,
+        "playingBeforeTtsCompleteMs": -5730,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 6991,
+        "otherPlaybackAdmissionMs": 66
+      },
+      {
+        "index": 21,
+        "sampledReplyMs": 6134,
+        "actualPlaybackReplyMs": 6115,
+        "inputToOfferMs": 4501,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1107,
+        "firstAudioToPlayingMs": 506,
+        "playingBeforeTtsCompleteMs": 460,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 506
+      },
+      {
+        "index": 22,
+        "sampledReplyMs": 6778,
+        "actualPlaybackReplyMs": 6725,
+        "inputToOfferMs": 3341,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 547,
+        "firstAudioToPlayingMs": 2835,
+        "playingBeforeTtsCompleteMs": -1812,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 2698,
+        "otherPlaybackAdmissionMs": 137
+      },
+      {
+        "index": 23,
+        "sampledReplyMs": 5085,
+        "actualPlaybackReplyMs": 4850,
+        "inputToOfferMs": 3404,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1036,
+        "firstAudioToPlayingMs": 409,
+        "playingBeforeTtsCompleteMs": 87,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 409
+      },
+      {
+        "index": 24,
+        "sampledReplyMs": 6155,
+        "actualPlaybackReplyMs": 5454,
+        "inputToOfferMs": 3997,
+        "ttsQueueMs": 1,
+        "ttsFirstAudioMs": 1025,
+        "firstAudioToPlayingMs": 429,
+        "playingBeforeTtsCompleteMs": 259,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 429
+      },
+      {
+        "index": 25,
+        "sampledReplyMs": 9318,
+        "actualPlaybackReplyMs": 8716,
+        "inputToOfferMs": 4863,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1108,
+        "firstAudioToPlayingMs": 2744,
+        "playingBeforeTtsCompleteMs": -2024,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 2651,
+        "otherPlaybackAdmissionMs": 93
+      },
+      {
+        "index": 26,
+        "sampledReplyMs": 6095,
+        "actualPlaybackReplyMs": 5864,
+        "inputToOfferMs": 4396,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1310,
+        "firstAudioToPlayingMs": 157,
+        "playingBeforeTtsCompleteMs": 862,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 157
+      },
+      {
+        "index": 27,
+        "sampledReplyMs": 7200,
+        "actualPlaybackReplyMs": 6181,
+        "inputToOfferMs": 4411,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1161,
+        "firstAudioToPlayingMs": 607,
+        "playingBeforeTtsCompleteMs": 752,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 521,
+        "otherPlaybackAdmissionMs": 86
+      },
+      {
+        "index": 28,
+        "sampledReplyMs": 8426,
+        "actualPlaybackReplyMs": 7589,
+        "inputToOfferMs": 5879,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1294,
+        "firstAudioToPlayingMs": 412,
+        "playingBeforeTtsCompleteMs": 1155,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 412
+      },
+      {
+        "index": 29,
+        "sampledReplyMs": 5098,
+        "actualPlaybackReplyMs": 4903,
+        "inputToOfferMs": 3435,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1037,
+        "firstAudioToPlayingMs": 430,
+        "playingBeforeTtsCompleteMs": 592,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 430
+      },
+      {
+        "index": 30,
+        "sampledReplyMs": 7111,
+        "actualPlaybackReplyMs": 6474,
+        "inputToOfferMs": 3584,
+        "ttsQueueMs": 0,
+        "ttsFirstAudioMs": 1872,
+        "firstAudioToPlayingMs": 1017,
+        "playingBeforeTtsCompleteMs": 2506,
+        "underflows": 0,
+        "waitForAudiblePredecessorMs": 0,
+        "otherPlaybackAdmissionMs": 1017
+      }
+    ],
+    "summary": {
+      "actualPlaybackReplyMs": {
+        "count": 30,
+        "p50": 6725,
+        "p95": 12879,
+        "max": 12987
+      },
+      "inputToOfferMs": {
+        "count": 30,
+        "p50": 3997,
+        "p95": 6162,
+        "max": 10244
+      },
+      "ttsQueueMs": {
+        "count": 30,
+        "p50": 0,
+        "p95": 1,
+        "max": 1
+      },
+      "ttsFirstAudioMs": {
+        "count": 30,
+        "p50": 1108,
+        "p95": 2683,
+        "max": 3117
+      },
+      "firstAudioToPlayingMs": {
+        "count": 30,
+        "p50": 959,
+        "p95": 7057,
+        "max": 7959
+      }
+    },
+    "streamedBeforeCompletion": 20,
+    "ttsFailures": 0,
+    "actualDurationSeconds": 660.536,
+    "trialErrors": [],
+    "programmeUnderflows": 2,
+    "responseUnderflowCount": 0
+  },
+  "limitations": [
+    "Configuration and pipeline changed together; not a single-factor model benchmark",
+    "5-second P95 target not achieved",
+    "30 reply parts had no mid-play waiting; other programme speech had 2 underflows, 1261ms and 3096ms",
+    "Only local scripted audience; no external platform or retention claim"
+  ],
+  "resources": {
+    "scope": "brain HTTP listener process",
+    "samples": 43,
+    "brainRssKbMin": 216608,
+    "brainRssKbMax": 429024,
+    "browserSamples": 11
+  },
+  "hardCut": {
+    "kind": "real-local-browser-hard-cut-during-stream",
+    "finalState": "aborted",
+    "observedStreamStillGenerating": true,
+    "observationToAudioStopReceiptMs": 27,
+    "requestAndPollingElapsedMs": 346
+  },
+  "privateCi": {
+    "runId": 41766787217,
+    "commit": "86c919ac88b6cbaf791667be30ddcb183f3d98a1",
+    "public": "success",
+    "privateSdk": "success",
+    "libraries": 46,
+    "tests": 8
+  },
+  "verification": {
+    "plugin": {
+      "passed": 394,
+      "skipped": 17
+    },
+    "sceneHost": {
+      "passed": 21
+    },
+    "scenePackage": {
+      "passed": 18
+    },
+    "sdkNode": {
+      "passed": 8
+    },
+    "independentReview": "No accepted P0/P1 findings; runtime proof is separate from the read-only review"
+  }
+}
