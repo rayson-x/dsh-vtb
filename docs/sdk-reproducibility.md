@@ -16,7 +16,7 @@ doctor 从固定 Git 对象读取 runtime manifest 和 pnpm lockfile，逐一解
 
 `.github/workflows/check.yml` 的public job安装公开仓的锁定依赖，跑类型检查、领域/宿主测试与构建。没有私有源时，SDK专用测试明确skip，不计为私有集成成功。
 
-手动workflow dispatch选中sdk_integration后，private-sdk job需要仓库secret `AIVTB_SDK_TOKEN`（只读访问私有源）；检出固定commit并按固定lockfile安装，跑doctor及真正的SDK/Film检查。未提供授权则明确失败。默认PR与fork不接触此secret；工作流不上传私有源码/制品。尚未配置该secret时，不声称私有CI已运行。
+手动workflow dispatch选中sdk_integration后，private-sdk job需要仓库secret `AIVTB_SDK_SSH_KEY`。对应公钥只作为私有源仓库的只读Deploy key，不能push，也不获得其他仓库访问权。工作流检出固定commit并按固定lockfile安装，跑doctor及真正的SDK/Film检查。未提供授权则明确失败。默认PR与fork不接触此secret；检出不保留凭据，工作流不上传私有源码/制品。密钥配置与私有CI实际成功须分别核验。
 
 使用的是[checkout](https://github.com/actions/checkout)、[setup-node](https://github.com/actions/setup-node)与[pnpm/action-setup](https://github.com/pnpm/action-setup)的官方接口。
 

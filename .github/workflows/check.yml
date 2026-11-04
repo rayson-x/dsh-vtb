@@ -38,13 +38,13 @@ jobs:
       - uses: actions/checkout@v7
       - name: Require explicit private read authorization
         env:
-          SDK_TOKEN: ${{ secrets.AIVTB_SDK_TOKEN }}
-        run: test -n "$SDK_TOKEN" || { echo 'Configure the read-only AIVTB_SDK_TOKEN secret first'; exit 1; }
+          SDK_SSH_KEY: ${{ secrets.AIVTB_SDK_SSH_KEY }}
+        run: test -n "$SDK_SSH_KEY" || { echo 'Configure the read-only AIVTB_SDK_SSH_KEY secret first'; exit 1; }
       - uses: actions/checkout@v7
         with:
           repository: rayson-x/reelmorph-agent
           ref: c73ac74f9a5479586f0ea5d39f5c40d2dc39a98b
-          token: ${{ secrets.AIVTB_SDK_TOKEN }}
+          ssh-key: ${{ secrets.AIVTB_SDK_SSH_KEY }}
           path: .private-sdk
           persist-credentials: false
       - uses: actions/setup-node@v7
