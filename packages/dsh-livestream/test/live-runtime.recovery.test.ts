@@ -209,6 +209,20 @@ it('admits several short future phrases, then applies bounded backpressure witho
  expect(await offer('overflow')).toMatchObject({ok:false,reject:'SPEECH_QUEUE_FULL'});
  expect(r.kernel.view().speech.overflow).toBeUndefined();expect(peer.observed.filter(op=>op.type==='speech')).toHaveLength(1);
 });
+it('records a requested hard cut as aborted only after the browser stop receipt, not as a synthesis failure',async()=>{
+ const r=await openRuntime(),peer=browser();await peer.prepared;const epoch=r.kernel.epoch();
+ let producer!:ReadableStreamDefaultController<Uint8Array>;
+ vi.mocked(fetch).mockImplementation(async(_url,options)=>new Response(new ReadableStream({start(c){producer=c;options?.signal?.addEventListener('abort',()=>c.error(Object.assign(Error('cancelled'),{name:'AbortError'})),{once:true});}})));
+ await r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId:'cut-stream',text:'你好'});
+ await vi.waitFor(()=>expect(producer).toBeDefined());producer.enqueue(new TextEncoder().encode(JSON.stringify({audio_base64:Buffer.alloc(5000,1).toString('base64'),alignment:{characters:['你'],character_start_times_seconds:[0],character_end_times_seconds:[.2]}})+'\n'));
+ await vi.waitFor(()=>expect(r.kernel.view().speech['cut-stream'].state).toBe('playing'));
+ const audioRef=peer.observed.find(op=>op.type==='speech').payload.audioRef;
+ await r.switchDirection('cold next',true);
+ await new Promise(resolve=>setTimeout(resolve,10));
+ expect(r.kernel.view().speech['cut-stream'].state).toBe('playing');
+ peer.ws.send(JSON.stringify({type:'audio',kind:'aborted',partId:'cut-stream',epoch,audioRef,mediaTimeMs:20,sequence:2}));
+ await vi.waitFor(()=>expect(r.kernel.view().speech['cut-stream'].state).toBe('aborted'));
+});
 it('keeps write receipts thin and production briefs bounded while retaining full engineering history', async () => {
  const r=await openRuntime();
  for(let i=0;i<100;i++){

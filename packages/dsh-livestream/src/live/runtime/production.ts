@@ -706,8 +706,10 @@ export class ProductionRuntime implements RoleRuntime {
       }finally{release();}
     }).catch(error=>{
       entry.complete=true;source.fail();this.gateway.revokeStream(partId);rejectReady(error);
-      this.recordTiming('tts-failed',{partId,aborted:controller.signal.aborted});
-      if(ready)void this.failStreamingSpeech(partId,error);
+      this.recordTiming(controller.signal.aborted?'tts-aborted':'tts-failed',{partId});
+      // A requested cut waits for the actual browser stop receipt. Aborting
+      // the producer is not itself evidence that the speaker has stopped.
+      if(ready&&!this.kernel.view().speech[partId]?.abortRequested)void this.failStreamingSpeech(partId,error);
     });
     return entry;
   }
@@ -915,7 +917,7 @@ export class ProductionRuntime implements RoleRuntime {
         audioRef: clip.audioRef,
       });
     else if (event.kind === 'error' && ['starting', 'playing'].includes(part.state))
-      this.submit('runtime', target, { type: 'receiptSpeech', partId: part.partId, kind: 'failed' });
+      this.submit('runtime', target, { type: 'receiptSpeech', partId: part.partId, kind: part.abortRequested?'aborted':'failed' });
     if (['ended', 'error', 'aborted'].includes(event.kind)) {
       this.clips.delete(part.partId);
       this.speaking = undefined;
