@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import{editorialProposalProblem}from'../domain/validation';
 import{layeredStageProblem}from'../../../../scene-package/src/layer-controls';
 import { EngineeringKernel } from '../kernel';
 import { ManualProgrammeClock } from '../playback/manual-clock';
@@ -207,8 +208,8 @@ export class ProductionRuntime implements RoleRuntime {
   private contentShelf(controls=false){
     const state=this.kernel.view(),current=this.kernel.epoch();
     return {
-      editorial:Object.values(state.editorial).filter(p=>p.directionEpoch===current).slice(-3).map(p=>({id:p.id,segmentIntent:p.segmentIntent.slice(0,400),viewingValue:p.viewingValue.slice(0,200),participation:p.participation.slice(0,200),handoff:p.handoff.slice(0,200),minimumMaterials:p.minimumMaterials.slice(0,4).map(m=>m.slice(0,400))})),
-      ready:Object.values(state.tasks).filter(t=>t.directionEpoch===current&&t.liveEligible&&!t.cancelled&&t.status==='ready').slice(-3).flatMap(t=>t.assetVersionIds.slice(-1).flatMap(id=>{const a=state.assets[id];if(!a)return [];const g=a.contentGuide;return [{...(controls&&a.controlGuide?{controlGuide:a.controlGuide}:{}),taskId:t.id,assetVersionId:id,codeVersion:a.codeVersion,goal:t.goal.slice(0,300),contentGuide:g?{title:g.title,summary:g.summary.slice(0,300),beats:g.beats.slice(0,3).map(x=>x.slice(0,200)),sources:g.sources.slice(0,2),visualNotes:g.visualNotes.slice(0,3).map(x=>x.slice(0,200))}:undefined,guideExcerpt:!!g&&(g.summary.length>300||g.beats.length>3||g.beats.some(x=>x.length>200)||g.sources.length>2||g.visualNotes.length>3||g.visualNotes.some(x=>x.length>200))}];})),
+      editorial:Object.values(state.editorial).filter(p=>p.directionEpoch===current&&!editorialProposalProblem(p)).slice(-3).map(p=>({id:p.id,segmentIntent:p.segmentIntent.slice(0,400),viewingValue:p.viewingValue.slice(0,200),participation:p.participation.slice(0,200),handoff:p.handoff.slice(0,200),minimumMaterials:p.minimumMaterials.slice(0,4).map(m=>m.slice(0,400))})),
+      ready:Object.values(state.tasks).filter(t=>t.directionEpoch===current&&t.liveEligible&&!t.cancelled&&t.status==='ready'&&typeof t.goal==='string').slice(-3).flatMap(t=>t.assetVersionIds.slice(-1).flatMap(id=>{const a=state.assets[id];if(!a)return [];const g=a.contentGuide;return [{...(controls&&a.controlGuide?{controlGuide:a.controlGuide}:{}),taskId:t.id,assetVersionId:id,codeVersion:a.codeVersion,goal:t.goal.slice(0,300),contentGuide:g?{title:g.title,summary:g.summary.slice(0,300),beats:g.beats.slice(0,3).map(x=>x.slice(0,200)),sources:g.sources.slice(0,2),visualNotes:g.visualNotes.slice(0,3).map(x=>x.slice(0,200))}:undefined,guideExcerpt:!!g&&(g.summary.length>300||g.beats.length>3||g.beats.some(x=>x.length>200)||g.sources.length>2||g.visualNotes.length>3||g.visualNotes.some(x=>x.length>200))}];})),
       note:'后台建议与可用素材，不是固定台词、事实认证或送播指令；主播结合互动自由讲述，导演独立选画面。完整指南用readLiveBrief({assetVersionId})。',
     };
   }
@@ -235,10 +236,10 @@ export class ProductionRuntime implements RoleRuntime {
     const tail = <T>(items:T[],cap:number) => items.slice(-cap);
     const map = <T>(items:T[],key:(item:T)=>string) => Object.fromEntries(items.map(item=>[key(item),item]));
     const current = state.project.currentEpoch;
-    const runnable=Object.values(state.tasks).filter(t=>t.status==='open'&&!t.cancelled&&t.directionEpoch===current&&(t.liveEligible||(t.intendedDirectionId&&state.directions[t.intendedDirectionId]?.status==='preparing'))&&!unmetProductionDependencies(t,state.tasks).length).sort((a,b)=>Number(b.liveEligible)-Number(a.liveEligible)||productionPriority(b.priority)-productionPriority(a.priority)||a.id.localeCompare(b.id));
+    const runnable=Object.values(state.tasks).filter(t=>typeof t.id==='string'&&typeof t.goal==='string'&&Array.isArray(t.dependsOn)&&t.status==='open'&&!t.cancelled&&t.directionEpoch===current&&(t.liveEligible||(t.intendedDirectionId&&state.directions[t.intendedDirectionId]?.status==='preparing'))&&!unmetProductionDependencies(t,state.tasks).length).sort((a,b)=>Number(b.liveEligible)-Number(a.liveEligible)||productionPriority(b.priority)-productionPriority(a.priority)||a.id.localeCompare(b.id));
     const view = { ...state,
       audience: tail(state.audience,12),
-      directions: Object.fromEntries(Object.entries(state.directions).map(([id,d])=>[id,{...d,commitment:d.commitment.slice(0,2000),coreQuestion:d.coreQuestion.slice(0,1000),outcomes:d.outcomes.slice(-8).map(x=>x.slice(0,400)),contentPool:d.contentPool.slice(-8).map(x=>({...x,summary:x.summary.slice(0,400)}))}])),
+      directions: Object.fromEntries(Object.entries(state.directions).map(([id,d])=>[id,{...d,commitment:typeof d.commitment==='string'?d.commitment.slice(0,2000):'',coreQuestion:typeof d.coreQuestion==='string'?d.coreQuestion.slice(0,1000):'',outcomes:(d.outcomes??[]).filter(x=>typeof x==='string').slice(-8).map(x=>x.slice(0,400)),contentPool:(d.contentPool??[]).filter(x=>x&&typeof x.summary==='string').slice(-8).map(x=>({...x,summary:x.summary.slice(0,400)}))}])),
       speech: map(tail(Object.values(state.speech).filter(p=>p.directionEpoch===current).map(p=>({...p,text:p.text.slice(0,500)})),10),p=>p.partId),
       tasks: map(Object.values(state.tasks).filter(t=>!t.cancelled&&(t.directionEpoch===current||(t.intendedDirectionId&&state.directions[t.intendedDirectionId]?.status==='preparing'))).sort((a,b)=>Number(a.status==='ready')-Number(b.status==='ready')||b.priority-a.priority).slice(0,12),t=>t.id),
       scenes: map(tail(Object.values(state.scenes).filter(s=>s.directionEpoch===current&&!['disposed','retired','failed'].includes(s.lifecycle)),8),s=>s.instanceId),

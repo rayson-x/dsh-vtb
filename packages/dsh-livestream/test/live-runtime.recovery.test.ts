@@ -1,6 +1,6 @@
 /** Transport/scheduler simulation. Media replies are fixtures, never a sound/visual trial. */
 import { afterEach, expect, it, vi } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm,readFile,writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
@@ -395,4 +395,20 @@ it('keeps another viewers queued completion when a new first contact gets priori
  expect(r.brief('performer').nextReply?.eventId).not.toBe('older');
  await r.invoke('performer','acknowledgeInput',{directionEpoch:epoch,partId:'newer-ack',inputId:'newer',text:'你提的暖灯，我看到了。'});
  expect(r.kernel.view().speech['older-finish'].state).toBe('offered');
+});
+it('rejects incomplete editorial cards before they poison every role brief',async()=>{
+ const r=await openRuntime();
+ const result:any=await r.invoke('editorial','publishEditorialProposal',{directionEpoch:r.kernel.epoch(),proposal:{id:'incomplete',minimumMaterials:['原始素材'],handoff:'交给现场',alternatives:[]}});
+ expect(result.ok).toBe(false);expect(r.kernel.view().editorial.incomplete).toBeUndefined();
+ for(const role of['performer','director','editorial','production']as const)expect(()=>r.brief(role)).not.toThrow();
+});
+
+it('quarantines incomplete editorial facts restored from an older accepted WAL',async()=>{
+ const r=await openRuntime();await r.invoke('editorial','publishEditorialProposal',{directionEpoch:r.kernel.epoch(),proposal:{id:'legacy',segmentIntent:'看窗边的灯',viewingValue:'看光线变化',participation:'选择灯位',minimumMaterials:['原创场景'],handoff:'交给现场',alternatives:[]}});await r.stop();
+ const file=join(folder!,'data','events.jsonl'),rows=(await readFile(file,'utf8')).trim().split('\n').map((x:string)=>JSON.parse(x));
+ for(const row of rows){for(const f of row.event?.payload?.facts??[]){if(f.op==='editorial'){delete f.proposal.segmentIntent;delete f.proposal.viewingValue;delete f.proposal.participation;}if(f.op==='direction')for(const item of f.direction.contentPool??[])if(item.id==='legacy')delete item.summary;}}
+ await writeFile(file,rows.map(x=>JSON.stringify(x)).join('\n')+'\n');
+ runtime=new ProductionRuntime({repoRoot:folder!,dataDir:join(folder!,'data'),port:0,secret:()=>undefined});await runtime.start();
+ for(const role of['performer','director','editorial','production']as const)expect(()=>runtime!.brief(role)).not.toThrow();
+ expect(runtime.brief('performer').contentShelf.editorial).toHaveLength(0);expect(runtime.kernel.view().editorial.legacy.segmentIntent).toBeUndefined();
 });

@@ -3,6 +3,7 @@
  * 不调用播放器。live patch 一律拒绝，避免把未接线的输入更新记成已应用。
  */
 
+import{editorialProposalProblem}from'./domain/validation';
 import{layeredStageProblem}from'../../../scene-package/src/layer-controls';
 import{mergeSceneInputs}from'../../../scene-host/src/inputs';
 import type { ProposalStatus, Role } from './domain/codes';
@@ -303,6 +304,7 @@ function planEditorial(
   payload: Extract<ShowCommand, { type: 'publishEditorialProposal' }>,
   ctx: PlanContext,
 ): Plan {
+  const problem=editorialProposalProblem(payload.proposal);if(problem)return fail('ILLEGAL_TRANSITION',problem);
   const stale = requireEpoch(ctx.state, command) ?? targetIs(command, 'editorialProposal', payload.proposal.id);
   if (stale) return stale;
   if (ctx.state.editorial[payload.proposal.id]) return fail('REVISION_CONFLICT', '编辑建议编号已存在');
@@ -324,6 +326,7 @@ function planRequestProduction(
   payload: Extract<ShowCommand, { type: 'requestProduction' }>,
   ctx: PlanContext,
 ): Plan {
+  if(!payload.task||typeof payload.task.id!=='string'||!payload.task.id.trim()||typeof payload.task.goal!=='string'||!payload.task.goal.trim()||!Array.isArray(payload.task.inputs)||payload.task.inputs.some(v=>typeof v!=='string'))return fail('ILLEGAL_TRANSITION','task requires id, goal, and inputs:string[]');
   const stale = requireEpoch(ctx.state, command) ?? targetIs(command, 'productionTask', payload.task.id);
   if (stale) return stale;
   if (ctx.state.tasks[payload.task.id]) return fail('REVISION_CONFLICT', '任务编号已存在');
@@ -425,6 +428,7 @@ function planPrepareDirection(
   payload: Extract<ShowCommand, { type: 'prepareDirection' }>,
   ctx: PlanContext,
 ): Plan {
+  if(typeof payload.directionId!=='string'||!payload.directionId.trim()||typeof payload.commitment!=='string'||!payload.commitment.trim()||typeof payload.coreQuestion!=='string')return fail('ILLEGAL_TRANSITION','directionId, commitment and coreQuestion are required strings');
   const stale = requireEpoch(ctx.state, command) ?? targetIs(command, 'direction', payload.directionId);
   if (stale) return stale;
   if (ctx.state.directions[payload.directionId]) return fail('REVISION_CONFLICT', '方向编号已存在');
@@ -1098,6 +1102,7 @@ function planUpdateInputs(command: CommandEnvelope, payload: Extract<ShowCommand
 }
 
 function planPerformerCue(command: CommandEnvelope, payload: Extract<ShowCommand, { type: 'sendPerformerCue' }>, ctx: PlanContext): Plan {
+  if(typeof payload.text!=='string'||!payload.text.trim()||typeof payload.cueId!=='string'||!payload.cueId.trim())return fail('ILLEGAL_TRANSITION','cueId and text are required');
   const stale = requireEpoch(ctx.state, command);
   if (stale) return stale;
   return succeed('show.command', [{
