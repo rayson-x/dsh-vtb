@@ -10,6 +10,7 @@ it('takes the first complete relevant clause, without speaking a partial word or
  expect(firstAcknowledgementClause('暖灯可','窗外加暖灯吗？')).toBeUndefined();
  expect(firstAcknowledgementClause('是谁写的，','是谁写的？')).toBeUndefined();
  expect(firstAcknowledgementClause('这个问题很有意思，','这封信谁写的？')).toBeUndefined();
+ expect(firstAcknowledgementClause('这个问题问得好，我顺着旧杯子往下编。','守夜人为什么住在海底？')).toBeUndefined();
 });
 it('generates a separate short reply without waiting for the main speaker and retains the bound input',async()=>{
  let resolve!:(s:string)=>void;const pending=new Promise<string>(done=>{resolve=done;}),offer=vi.fn(async()=>({ok:true})),release=vi.fn();

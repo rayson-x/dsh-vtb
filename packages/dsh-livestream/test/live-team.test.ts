@@ -175,3 +175,15 @@ it('does not report a live team ready when the performer has no callable role to
  const {team,agents}=setup(async id=>{if(id==='live-v2-performer')vi.spyOn(agents.get(id)!.ctx.tools,'schemas').mockReturnValue([]);});
  await expect(team.start()).rejects.toThrow(/performer/);expect(team.snapshot()).toEqual([]);
 });
+it('keeps idle maker and director asleep, lets scheduled speech play, and cannot resume past a shared budget stop',async()=>{
+ vi.useFakeTimers();let playing=true;
+ const {team,agents}=setup(undefined,undefined,{runtime:{brief:()=>({voiceQueue:{currentPartId:playing?'on-air':undefined,upcoming:[]}})}});
+ await team.start();for(const agent of agents.values())agent.calls=[];
+ team.poll();await vi.advanceTimersByTimeAsync(30000);for(const agent of agents.values())expect(agent.calls).toEqual([]);
+ playing=false;team.poll();await vi.advanceTimersByTimeAsync(30000);
+ expect(agents.get('live-v2-performer')!.calls).toEqual(['followup']);
+ expect(agents.get('live-v2-director')!.calls).toEqual([]);expect(agents.get('live-v2-production')!.calls).toEqual([]);
+ team.pauseForBudget('requests');for(const agent of agents.values())agent.calls=[];
+ team.wake('performer','urgent',true);team.poll();await vi.advanceTimersByTimeAsync(120000);for(const agent of agents.values())expect(agent.calls).toEqual([]);
+ await expect(team.setOnline('performer',true)).rejects.toThrow(/budget/);await expect(team.start()).rejects.toThrow(/budget/);
+});

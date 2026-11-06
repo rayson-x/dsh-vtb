@@ -214,6 +214,7 @@ export type CueAnchor =
   | { kind: 'programmeEvent'; eventId: string };
 
 export interface CueBinding {
+  proposalIds?: string[];
   cueId: string;
   revision: number;
   directionEpoch: number;

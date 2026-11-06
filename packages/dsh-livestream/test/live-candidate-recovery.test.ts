@@ -1,5 +1,6 @@
 /** Storage simulation, not SDK compilation or a rendered scene certification. */
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
+import { WebSocket } from 'ws';
 import { mkdtemp, mkdir, writeFile, readFile, rm, chmod } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -11,6 +12,7 @@ import type { CommandTarget, ShowCommand } from '../src/live/domain/commands';
 it('recovers an unpublished prepared candidate from the adopted task without rewriting its build manifest', async () => {
   const folder = await mkdtemp(join(tmpdir(), 'candidate-recovery-'));
   let runtime: ProductionRuntime | undefined;
+  let browser: WebSocket | undefined;
   try {
     const log = new FileEventLog(join(folder, 'events.jsonl'));
     const actors = Object.fromEntries(
@@ -109,6 +111,8 @@ it('recovers an unpublished prepared candidate from the adopted task without rew
       }),
     ]);
     const wakes:string[]=[];runtime.onWake=role=>{wakes.push(role);};
+    await runtime.invoke('editorial','requestProduction',{directionEpoch:runtime.kernel.epoch(),task:{id:'dependent',goal:'Use the prepared base',priority:1,inputs:[],dependsOn:['future']}});
+    wakes.length=0;
     const contentGuide={title:'窗边来信',summary:'借来信讨论等待',beats:['信封上的水痕','邀请观众猜寄信人'],sources:[],visualNotes:['窗边灯光可保留，线索逐项出现']};
     const invalid:any=await runtime.invoke('production','publishCandidate',{directionEpoch:runtime.kernel.epoch(),taskId:'future',assetVersionId:'candidate',contentGuide:{...contentGuide,beats:['x'.repeat(601)]}});
     expect(invalid.ok).toBe(false);expect(runtime.kernel.view().assets.candidate).toBeUndefined();
@@ -120,16 +124,35 @@ it('recovers an unpublished prepared candidate from the adopted task without rew
       assetVersionId: 'candidate',
     });
     expect(published.ok).toBe(true);
+    expect(await runtime.invoke('director','readProgramme',{assetVersionId:'aivtb/layered-stage'})).toMatchObject({ok:false,error:'UNKNOWN_ASSET_VERSION',availableAssetVersionIds:['candidate']});
+    expect(await runtime.invoke('director','readProgramme',{instanceId:'future'})).toMatchObject({ok:false,error:'UNKNOWN_SCENE_INSTANCE',availableSceneInstanceIds:[]});
+    expect((runtime.brief('director') as any).candidates[0]).toMatchObject({assetVersionId:'candidate',published:true});
     expect(await runtime.invoke('director','readProgramme',{assetVersionId:'candidate'})).toMatchObject({assetVersionId:'candidate',props:{layers:{cup:{kind:'cup',x:500}}},propsExcerpt:false});
     expect((runtime.brief('performer') as any).contentShelf.ready[0]).toMatchObject({assetVersionId:'candidate',contentGuide});
-    expect(wakes).toEqual(expect.arrayContaining(['performer','director']));
+    expect(wakes).toEqual(expect.arrayContaining(['performer','director','production']));
     expect(runtime.kernel.view().project.channel.mode).toBe('neutral');
+    await runtime.invoke('director','prepareScene',{directionEpoch:runtime.kernel.epoch(),instanceId:'late-browser',assetVersionId:'candidate',segmentId:'late-segment',label:'Prepared before browser connection'});
+    await new Promise(resolve=>setTimeout(resolve,150));
+    expect(runtime.kernel.view().scenes['late-browser'].readiness.firstFramePaint.status).toBe('pending');
+    browser=new WebSocket(runtime.gateway.origin.replace('http','ws')+'/ws',{origin:runtime.gateway.origin});
+    browser.on('message',bytes=>{const op=JSON.parse(bytes.toString());browser!.send(JSON.stringify({type:'result',opId:op.opId,ok:true,value:op.type==='snapshot'?{scenes:[],audio:null}:op.type==='prepare'?{instanceId:op.payload.instanceId,codeVersion:op.payload.codeVersion,supportsInPlaceInputUpdate:true}:null}));if(op.type==='take')browser!.send(JSON.stringify({type:'painted',operation:'take',instanceId:op.payload.instanceId,codeVersion:createHash('sha256').update(code).digest('hex'),epoch:op.epoch,frame:0,showTime:0}));});
+    await vi.waitFor(()=>expect(runtime!.kernel.view().scenes['late-browser'].readiness.firstFramePaint.status).toBe('ok'));
+    expect((await runtime.invoke('director','take',{directionEpoch:runtime.kernel.epoch(),instanceId:'late-browser',expectedRevision:runtime.kernel.view().scenes['late-browser'].revision}) as any).ok).toBe(true);
+    await vi.waitFor(()=>expect(runtime!.kernel.view().scenes['late-browser'].surface).toBe('program'));
+    const showTarget={kind:'show' as const,id:runtime.kernel.view().project.id};
+    expect(runtime.kernel.submit({commandId:'cue-viewer',idempotencyKey:'cue-viewer',actorId:'live:input',directionEpoch:runtime.kernel.epoch(),target:showTarget,expectedRevision:runtime.kernel.revision(showTarget),payload:{type:'ingestAudience',eventId:'cue-viewer',audienceId:'viewer',text:'Move the cup',kind:'proposal',proposalId:'cue-wish',intent:'Move the cup'}}).ok).toBe(true);
+    expect((await runtime.invoke('director','bindCue',{directionEpoch:runtime.kernel.epoch(),cue:{cueId:'linked',sceneInstanceId:'late-browser',proposalIds:['cue-wish'],anchor:{kind:'showTime',at:0},payload:{layers:{cup:{x:510}}}}}) as any).ok).toBe(true);
+    expect(runtime.kernel.view().proposals['cue-wish'].status).not.toBe('presented');
+    await vi.waitFor(()=>expect(runtime!.kernel.view().proposals['cue-wish'].status).toBe('presented'));
+    expect(runtime.kernel.view().scenes['late-browser'].inputs.layers).toMatchObject({cup:{x:510}});
+    browser.terminate();browser=undefined;
     await runtime.stop();runtime=new ProductionRuntime({repoRoot:folder,dataDir:folder,port:0,secret:()=>undefined});await runtime.start();
     expect((runtime.brief('performer') as any).contentShelf.ready[0].contentGuide).toEqual(contentGuide);
     const inspected:any=await runtime.invoke('director','readProgramme',{assetVersionId:'candidate'});inspected.props.layers.cup.x=999;
     const reread:any=await runtime.invoke('director','readProgramme',{assetVersionId:'candidate'});expect(reread.props.layers.cup.x).toBe(500);
     expect(JSON.parse(await readFile(manifest, 'utf8')).epoch).toBe(born);
   } finally {
+    browser?.terminate();
     await runtime?.stop();
     await rm(folder, { recursive: true, force: true });
   }

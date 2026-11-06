@@ -913,6 +913,8 @@ function planBindCue(command: CommandEnvelope, payload: Extract<ShowCommand, { t
   const stale = requireEpoch(ctx.state, command) ?? targetIs(command, 'cue', payload.cue.cueId);
   if (stale) return stale;
   if (ctx.state.cues[payload.cue.cueId]) return fail('REVISION_CONFLICT', 'cue 编号已存在');
+  if (payload.cue.proposalIds !== undefined && (!Array.isArray(payload.cue.proposalIds) || payload.cue.proposalIds.some(id => typeof id !== 'string' || !ctx.state.proposals[id] || ctx.state.proposals[id].directionEpoch !== ctx.state.project.currentEpoch || ['presented','cancelled'].includes(ctx.state.proposals[id].status))))
+    return fail('UNKNOWN_TARGET', 'Cue proposalIds must identify available proposals in this direction');
   const anchor = payload.cue.anchor;
   if (anchor.kind === 'speech') {
     const part = speechOf(ctx.state, anchor.partId);
@@ -1083,7 +1085,7 @@ function planUpdateInputs(command: CommandEnvelope, payload: Extract<ShowCommand
   const locked = requireEpoch(ctx.state, command) ?? targetIs(command, 'sceneInstance', scene.instanceId);
   if (locked) return locked;
   if (scene.directionEpoch !== ctx.state.project.currentEpoch) return fail('STALE_DIRECTION', '不能更新旧方向场景');
-  if(ctx.role==='runtime'){const cue=payload.cueId?ctx.state.cues[payload.cueId]:undefined;if(!cue||cue.status!=='dispatched'||cue.sceneInstanceId!==scene.instanceId||JSON.stringify(cue.payload)!==JSON.stringify(payload.inputs))return fail('NOT_AUTHORIZED','Runtime patch requires a committed matching cue');}
+  if(ctx.role==='runtime'){const cue=payload.cueId?ctx.state.cues[payload.cueId]:undefined;if(!cue||cue.status!=='dispatched'||cue.sceneInstanceId!==scene.instanceId||JSON.stringify(cue.payload)!==JSON.stringify(payload.inputs)||JSON.stringify(cue.proposalIds??[])!==JSON.stringify(payload.proposalIds??[]))return fail('NOT_AUTHORIZED','Runtime patch requires a committed matching cue');}
   if(ctx.state.assets[scene.assetVersionId]?.componentId==='aivtb-layered-stage-v1'){const problem=layeredStageProblem(mergeSceneInputs(scene.inputs??{},payload.inputs),payload.inputs);if(problem)return fail('ILLEGAL_TRANSITION',problem);}
   if(scene.pendingInputs)return fail('REVISION_CONFLICT','Another patch operation is pending');
   if (!scene.supportsInPlaceInputUpdate) return fail('UNSUPPORTED_LIVE_PATCH', 'Scene requires standby rebuild');

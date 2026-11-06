@@ -9,6 +9,7 @@ export interface QuickAckPorts {
 function usefulAcknowledgement(text:string,input:string){
   const plain=text.replace(/[\s，,。！？!?；;？：“”"'「」]/g,'');
   if([...plain].length<4||input.replace(/[\s，,。！？!?；;？：“”"'「」]/g,'').includes(plain))return false;
+  if (/^(这个问题|这问题|问题)(问得)?(很|真)?(好|有意思)/.test(plain)) return false;
   return !/^(好的|收到|我看看|我想想|这(个问题|个|问题)(很|真)?(好|不错|有意思))$/.test(plain)&&!/问题(问得)?(真|很)?好[啊呀呢]*$/.test(plain);
 }
 /** Sentence punctuation is safe; early commas additionally require a grounded affirmative predicate. */

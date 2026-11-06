@@ -100,6 +100,7 @@ export class ProductionRuntime implements RoleRuntime {
   private tickTimer?: ReturnType<typeof setInterval>;
   private isClosing = false;
   private readonly busy = new Set<string>();
+  private readonly preparations = new Set<string>();
   private readonly sceneErrors = new Map<string,{epoch:number;message:string}>();
   private readonly dispatched = new Set<number>();
   private lastVetoCheck = -10000;
@@ -291,7 +292,7 @@ export class ProductionRuntime implements RoleRuntime {
       candidates: [...this.candidates.values()]
         .map((c) => this.candidateContext(c))
         .filter((c): c is NonNullable<typeof c> => !!c)
-        .slice(-8).map(({file,props,...c})=>({...c,propsAvailable:!!props})),
+        .slice(-8).map(({file,props,...c})=>({...c,assetVersionId:c.id,published:!!state.assets[c.id],propsAvailable:!!props})),
       recentEvents: this.kernel
         .allEvents()
         .slice(-10)
@@ -314,11 +315,11 @@ export class ProductionRuntime implements RoleRuntime {
         workspaceBuildPreview:
           '{directionEpoch,taskId,taskVersion,source? OR template:layered-stage|gsap|remotion OR effectPath?,props?,width?,height?,durationInFrames?}；2D物件/图文可先用layered-stage组件组合，searchSdk path=aivtb/layered-stage读能力，props.layers独立调节',
         publishCandidate: '{directionEpoch,taskId,assetVersionId,expectedRevision,contentGuide?:{title,summary,beats:string[],sources:string[],visualNotes:string[]}}；内容指南不是固定台词，候选发布不送播',
-        prepareScene: '{directionEpoch,instanceId,assetVersionId,segmentId,label}',
+        prepareScene: '{directionEpoch,instanceId,assetVersionId,segmentId,label}；assetVersionId必须是已发布候选的精确版本ID，不是组件路径或taskId。当前没有场景时layered-stage也先prepareScene，等ready再take；已有同组件在播才合并输入。',
         take: '{directionEpoch,instanceId,expectedRevision}',
         updateInputs: '{directionEpoch,instanceId,inputsRevision,inputs,expectedRevision,proposalIds?}',
         bindCue:
-          '{directionEpoch,cue:{cueId,sceneInstanceId,anchor:{kind:speech,partId,charIndex}|{kind:showTime,at},payload:场景输入补丁对象}}；按controlGuide/currentInputs取结构，layered-stage用layers不套params',
+          '{directionEpoch,cue:{cueId,sceneInstanceId,proposalIds?:string[],anchor:{kind:speech,partId,charIndex}|{kind:showTime,at},payload:场景输入补丁对象}}；观众画面请求用cue.proposalIds关联真实绘制，ID不放payload；layered-stage用layers不套params',
         editCue: '{directionEpoch,cueId,payload,expectedRevision}；仅改未来参数',
         cancelCue: '{directionEpoch,cueId,expectedRevision}；仅撤回未来Cue，改锚点时撤回后用新ID重新bindCue，不撤场不撤话',
         holdScene: '{directionEpoch,instanceId,expectedRevision}',
@@ -354,7 +355,7 @@ export class ProductionRuntime implements RoleRuntime {
     if(tool==='offerSpeech'&&args.resumesContinuationIds?.length&&!args.responseTo){const notes=args.resumesContinuationIds.map((id:string)=>this.kernel.view().continuations[id]),targets=[...new Set(notes.map((n:any)=>n?.sourceResponseTo))];if(targets.length===1&&targets[0])args={...args,responseTo:targets[0],responseStage:args.responseStage??'answer'};}
     if(tool==='offerSpeech'&&args.responseTo){const inputs=this.kernel.view().audience,input=inputs.find(i=>i.eventId===args.responseTo)??inputs.find(i=>i.replyRef===args.responseTo);if(input)args={...args,responseTo:input.eventId};}
     if(tool==='offerSpeech'&&(args.isAcknowledgement||args.responseStage==='ack')&&args.responseTo&&this.acknowledgementReservations.has(args.responseTo)&&source!=='quick-ack')return {ok:false,reject:'ACK_PENDING',message:'专用首响正在生成；后续answer/finish可先交入未播队列，不重复首响。'};
-    if((tool==='readLiveBrief'||tool==='readProgramme')&&args.assetVersionId){const id=String(args.assetVersionId),s=this.kernel.view(),task=Object.values(s.tasks).find(t=>t.assetVersionIds.includes(id)&&t.directionEpoch===this.kernel.epoch()&&t.liveEligible&&!t.cancelled&&t.status==='ready');if(!task)return null;const c=this.candidates.get(id);let props=c?.props;
+    if((tool==='readLiveBrief'||tool==='readProgramme')&&args.assetVersionId){const id=String(args.assetVersionId),s=this.kernel.view(),available=Object.values(s.tasks).filter(t=>t.directionEpoch===this.kernel.epoch()&&t.liveEligible&&!t.cancelled&&t.status==='ready'),task=available.find(t=>t.assetVersionIds.includes(id));if(!task)return {ok:false,error:'UNKNOWN_ASSET_VERSION',availableAssetVersionIds:available.flatMap(t=>t.assetVersionIds).slice(-16),hint:'Use the exact published assetVersionId, not a component path or taskId. If none are available, end this turn and wait for publication.'};const c=this.candidates.get(id);let props=c?.props;
       const layers=props?.layers;if(role==='director'&&Array.isArray(args.layerIds)&&layers&&typeof layers==='object'&&!Array.isArray(layers))props={layers:Object.fromEntries(args.layerIds.filter((k:unknown):k is string=>typeof k==='string'&&Object.hasOwn(layers,k)).map((k:string)=>[k,(layers as Record<string,unknown>)[k]]))};
       const fits=!!props&&Buffer.byteLength(JSON.stringify(props),'utf8')<=24000;
       return{assetVersionId:id,codeVersion:s.assets[id]?.codeVersion,componentId:s.assets[id]?.componentId,contentGuide:s.assets[id]?.contentGuide,controlGuide:s.assets[id]?.controlGuide,...(role==='director'?{props:fits?structuredClone(props):undefined,propsSource:'compiled-initial',propsExcerpt:!fits||Array.isArray(args.layerIds),layerIds:layers&&typeof layers==='object'?Object.keys(layers).slice(0,40):[],hint:'同componentId的layered-stage候选可选新增层合并到当前inputs.layers，保留其余在播参数；大输入用layerIds筛选。其他Scene只作整场备场/take。'}:{})};}
@@ -370,7 +371,7 @@ export class ProductionRuntime implements RoleRuntime {
     if (tool.startsWith('read') && args.masterOffset!==undefined) {const offset=Math.max(0,Number(args.masterOffset)||0);return {epoch:this.kernel.epoch(),masterNotes:this.masterNotes.slice(offset,offset+4),nextOffset:offset+4<this.masterNotes.length?offset+4:null};}
     if(tool.startsWith('read')&&args.directionId){const d=this.kernel.view().directions[String(args.directionId)];const offset=Math.max(0,Number(args.offset)||0);return d?{id:d.id,revision:d.revision,epoch:d.epoch,commitment:d.commitment.slice(offset,offset+8000),coreQuestion:d.coreQuestion.slice(0,2000),nextOffset:offset+8000<d.commitment.length?offset+8000:null}:null;}
     if(tool==='readTask'&&args.taskId){const task=this.kernel.view().tasks[String(args.taskId)];const offset=Math.max(0,Number(args.offset)||0);return {epoch:this.kernel.epoch(),task:task?{...task,goal:task.goal.slice(offset,offset+8000)}:null,nextOffset:task&&offset+8000<task.goal.length?offset+8000:null};}
-    if(tool==='readProgramme'&&args.instanceId){const scene=this.kernel.view().scenes[String(args.instanceId)];if(!scene)return null;const {playbackSamples,...detail}=scene;return {epoch:this.kernel.epoch(),scene:detail,currentInputs:scene.inputs,inputsAreCanonical:scene.inputsAreCanonical===true,controlGuide:this.kernel.view().assets[scene.assetVersionId]?.controlGuide,sampleCount:playbackSamples?.length??0};}
+    if(tool==='readProgramme'&&args.instanceId){const scene=this.kernel.view().scenes[String(args.instanceId)];if(!scene)return {ok:false,error:'UNKNOWN_SCENE_INSTANCE',availableSceneInstanceIds:Object.keys(this.kernel.view().scenes).slice(-16),hint:'instanceId identifies a prepared scene, not a production task. Prepare a published candidate first.'};const {playbackSamples,...detail}=scene;return {epoch:this.kernel.epoch(),scene:detail,currentInputs:scene.inputs,inputsAreCanonical:scene.inputsAreCanonical===true,controlGuide:this.kernel.view().assets[scene.assetVersionId]?.controlGuide,sampleCount:playbackSamples?.length??0};}
     if (tool.startsWith('read')) return this.brief(role);
     if (tool === 'inspectCandidate')
       return {
@@ -490,9 +491,15 @@ export class ProductionRuntime implements RoleRuntime {
     } else if (tool === 'publishEditorialProposal') this.onWake?.('performer','后台有新的内容建议，contentShelf可读；结合互动自主组织表达，不等画面制作完成。');
     else if (tool === 'requestProduction')
       this.onWake?.('production', '有新的制作任务。读取任务与版本，后台制作不得阻塞现场。');
-    else if (tool === 'publishCandidate'&&this.kernel.view().tasks[args.taskId]?.liveEligible){
-      this.onWake?.('performer','后台内容和场景候选已发布，读取contentShelf自行选择讲法；不照读固定稿，不宣称画面已显示。');
-      this.onWake?.('director', '新候选已编译。结合主播待讲内容检查、备场并自主选择何时使用；ready不是上播。');
+    else if (tool === 'publishCandidate'){
+      const tasks = this.kernel.view().tasks;
+      if (Object.values(tasks).some(t => !t.cancelled && t.status === 'open' && t.dependsOn.includes(args.taskId)
+        && !unmetProductionDependencies(t, tasks).length))
+        this.onWake?.('production', '依赖素材已发布，有制作任务可以继续；读取最新任务版本。');
+      if (tasks[args.taskId]?.liveEligible) {
+        this.onWake?.('performer','后台内容和场景候选已发布，读取contentShelf自行选择讲法；不照读固定稿，不宣称画面已显示。');
+        this.onWake?.('director', '新候选已编译。结合主播待讲内容检查、备场并自主选择何时使用；ready不是上播。');
+      }
     }
     else if (tool === 'sendPerformerCue') this.onWake?.('performer', `导播内部cue：${args.text}`);
     else if (['holdScene', 'resumeScene', 'retireScene', 'disposeScene'].includes(tool)) {
@@ -581,6 +588,7 @@ export class ProductionRuntime implements RoleRuntime {
     const snapshot = await this.gateway.execute('snapshot', this.kernel.epoch(), {});
     const current = this.kernel.view();
     for (const scene of Object.values(current.scenes)) {
+      if (this.preparations.has(scene.instanceId)) continue;
       if (scene.directionEpoch !== this.kernel.epoch() || scene.lifecycle === 'disposed') continue;
       const observed = snapshot.scenes?.find(
         (s: any) => s.instanceId === scene.instanceId && s.codeVersion === scene.codeVersion,
@@ -619,6 +627,18 @@ export class ProductionRuntime implements RoleRuntime {
   }
   private sceneProps(c:Candidate){return {...c.props,fps:c.fps,width:c.width,height:c.height,durationInFrames:c.durationInFrames,window:{start:0,seconds:c.durationInFrames/c.fps,frames:c.durationInFrames,fps:c.fps}};}
   private async prepare(id: string) {
+    this.preparations.add(id);
+    try {
+      const deadline = Date.now() + 10000;
+      while (!this.gateway.connected() && !this.isClosing && Date.now() < deadline)
+        await new Promise(resolve => setTimeout(resolve, 100));
+      const scene = this.kernel.view().scenes[id];
+      if (this.isClosing || !scene || scene.directionEpoch !== this.kernel.epoch() || ['retired','disposed'].includes(scene.lifecycle))
+        throw Error('Scene preparation is no longer eligible');
+      await this.prepareConnected(id);
+    } finally { this.preparations.delete(id); }
+  }
+  private async prepareConnected(id: string) {
     const scene = this.kernel.view().scenes[id];
     const candidate = this.candidates.get(scene.assetVersionId);
     if (!candidate) throw Error('Candidate package not available');
@@ -1056,7 +1076,8 @@ export class ProductionRuntime implements RoleRuntime {
         ...(clip.starts ? { starts: clip.starts } : {}),
         spokenChars: 0,
       });
-      this.onWake?.('director',`主播 ${part.partId} 已实际开口；按真实进度执行画面，不按预计字速追赶。`);
+      // Native cue dispatch follows actual playback progress; starting audio
+      // does not require another model call after offerSpeech supplied the plan.
       if(part.responseStage==='ack')this.onWake?.('performer','接住语句已实际开口。可趁此继续生成后续一小段或推进后台，不必等完整答案；不要把接住当作任务完成。');
       this.interruptForReadyReply();
     }else if (event.kind === 'timeupdate' && part.state === 'playing' && clip.starts){
@@ -1092,7 +1113,7 @@ export class ProductionRuntime implements RoleRuntime {
       this.streamFailures.delete(part.partId);
       if(this.speaking===part.partId)this.speaking = undefined;
       void this.pumpSpeech();
-      this.onWake?.('director',`主播 ${part.partId} 播放${event.kind}。按最新speechOutlook调整未来画面；不要自动撤掉仍适用的在播场景。`);
+      if(event.kind==='interrupted'||event.kind==='error'||event.kind==='aborted')this.onWake?.('director',`主播 ${part.partId} 播放${event.kind}。按最新speechOutlook调整未来画面；不要自动撤掉仍适用的在播场景。`);
       this.onWake?.('performer', event.kind==='interrupted'?'原话题已实际停止，进度和未读部分保存在continuations。先根据pendingReplies接住或展开互动；新音频失败要重试。合适时以新台词自然接回，不重播旧音频。':'上一段真实播放已结束；读取pendingReplies与continuations，自行判断继续回答、自然接回原话题或停留。');
     }
   }
@@ -1143,7 +1164,7 @@ export class ProductionRuntime implements RoleRuntime {
         const state = this.kernel.view(),
           cue = state.cues[cueId];
         const scene = cue.sceneInstanceId ? state.scenes[cue.sceneInstanceId] : undefined;
-        if (!scene || scene.pendingInputs || ['retired', 'disposed'].includes(scene.lifecycle)) continue;
+        if (!scene || scene.pendingInputs || ['retired', 'disposed'].includes(scene.lifecycle) || (cue.proposalIds?.length && scene.surface!=='program')) continue;
         const r = this.submit('runtime', { kind: 'cue', id: cueId }, { type: 'dispatchCue', cueId });
         if (!r.ok) continue;
         try {
@@ -1157,6 +1178,7 @@ export class ProductionRuntime implements RoleRuntime {
               instanceId: scene.instanceId,
               inputsRevision,
               inputs: cue.payload,
+              proposalIds: cue.proposalIds,
               cueId,
             },
             { commandId: operationId },

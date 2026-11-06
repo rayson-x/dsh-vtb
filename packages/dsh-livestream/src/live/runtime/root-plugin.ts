@@ -5,6 +5,7 @@ import { RuntimeInputs, StageJournalConsumer } from './inputs';
 import { ProductionRuntime } from './production';
 import { DshLiveTeam } from './dsh-team';
 import { bindTeam } from './link';
+import { ModelBudget, modelLimits } from './model-budget';
 import { bindCredentials, secret, PACKAGE_ROOT, stage, BRAIN_PORT, show } from '../../dsh/runtime';
 
 export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
@@ -18,6 +19,16 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
     presentation:()=>({layout:stage.state.scene,programmeFrame:programmeBox(stage.state),coordinateSystem:'1920x1080 target layout'}),
   });
   const team = new DshLiveTeam(ctx, runtime, PACKAGE_ROOT);
+  const budget = new ModelBudget(modelLimits(process.env), reason => {
+    team.pauseForBudget(reason);
+    runtime.recordTiming('model-budget-exhausted', { reason });
+  });
+  ctx.effect(() => ctx.on('llm/stream', (options: any, next: any) => budget.stream(options, next)), 'v2 shared model budget');
+  ctx.effect(() => {
+    const timer = setTimeout(() => budget.exhaust('duration'), budget.limits.durationMs);
+    timer.unref?.();
+    return () => clearTimeout(timer);
+  }, 'v2 model budget deadline');
   ctx.effect(() => ctx.on('agent/pre-step', ({agent,signal}:any,next:()=>Promise<unknown>) => {
     if (!signal?.aborted) team.prepareStep(agent);
     return next();
@@ -137,6 +148,7 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
         if (req.method === 'GET' && url.pathname === '/live/harness')
           return send(200, {
             roles: team.snapshot(),
+            modelBudget: budget.snapshot(),
             state: runtime.kernel.view(),
             sceneHost: runtime.gateway.origin,
           });
@@ -148,6 +160,7 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
             direction: show.direction,
             roles: team.snapshot(),
             roleErrors: team.errors(),
+            modelBudget: budget.snapshot(),
             sdk: runtime.brief('production').sdk,
             playbackConnected: runtime.gateway.connected(),
           });

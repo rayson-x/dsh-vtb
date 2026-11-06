@@ -1,0 +1,702 @@
+{
+  "date": "2026-11-07",
+  "scope": "Real OpenCode ds / ElevenLabs / Ego stage, local scripted audience only",
+  "codeUnderTest": "Working tree with shared budget, candidate ID recovery and bounded browser preparation. Later Cue proposal linkage, reduced director wakes/context and acknowledgement consistency changes are offline-only in this report.",
+  "plannedInputs": 30,
+  "actualInputs": 12,
+  "stopReason": "model-budget-input-bytes",
+  "automaticBudgetStop": true,
+  "durationSeconds": 188.039,
+  "budget": {
+    "limits": {
+      "requests": 200,
+      "inputBytes": 12000000,
+      "requestBytes": 300000,
+      "outputTokens": 180000,
+      "durationMs": 600000
+    },
+    "requests": 158,
+    "inputBytes": 11911257,
+    "outputTokens": 27264,
+    "reservedOutputTokens": 0,
+    "unknownOutputTokens": 29248,
+    "startedAt": 1793989526611,
+    "blocked": true,
+    "reason": "input-bytes"
+  },
+  "result": {
+    "firstResponse": {
+      "count": 12,
+      "p50": 3505,
+      "p95": 5944,
+      "max": 5944
+    },
+    "acknowledgement": {
+      "count": 12,
+      "p50": 3505,
+      "p95": 5944,
+      "max": 5944
+    },
+    "firstAnswer": {
+      "count": 8,
+      "p50": 6791,
+      "p95": 8389,
+      "max": 8389
+    },
+    "verbalCompletion": {
+      "count": 8,
+      "p50": 15017,
+      "p95": 19585,
+      "max": 19585
+    },
+    "visualFulfilment": {
+      "count": 0
+    },
+    "unfinished": [
+      1,
+      3,
+      11,
+      12
+    ],
+    "note": "Only completed actual speech counts in latency summaries; a first short response is not a full answer or visual fulfilment. Content relevance requires a separate audit."
+  },
+  "sceneProof": {
+    "mode": "program",
+    "instanceId": "scene-dir2-study-v3",
+    "screenshot": "2026-11-07-stage.png",
+    "context": "Compiled and published by the real production actor in an earlier bounded run; prepared and taken by the real director after restoring that ready checkpoint. Not an uninterrupted time-to-scene measurement."
+  },
+  "semanticAudit": [
+    {
+      "index": 1,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:1",
+      "firstResponse": {
+        "partId": "quick-5cc025b4-049c-46cd-a133-7d91ccfd9b20",
+        "stage": "ack",
+        "text": "守夜人这主意，你觉得站得住吗？",
+        "state": "ended",
+        "firstAudibleMs": 3379,
+        "completedMs": 6085
+      },
+      "acknowledgement": {
+        "partId": "quick-5cc025b4-049c-46cd-a133-7d91ccfd9b20",
+        "stage": "ack",
+        "text": "守夜人这主意，你觉得站得住吗？",
+        "state": "ended",
+        "firstAudibleMs": 3379,
+        "completedMs": 6085
+      },
+      "firstAnswer": null,
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-5cc025b4-049c-46cd-a133-7d91ccfd9b20",
+          "stage": "ack",
+          "text": "守夜人这主意，你觉得站得住吗？",
+          "state": "ended",
+          "firstAudibleMs": 3379,
+          "completedMs": 6085
+        },
+        {
+          "partId": "speech-call_00_6h4vjdz0bkq3304loz6d7bwt",
+          "stage": "finish",
+          "text": "一句说清：灯塔守夜人留下的，小鱼提的，我认了。他人在岸上，杯子自己下到海底，缺的那块算路上撞的。",
+          "state": "aborted",
+          "firstAudibleMs": 9274,
+          "completedMs": null
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收01：旧杯子的主人可能是谁？ 用一两句说清就好。",
+      "semanticNote": "展开回答被后续输入打断，窗口内未完成。"
+    },
+    {
+      "index": 2,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:2",
+      "firstResponse": {
+        "partId": "quick-b837d2e8-5598-47cc-94d7-4b62ff8855a3",
+        "stage": "ack",
+        "text": "风一吹撞的，这来路你认吗？",
+        "state": "ended",
+        "firstAudibleMs": 3016,
+        "completedMs": 5464
+      },
+      "acknowledgement": {
+        "partId": "quick-b837d2e8-5598-47cc-94d7-4b62ff8855a3",
+        "stage": "ack",
+        "text": "风一吹撞的，这来路你认吗？",
+        "state": "ended",
+        "firstAudibleMs": 3016,
+        "completedMs": 5464
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_l1px00bq02rvj2yqlw88opfx",
+        "stage": "finish",
+        "text": "缺口一句说清：磕的，不是撞的——守夜人每晚把杯子搁回桌角同一个位置，搁了几百回，同一个角磕下来的。",
+        "state": "ended",
+        "firstAudibleMs": 5552,
+        "completedMs": 15068
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_l1px00bq02rvj2yqlw88opfx",
+        "stage": "finish",
+        "text": "缺口一句说清：磕的，不是撞的——守夜人每晚把杯子搁回桌角同一个位置，搁了几百回，同一个角磕下来的。",
+        "state": "ended",
+        "firstAudibleMs": 5552,
+        "completedMs": 15068
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-b837d2e8-5598-47cc-94d7-4b62ff8855a3",
+          "stage": "ack",
+          "text": "风一吹撞的，这来路你认吗？",
+          "state": "ended",
+          "firstAudibleMs": 3016,
+          "completedMs": 5464
+        },
+        {
+          "partId": "speech-call_00_l1px00bq02rvj2yqlw88opfx",
+          "stage": "finish",
+          "text": "缺口一句说清：磕的，不是撞的——守夜人每晚把杯子搁回桌角同一个位置，搁了几百回，同一个角磕下来的。",
+          "state": "ended",
+          "firstAudibleMs": 5552,
+          "completedMs": 15068
+        },
+        {
+          "partId": "speech-call_00_4dc7fhoe5sx57fw0zxaleknx",
+          "stage": "finish",
+          "text": "缺口我还是改成磕的：守夜人每晚把杯子搁回桌角同一个位置，搁了几百回，同一个角磕下来的。",
+          "state": "aborted",
+          "firstAudibleMs": 15164,
+          "completedMs": null
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收02：杯沿的缺口有什么来历？ 用一两句说清就好。",
+      "semanticNote": "相关且展开回答播完，但首响说风吹撞，展开改为磕，设定不一致。"
+    },
+    {
+      "index": 3,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:3",
+      "firstResponse": {
+        "partId": "quick-3a62a48d-7c12-484f-b88d-f61c9054cafb",
+        "stage": "ack",
+        "text": "这个问题问得好，我顺着旧杯子往下编。",
+        "state": "ended",
+        "firstAudibleMs": 5944,
+        "completedMs": 9297
+      },
+      "acknowledgement": {
+        "partId": "quick-3a62a48d-7c12-484f-b88d-f61c9054cafb",
+        "stage": "ack",
+        "text": "这个问题问得好，我顺着旧杯子往下编。",
+        "state": "ended",
+        "firstAudibleMs": 5944,
+        "completedMs": 9297
+      },
+      "firstAnswer": null,
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-3a62a48d-7c12-484f-b88d-f61c9054cafb",
+          "stage": "ack",
+          "text": "这个问题问得好，我顺着旧杯子往下编。",
+          "state": "ended",
+          "firstAudibleMs": 5944,
+          "completedMs": 9297
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收03：守夜人为什么住在海底？ 用一两句说清就好。",
+      "semanticNote": "只播出无具体内容的评价；未回答为何住海底。后续代码已拦截该前缀，尚未重跑。"
+    },
+    {
+      "index": 4,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:4",
+      "firstResponse": {
+        "partId": "quick-567b428e-c0a2-4e02-99c4-fec7a474bea2",
+        "stage": "ack",
+        "text": "温水吧，热茶搁不住他总回桌角。",
+        "state": "ended",
+        "firstAudibleMs": 5221,
+        "completedMs": 8337
+      },
+      "acknowledgement": {
+        "partId": "quick-567b428e-c0a2-4e02-99c4-fec7a474bea2",
+        "stage": "ack",
+        "text": "温水吧，热茶搁不住他总回桌角。",
+        "state": "ended",
+        "firstAudibleMs": 5221,
+        "completedMs": 8337
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_zwzrkuaclqe2fb1ofdzn9x85",
+        "stage": "finish",
+        "text": "热茶。温水的杯子不会磕出缺口——他每天都得等它凉，等着等着就把杯子在桌角磨出那个缺了。",
+        "state": "ended",
+        "firstAudibleMs": 8389,
+        "completedMs": 16365
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_zwzrkuaclqe2fb1ofdzn9x85",
+        "stage": "finish",
+        "text": "热茶。温水的杯子不会磕出缺口——他每天都得等它凉，等着等着就把杯子在桌角磨出那个缺了。",
+        "state": "ended",
+        "firstAudibleMs": 8389,
+        "completedMs": 16365
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-567b428e-c0a2-4e02-99c4-fec7a474bea2",
+          "stage": "ack",
+          "text": "温水吧，热茶搁不住他总回桌角。",
+          "state": "ended",
+          "firstAudibleMs": 5221,
+          "completedMs": 8337
+        },
+        {
+          "partId": "speech-call_00_zwzrkuaclqe2fb1ofdzn9x85",
+          "stage": "finish",
+          "text": "热茶。温水的杯子不会磕出缺口——他每天都得等它凉，等着等着就把杯子在桌角磨出那个缺了。",
+          "state": "ended",
+          "firstAudibleMs": 8389,
+          "completedMs": 16365
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收04：你觉得他更爱喝热茶还是温水？ 用一两句说清就好。",
+      "semanticNote": "首响温水，展开热茶，偏好矛盾；后续收紧首响不先决定二选一。"
+    },
+    {
+      "index": 5,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:5",
+      "firstResponse": {
+        "partId": "quick-86fab04d-6b28-41df-829e-9d1e7fe9900d",
+        "stage": "ack",
+        "text": "便签就写：杯子凉了也别换位置。",
+        "state": "ended",
+        "firstAudibleMs": 4179,
+        "completedMs": 7530
+      },
+      "acknowledgement": {
+        "partId": "quick-86fab04d-6b28-41df-829e-9d1e7fe9900d",
+        "stage": "ack",
+        "text": "便签就写：杯子凉了也别换位置。",
+        "state": "ended",
+        "firstAudibleMs": 4179,
+        "completedMs": 7530
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_hwpj3tkhwbk0duhg6kg0w7qx",
+        "stage": "finish",
+        "text": "便签我编得短：就一行「水给你留着，凉了别喝」，字写得很轻，像怕被人看见。",
+        "state": "ended",
+        "firstAudibleMs": 7632,
+        "completedMs": 15017
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_hwpj3tkhwbk0duhg6kg0w7qx",
+        "stage": "finish",
+        "text": "便签我编得短：就一行「水给你留着，凉了别喝」，字写得很轻，像怕被人看见。",
+        "state": "ended",
+        "firstAudibleMs": 7632,
+        "completedMs": 15017
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-86fab04d-6b28-41df-829e-9d1e7fe9900d",
+          "stage": "ack",
+          "text": "便签就写：杯子凉了也别换位置。",
+          "state": "ended",
+          "firstAudibleMs": 4179,
+          "completedMs": 7530
+        },
+        {
+          "partId": "speech-call_00_hwpj3tkhwbk0duhg6kg0w7qx",
+          "stage": "finish",
+          "text": "便签我编得短：就一行「水给你留着，凉了别喝」，字写得很轻，像怕被人看见。",
+          "state": "ended",
+          "firstAudibleMs": 7632,
+          "completedMs": 15017
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收05：他留在桌上的便签会写什么？ 用一两句说清就好。",
+      "semanticNote": "回答相关且播完，但首响与展开给了不同便签文本。"
+    },
+    {
+      "index": 6,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:6",
+      "firstResponse": {
+        "partId": "quick-d0a0609d-585d-4801-b6ad-ecb459cb1515",
+        "stage": "ack",
+        "text": "是原创的，咱们自己编的。",
+        "state": "ended",
+        "firstAudibleMs": 3151,
+        "completedMs": 5464
+      },
+      "acknowledgement": {
+        "partId": "quick-d0a0609d-585d-4801-b6ad-ecb459cb1515",
+        "stage": "ack",
+        "text": "是原创的，咱们自己编的。",
+        "state": "ended",
+        "firstAudibleMs": 3151,
+        "completedMs": 5464
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_82kjkh532ibm0flqus1umdgf",
+        "stage": "finish",
+        "text": "是原创的，从守夜人到便签全是咱们现编的，一个字都没抄。",
+        "state": "ended",
+        "firstAudibleMs": 6791,
+        "completedMs": 12090
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_82kjkh532ibm0flqus1umdgf",
+        "stage": "finish",
+        "text": "是原创的，从守夜人到便签全是咱们现编的，一个字都没抄。",
+        "state": "ended",
+        "firstAudibleMs": 6791,
+        "completedMs": 12090
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-d0a0609d-585d-4801-b6ad-ecb459cb1515",
+          "stage": "ack",
+          "text": "是原创的，咱们自己编的。",
+          "state": "ended",
+          "firstAudibleMs": 3151,
+          "completedMs": 5464
+        },
+        {
+          "partId": "speech-call_00_82kjkh532ibm0flqus1umdgf",
+          "stage": "finish",
+          "text": "是原创的，从守夜人到便签全是咱们现编的，一个字都没抄。",
+          "state": "ended",
+          "firstAudibleMs": 6791,
+          "completedMs": 12090
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收06：我们讲的是原创故事吗？ 用一两句说清就好。",
+      "semanticNote": "确认原创，相关且播完。绝对措辞“一个字没抄”缺少可核验依据。"
+    },
+    {
+      "index": 7,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:7",
+      "firstResponse": {
+        "partId": "quick-532fc6aa-ede3-40cf-8690-3bd34cd727c4",
+        "stage": "ack",
+        "text": "不是真人，是咱编出来的守夜人。",
+        "state": "ended",
+        "firstAudibleMs": 3417,
+        "completedMs": 6483
+      },
+      "acknowledgement": {
+        "partId": "quick-532fc6aa-ede3-40cf-8690-3bd34cd727c4",
+        "stage": "ack",
+        "text": "不是真人，是咱编出来的守夜人。",
+        "state": "ended",
+        "firstAudibleMs": 3417,
+        "completedMs": 6483
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_pvwuzg1sl6zl7pq4h14kann5",
+        "stage": "finish",
+        "text": "不是，守夜人纯是咱们现编的，查不到这么个人。别拿去考据啊。",
+        "state": "ended",
+        "firstAudibleMs": 6566,
+        "completedMs": 12452
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_pvwuzg1sl6zl7pq4h14kann5",
+        "stage": "finish",
+        "text": "不是，守夜人纯是咱们现编的，查不到这么个人。别拿去考据啊。",
+        "state": "ended",
+        "firstAudibleMs": 6566,
+        "completedMs": 12452
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-532fc6aa-ede3-40cf-8690-3bd34cd727c4",
+          "stage": "ack",
+          "text": "不是真人，是咱编出来的守夜人。",
+          "state": "ended",
+          "firstAudibleMs": 3417,
+          "completedMs": 6483
+        },
+        {
+          "partId": "speech-call_00_pvwuzg1sl6zl7pq4h14kann5",
+          "stage": "finish",
+          "text": "不是，守夜人纯是咱们现编的，查不到这么个人。别拿去考据啊。",
+          "state": "ended",
+          "firstAudibleMs": 6566,
+          "completedMs": 12452
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收07：这个守夜人是真实历史人物吗？ 用一两句说清就好。",
+      "semanticNote": "明确虚构，相关且播完。"
+    },
+    {
+      "index": 8,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:8",
+      "firstResponse": {
+        "partId": "quick-e4374eee-3673-4dbc-9652-f9583244935d",
+        "stage": "ack",
+        "text": "加盏灯照杯子，这主意不错。",
+        "state": "ended",
+        "firstAudibleMs": 2791,
+        "completedMs": 5077
+      },
+      "acknowledgement": {
+        "partId": "quick-e4374eee-3673-4dbc-9652-f9583244935d",
+        "stage": "ack",
+        "text": "加盏灯照杯子，这主意不错。",
+        "state": "ended",
+        "firstAudibleMs": 2791,
+        "completedMs": 5077
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_5f53a30yukt7fj1p2qb0i4yt",
+        "stage": "finish",
+        "text": "杯子的右边放一盏灯——我觉得太对了，左手拿杯子，右手一伸就摸到灯。",
+        "state": "ended",
+        "firstAudibleMs": 5142,
+        "completedMs": 11742
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_5f53a30yukt7fj1p2qb0i4yt",
+        "stage": "finish",
+        "text": "杯子的右边放一盏灯——我觉得太对了，左手拿杯子，右手一伸就摸到灯。",
+        "state": "ended",
+        "firstAudibleMs": 5142,
+        "completedMs": 11742
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-e4374eee-3673-4dbc-9652-f9583244935d",
+          "stage": "ack",
+          "text": "加盏灯照杯子，这主意不错。",
+          "state": "ended",
+          "firstAudibleMs": 2791,
+          "completedMs": 5077
+        },
+        {
+          "partId": "speech-call_00_5f53a30yukt7fj1p2qb0i4yt",
+          "stage": "finish",
+          "text": "杯子的右边放一盏灯——我觉得太对了，左手拿杯子，右手一伸就摸到灯。",
+          "state": "ended",
+          "firstAudibleMs": 5142,
+          "completedMs": 11742
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收08：杯子的右边放一盏灯，好不好？ 用一两句说清就好。",
+      "semanticNote": "口头答清方案；没有本条请求对应的绘制兑现证据。"
+    },
+    {
+      "index": 9,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:9",
+      "firstResponse": {
+        "partId": "quick-ff545ff9-176d-44da-92ec-ead785cbd9a0",
+        "stage": "ack",
+        "text": "灯挪柔一点？",
+        "state": "ended",
+        "firstAudibleMs": 3168,
+        "completedMs": 4430
+      },
+      "acknowledgement": {
+        "partId": "quick-ff545ff9-176d-44da-92ec-ead785cbd9a0",
+        "stage": "ack",
+        "text": "灯挪柔一点？",
+        "state": "ended",
+        "firstAudibleMs": 3168,
+        "completedMs": 4430
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_6gpg740ax9nmg0a5i4baknk8",
+        "stage": "finish",
+        "text": "灯光柔一点这事我记下了，先给导播递个话：亮度往下带、光晕放开，别硬邦邦打一束。屏幕上还是刚才那样，等它真变了我再说好了啊。",
+        "state": "ended",
+        "firstAudibleMs": 6777,
+        "completedMs": 19585
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_6gpg740ax9nmg0a5i4baknk8",
+        "stage": "finish",
+        "text": "灯光柔一点这事我记下了，先给导播递个话：亮度往下带、光晕放开，别硬邦邦打一束。屏幕上还是刚才那样，等它真变了我再说好了啊。",
+        "state": "ended",
+        "firstAudibleMs": 6777,
+        "completedMs": 19585
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-ff545ff9-176d-44da-92ec-ead785cbd9a0",
+          "stage": "ack",
+          "text": "灯挪柔一点？",
+          "state": "ended",
+          "firstAudibleMs": 3168,
+          "completedMs": 4430
+        },
+        {
+          "partId": "speech-call_00_6gpg740ax9nmg0a5i4baknk8",
+          "stage": "finish",
+          "text": "灯光柔一点这事我记下了，先给导播递个话：亮度往下带、光晕放开，别硬邦邦打一束。屏幕上还是刚才那样，等它真变了我再说好了啊。",
+          "state": "ended",
+          "firstAudibleMs": 6777,
+          "completedMs": 19585
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收09：灯光能柔和一点吗？ 用一两句说清就好。",
+      "semanticNote": "口头答清且明确尚未兑现；缺少关联绘制证据。"
+    },
+    {
+      "index": 10,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:10",
+      "firstResponse": {
+        "partId": "quick-490d2e4e-8267-487d-8c0e-564dd21ca998",
+        "stage": "ack",
+        "text": "好，杯子留着，咱们接着编。",
+        "state": "ended",
+        "firstAudibleMs": 4365,
+        "completedMs": 6908
+      },
+      "acknowledgement": {
+        "partId": "quick-490d2e4e-8267-487d-8c0e-564dd21ca998",
+        "stage": "ack",
+        "text": "好，杯子留着，咱们接着编。",
+        "state": "ended",
+        "firstAudibleMs": 4365,
+        "completedMs": 6908
+      },
+      "firstAnswer": {
+        "partId": "speech-call_00_f5idza076rr11eamjkl3oik9",
+        "stage": "finish",
+        "text": "杯子不撤，就在桌角放着，故事还得靠它撑着。",
+        "state": "ended",
+        "firstAudibleMs": 6967,
+        "completedMs": 11180
+      },
+      "verbalCompletion": {
+        "partId": "speech-call_00_f5idza076rr11eamjkl3oik9",
+        "stage": "finish",
+        "text": "杯子不撤，就在桌角放着，故事还得靠它撑着。",
+        "state": "ended",
+        "firstAudibleMs": 6967,
+        "completedMs": 11180
+      },
+      "spokenParts": [
+        {
+          "partId": "quick-490d2e4e-8267-487d-8c0e-564dd21ca998",
+          "stage": "ack",
+          "text": "好，杯子留着，咱们接着编。",
+          "state": "ended",
+          "firstAudibleMs": 4365,
+          "completedMs": 6908
+        },
+        {
+          "partId": "speech-call_00_f5idza076rr11eamjkl3oik9",
+          "stage": "finish",
+          "text": "杯子不撤，就在桌角放着，故事还得靠它撑着。",
+          "state": "ended",
+          "firstAudibleMs": 6967,
+          "completedMs": 11180
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收10：杯子先别撤掉，我还想看。 用一两句说清就好。",
+      "semanticNote": "口头回应保留杯子，实际画面中杯子保留；无本条关联绘制证据。"
+    },
+    {
+      "index": 11,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:11",
+      "firstResponse": {
+        "partId": "quick-b11885aa-fdeb-4e4f-b2db-3977e1919c42",
+        "stage": "ack",
+        "text": "好，那杯子打哪儿来的，咱接着说。",
+        "state": "ended",
+        "firstAudibleMs": 4084,
+        "completedMs": 7055
+      },
+      "acknowledgement": {
+        "partId": "quick-b11885aa-fdeb-4e4f-b2db-3977e1919c42",
+        "stage": "ack",
+        "text": "好，那杯子打哪儿来的，咱接着说。",
+        "state": "ended",
+        "firstAudibleMs": 4084,
+        "completedMs": 7055
+      },
+      "firstAnswer": null,
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-b11885aa-fdeb-4e4f-b2db-3977e1919c42",
+          "stage": "ack",
+          "text": "好，那杯子打哪儿来的，咱接着说。",
+          "state": "ended",
+          "firstAudibleMs": 4084,
+          "completedMs": 7055
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收11：接回刚才杯子的来历吧。 用一两句说清就好。",
+      "semanticNote": "只有接话，未取得本条后续完成回执。"
+    },
+    {
+      "index": 12,
+      "eventId": "bilibili:409508c6-106c-4424-9f1c-a8ddc4fe2053:12",
+      "firstResponse": {
+        "partId": "quick-8f79a212-26e9-44b1-8071-fca20e836b8d",
+        "stage": "ack",
+        "text": "要是我，就写“别把我搁桌角”。",
+        "state": "ended",
+        "firstAudibleMs": 3505,
+        "completedMs": 6030
+      },
+      "acknowledgement": {
+        "partId": "quick-8f79a212-26e9-44b1-8071-fca20e836b8d",
+        "stage": "ack",
+        "text": "要是我，就写“别把我搁桌角”。",
+        "state": "ended",
+        "firstAudibleMs": 3505,
+        "completedMs": 6030
+      },
+      "firstAnswer": null,
+      "verbalCompletion": null,
+      "spokenParts": [
+        {
+          "partId": "quick-8f79a212-26e9-44b1-8071-fca20e836b8d",
+          "stage": "ack",
+          "text": "要是我，就写“别把我搁桌角”。",
+          "state": "ended",
+          "firstAudibleMs": 3505,
+          "completedMs": 6030
+        }
+      ],
+      "visualStatus": "pending",
+      "visualFulfilledMs": null,
+      "input": "验收12：如果杯子会说一句话，你会写什么？ 用一两句说清就好。",
+      "semanticNote": "首响本身已给出具体台词，但没有 finish 标签；预算停机后不推断后续。"
+    }
+  ],
+  "remaining": [
+    "30 post-fix semantic samples",
+    "P95 first response <= 5 seconds",
+    "Per-request painted visual fulfilment",
+    "Prepared direction and cross-session continuity acceptance"
+  ],
+  "fullyAccepted": false
+}

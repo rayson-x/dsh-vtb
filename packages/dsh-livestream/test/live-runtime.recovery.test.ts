@@ -83,6 +83,7 @@ function browser() {
 }
 it('releases the voice lane after WS disconnect and reconciliation so the next request can start', async () => {
   const r = await openRuntime();
+  const directorWakes:string[]=[];r.onWake=(role,text)=>{if(role==='director')directorWakes.push(text);};
   const first = browser();
   await first.prepared;
   await r.invoke('performer', 'offerSpeech', {
@@ -92,6 +93,7 @@ it('releases the voice lane after WS disconnect and reconciliation so the next r
     text: 'one',
   });
   await vi.waitFor(() => expect(r.kernel.view().speech.first.state).toBe('playing'));
+  expect(directorWakes).toHaveLength(1); // Speech was already planned when offered.
   await new Promise<void>((done) => {
     first.ws.once('close', () => done());
     first.ws.close();
