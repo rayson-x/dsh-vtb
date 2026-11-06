@@ -15,12 +15,20 @@ async function get(path){const r=await fetch(brain+path,{signal:AbortSignal.time
 async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});const j=await r.json();if(!r.ok||j.ok===false)throw Error(JSON.stringify({status:r.status,error:j.error}));return j;}
 let pid;try{pid=JSON.parse(await readFile('packages/dsh-livestream/.cache/brain.pid','utf8')).pid;}catch{}
 let memoryScope='launcher PID';try{pid=Number((await run('lsof',['-tiTCP:'+new URL(brain).port,'-sTCP:LISTEN'])).stdout.trim().split('\n')[0]);memoryScope='brain HTTP listener process';}catch{}
-let timingCursor=0,initialAudienceIds;
+let timingCursor=0,initialAudienceIds;const unhealthy=new Map();report.roleHealth=[];
 const seenPlaying=new Set(),actions=new Set();let sent=0,lastBrowser=0;
 while(Date.now()-report.startedAt<duration*1000){
  const elapsed=(Date.now()-report.startedAt)/1000;
  try{
   const h=await get('/live/harness'),s=h.state;
+  for(const role of h.roles){
+   const prior=unhealthy.get(role.role),code=role.error;
+   if(!code){unhealthy.delete(role.role);continue;}
+   const count=prior?.code===code?prior.count+1:1;unhealthy.set(role.role,{code,count});
+   if(prior?.code!==code)report.roleHealth.push({at:Date.now(),role:role.role,code});
+   if(['QUOTA','AUTH','UNAUTHORIZED'].includes(code)||(code==='UNKNOWN'&&count>=3))report.stopReason={kind:'role-unavailable',role:role.role,code,at:Date.now()};
+  }
+  if(report.stopReason){report.errors.push({phase:'role-health',...report.stopReason});break;}
   initialAudienceIds??=new Set(s.audience.map(row=>row.eventId));
   const timings=await get('/live/timings?after='+timingCursor);
   if(timingCursor&&timings.oldest>timingCursor+1)report.errors.push({phase:'timing-gap',after:timingCursor,oldest:timings.oldest});
@@ -36,7 +44,7 @@ while(Date.now()-report.startedAt<duration*1000){
   for(const [id,part] of speech)if(['playing','ended'].includes(part.state)&&!seenPlaying.has(id)){
    seenPlaying.add(id);for(const input of report.inputs)if(input.replyMs===undefined&&part.text?.includes(input.name)){input.replyMs=Date.now()-input.at;input.replyPartId=id;input.replyState=part.state;}
   }
-  if(sent<30&&elapsed>=sent*20){
+  if(sent<30&&!h.roles.some(r=>r.error==='UNKNOWN')&&elapsed>=sent*20){
    const name='小灯'+String(sent+1).padStart(2,'0'),text=name+'：'+prompts[sent%prompts.length]+' 先简短回应我，再按你的节奏继续就好。';
    const input={index:sent+1,name,text,at:Date.now(),replyMs:undefined};
    await post(stage+'/input',{platform:'bilibili',kind:'superchat',user:{id:'local-acceptance-'+(sent+1),name},text});report.inputs.push(input);sent++;
@@ -56,4 +64,4 @@ while(Date.now()-report.startedAt<duration*1000){
 report.endedAt=Date.now();const values=report.inputs.filter(x=>x.replyMs!==undefined).map(x=>x.replyMs).sort((a,b)=>a-b);
 report.phaseResult=summarizeResponseMeasurements(report.responsePhases??[]);
 report.result={actualDurationSeconds:(report.endedAt-report.startedAt)/1000,inputCount:report.inputs.length,namedAudibleReplies:values.length,unmatched:report.inputs.filter(x=>x.replyMs===undefined).map(x=>x.index),replyLatencyMs:values.length?{p50:values[Math.floor(values.length*.5)],p95:values[Math.min(values.length-1,Math.floor(values.length*.95))],max:values.at(-1)}:null,note:'Latency uses observed real speaking/ended parts naming the scripted viewer; does not count unrelated speech or infer unnamed semantic replies. Browser metrics cover this page, not all browser/GPU processes.'};
-await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({output,result:report.result,errors:report.errors.length}));
+await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({output,result:report.result,errors:report.errors.length,stopReason:report.stopReason}));

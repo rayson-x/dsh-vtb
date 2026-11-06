@@ -1,0 +1,144 @@
+{
+  "schema": 1,
+  "date": "2026-11-06",
+  "runtimeCommit": "c667d8b18dff80d5c999e2f6fcc4bb0a4ed6a8e9",
+  "status": "external-validation-interrupted",
+  "externalBroadcast": false,
+  "engineeringChecks": {
+    "pluginPassed": 427,
+    "pluginSkipped": 17,
+    "sceneHostPassed": 23,
+    "scenePackagePassed": 19,
+    "privateSdkPassed": 11,
+    "privateSdkSkipped": 0,
+    "publicCi": "https://github.com/rayson-x/dsh-vtb/actions/runs/42216081235"
+  },
+  "controlledGraphicsProof": {
+    "scope": "scripted roles; real pinned SDK and browser; excludes model generation/TTS latency",
+    "componentCompileMs": 513,
+    "controlPatchMs": 51,
+    "linkedPaintedReceipt": true,
+    "independentLayersPreserved": true,
+    "nullRebuild": {
+      "invalidPartialRejected": true,
+      "defaultNotResurrected": true
+    },
+    "hfTextPreservedAfterUnrelatedPatch": true
+  },
+  "diagnosticRounds": [
+    {
+      "id": "1793952128399",
+      "status": "not-accepted",
+      "reason": "短基线，回答与视觉未完整通过",
+      "inputs": 5,
+      "actualDurationSeconds": 90.66,
+      "lastObservedSeconds": 76.502,
+      "completedFirstContacts": 5,
+      "declaredVerbalFinishesPlayed": 3,
+      "linkedVisualRows": 0,
+      "scope": "diagnostic; partial runs do not establish a 30-input latency or semantic pass"
+    },
+    {
+      "id": "1793952885525",
+      "status": "not-accepted",
+      "reason": "完整30条诊断，候选/参数与口头结束链路未通过",
+      "inputs": 30,
+      "actualDurationSeconds": 660.554,
+      "lastObservedSeconds": 649.19,
+      "completedFirstContacts": 30,
+      "declaredVerbalFinishesPlayed": 7,
+      "linkedVisualRows": 0,
+      "scope": "diagnostic; partial runs do not establish a 30-input latency or semantic pass"
+    },
+    {
+      "id": "1793954475304",
+      "status": "not-accepted",
+      "reason": "岗位作用域工具隔离错误，后以真实注册器回归修复",
+      "inputs": 17,
+      "actualDurationSeconds": null,
+      "lastObservedSeconds": 308.627,
+      "completedFirstContacts": 16,
+      "declaredVerbalFinishesPlayed": 0,
+      "linkedVisualRows": 0,
+      "scope": "diagnostic; partial runs do not establish a 30-input latency or semantic pass"
+    },
+    {
+      "id": "1793955432376",
+      "status": "not-accepted",
+      "reason": "互动结束段被撤回与待播状态问题诊断",
+      "inputs": 22,
+      "actualDurationSeconds": null,
+      "lastObservedSeconds": 420.286,
+      "completedFirstContacts": 21,
+      "declaredVerbalFinishesPlayed": 17,
+      "linkedVisualRows": 2,
+      "scope": "diagnostic; partial runs do not establish a 30-input latency or semantic pass"
+    },
+    {
+      "id": "1793960112848",
+      "status": "not-accepted",
+      "reason": "候选具体参数未交给导播，后补读取与合并路径",
+      "inputs": 21,
+      "actualDurationSeconds": null,
+      "lastObservedSeconds": 387.722,
+      "completedFirstContacts": 20,
+      "declaredVerbalFinishesPlayed": 16,
+      "linkedVisualRows": 14,
+      "scope": "diagnostic; partial runs do not establish a 30-input latency or semantic pass"
+    },
+    {
+      "id": "1793962875603",
+      "status": "not-accepted",
+      "reason": "冻结工具参数写入失败，后以真实执行器回归修复",
+      "inputs": 18,
+      "actualDurationSeconds": null,
+      "lastObservedSeconds": 339.636,
+      "completedFirstContacts": 18,
+      "declaredVerbalFinishesPlayed": 9,
+      "linkedVisualRows": 0,
+      "scope": "diagnostic; partial runs do not establish a 30-input latency or semantic pass"
+    },
+    {
+      "id": "1793963901394",
+      "status": "not-accepted",
+      "reason": "不完整编导卡片阻断简报，后加结构校验及旧WAL隔离",
+      "inputs": 30,
+      "actualDurationSeconds": null,
+      "lastObservedSeconds": 987.272,
+      "completedFirstContacts": 30,
+      "declaredVerbalFinishesPlayed": 1,
+      "linkedVisualRows": 0,
+      "scope": "diagnostic; partial runs do not establish a 30-input latency or semantic pass"
+    },
+    {
+      "id": "1793965599198",
+      "status": "not-accepted",
+      "reason": "观众优先级反复取消导播，后分离抢占与通知",
+      "inputs": 30,
+      "actualDurationSeconds": null,
+      "lastObservedSeconds": 778.091,
+      "completedFirstContacts": 30,
+      "declaredVerbalFinishesPlayed": 18,
+      "linkedVisualRows": 14,
+      "scope": "diagnostic; partial runs do not establish a 30-input latency or semantic pass"
+    },
+    {
+      "id": "1793967184824",
+      "status": "not-accepted",
+      "reason": "外部模型服务不可用，中止；不计验收通过",
+      "inputs": 18,
+      "actualDurationSeconds": null,
+      "lastObservedSeconds": 354.904,
+      "completedFirstContacts": 3,
+      "declaredVerbalFinishesPlayed": 1,
+      "linkedVisualRows": 0,
+      "scope": "diagnostic; partial runs do not establish a 30-input latency or semantic pass"
+    }
+  ],
+  "remainingValidation": [
+    "fixed-version continuous 30-input real-model semantic and latency acceptance",
+    "independent visual requests all rendered with linked evidence",
+    "real-agent theme maintenance, prepared direction adoption and soft/cold handoff"
+  ],
+  "note": "Engineering and controlled-renderer checks passed. Interrupted diagnostic runs are not a completed real-agent acceptance; old errors=0 meant sampling HTTP errors only. Role health is now recorded and unavailable roles stop the acceptance run. No account financial details are published."
+}
