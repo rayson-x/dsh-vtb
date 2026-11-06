@@ -145,12 +145,25 @@ it('recovers an unpublished prepared candidate from the adopted task without rew
     expect(runtime.kernel.view().proposals['cue-wish'].status).not.toBe('presented');
     await vi.waitFor(()=>expect(runtime!.kernel.view().proposals['cue-wish'].status).toBe('presented'));
     expect(runtime.kernel.view().scenes['late-browser'].inputs.layers).toMatchObject({cup:{x:510}});
+    const automatic:any=await runtime.invoke('director','prepareScene',{commandId:'auto-prepare',directionEpoch:runtime.kernel.epoch(),assetVersionId:'candidate'});
+    expect(automatic.ok).toBe(true);expect(typeof automatic.instanceId).toBe('string');expect(typeof automatic.segmentId).toBe('string');
+    expect(automatic.segmentId).not.toBe('late-segment');
+    const count=Object.keys(runtime.kernel.view().scenes).length;
+    expect(await runtime.invoke('director','prepareScene',{commandId:'auto-prepare',directionEpoch:runtime.kernel.epoch(),assetVersionId:'candidate'})).toMatchObject({ok:true,reused:true,instanceId:automatic.instanceId,segmentId:automatic.segmentId});
+    expect(Object.keys(runtime.kernel.view().scenes)).toHaveLength(count);
+    await vi.waitFor(()=>expect(runtime!.kernel.view().scenes[automatic.instanceId].readiness.firstFramePaint.status).toBe('ok'));
     browser.terminate();browser=undefined;
     await runtime.stop();runtime=new ProductionRuntime({repoRoot:folder,dataDir:folder,port:0,secret:()=>undefined});await runtime.start();
     expect((runtime.brief('performer') as any).contentShelf.ready[0].contentGuide).toEqual(contentGuide);
     const inspected:any=await runtime.invoke('director','readProgramme',{assetVersionId:'candidate'});inspected.props.layers.cup.x=999;
     const reread:any=await runtime.invoke('director','readProgramme',{assetVersionId:'candidate'});expect(reread.props.layers.cup.x).toBe(500);
     expect(JSON.parse(await readFile(manifest, 'utf8')).epoch).toBe(born);
+    await runtime.invoke('editorial','prepareDirection',{directionEpoch:runtime.kernel.epoch(),directionId:'after',commitment:'After',coreQuestion:'Use existing published material as a dependency'});
+    await runtime.invoke('editorial','requestProduction',{directionEpoch:runtime.kernel.epoch(),task:{id:'after-task',goal:'Build a new scene from the published base',priority:80,inputs:[],dependsOn:['future'],intendedDirectionId:'after'}});
+    await runtime.switchDirection('After');
+    expect(runtime.kernel.view().tasks.future.status).toBe('archived');
+    expect(runtime.kernel.view().tasks.future.liveEligible).toBe(false);
+    expect((runtime.brief('production').brief as any[])[0]?.task?.id).toBe('after-task');
   } finally {
     browser?.terminate();
     await runtime?.stop();

@@ -78,6 +78,10 @@ it('v2 rejects legacy playback, then an orderly legacy restart restores settings
   await writeFile(join(folder, 'set'), 'midnight-tales');
   const port = await freePort();
   const v2 = await boot('v2', port);
+  await post(port,'/bridge/call',{method:'harness.mode',args:{mode:'v2',sceneUrl:'http://127.0.0.1:3938/',sceneGeneration:'first-brain'}});
+  expect(await fetch(`http://127.0.0.1:${port}/harness`).then(r=>r.json())).toMatchObject({sceneUrl:'http://127.0.0.1:3938',sceneGeneration:'first-brain'});
+  await post(port,'/bridge/call',{method:'harness.mode',args:{mode:'v2',sceneUrl:'http://127.0.0.1:3938/',sceneGeneration:'next-brain'}});
+  expect(await fetch(`http://127.0.0.1:${port}/harness`).then(r=>r.json())).toMatchObject({sceneUrl:'http://127.0.0.1:3938',sceneGeneration:'next-brain'});
   expect((await post(port, '/command', { type: 'status', label: 'wrong owner' })).status).toBe(409);
   expect((await post(port, '/speak', { text: '旧入口不能发声' })).status).toBe(409);
   expect((await post(port, '/bridge/call', { method: 'harness.mode', args: { mode: 'legacy' } })).status).toBe(400);

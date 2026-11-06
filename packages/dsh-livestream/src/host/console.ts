@@ -129,8 +129,11 @@ function brainLog(): string[] {
 }
 
 /** 大脑起来没有：看它的控制口 */
-async function stageUp(): Promise<boolean> {
-  return fetch(`http://127.0.0.1:${BRAIN}/live/status`, { signal: AbortSignal.timeout(800) }).then((r) => r.ok, () => false);
+async function stageUp(requireReady = false): Promise<boolean> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${BRAIN}/live/status`, { signal: AbortSignal.timeout(800) });
+    return response.ok && (!requireReady || (await response.json()).brain === true);
+  } catch { return false; }
 }
 
 /** 进程没了就把状态改回来（被手动关掉、自己退出） */
@@ -166,7 +169,7 @@ async function start(): Promise<string> {
   writeFileSync(BRAIN_PID, JSON.stringify({ pid, startedAt }));
   // 等大脑的控制口起来才算开好（它会自己连上舞台）
   for (let i = 0; i < 60 && alive(pid); i++) {
-    if (await stageUp()) {
+    if (await stageUp(true)) {
       state = 'running';
       // 开播前设好的方向直接开场（大脑重启回来、这场本来就在播的，它自己接着播，不再开场）
       if (!host.show.live) {

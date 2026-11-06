@@ -173,6 +173,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
 
   let harnessMode: 'legacy' | 'v2' = process.env.AIVTB_HARNESS==='v2'?'v2':'legacy';
   let harnessSceneUrl: string | undefined;
+  let harnessSceneGeneration: string | undefined;
   const crew = pictureDirector(stage, () => o.secret('DEEPSEEK_API_KEY'), record, blackboard);
   if(harnessMode==='v2')crew.setEnabled(false);
 
@@ -367,11 +368,13 @@ export function createStageHost(o: StageHostOptions): StageHost {
           const url = new URL(String(args.sceneUrl));
           if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.pathname !== '/') throw new Error('Invalid scene host URL');
           harnessSceneUrl = url.origin;
+          if (typeof args.sceneGeneration === 'string' && args.sceneGeneration.length <= 100)
+            harnessSceneGeneration = args.sceneGeneration;
           stage.apply({ type: 'interrupt' }); crew.setEnabled(false);
           for(const command of [{type:'erase'},{type:'ungraphic'},{type:'unshow'},{type:'board',clear:true},{type:'rundown',clear:true},{type:'research',done:true}] as Command[])stage.apply(command);
         }
         harnessMode = args.mode;
-        return { mode: harnessMode, sceneUrl: harnessSceneUrl, protocol:1 };
+        return { mode: harnessMode, sceneUrl: harnessSceneUrl, sceneGeneration: harnessSceneGeneration, protocol:1 };
       }
       case 'blackboard.read': return blackboard.read();
       case 'blackboard.line': return blackboard.line();
@@ -455,7 +458,7 @@ export function createStageHost(o: StageHostOptions): StageHost {
 
   const extra = async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> => {
     if(harnessMode==='v2' && req.method==='POST' && ['/speak','/demo','/command'].includes(url.pathname)){res.writeHead(409,{'content-type':'application/json'});res.end(JSON.stringify({ok:false,error:'V2 runtime owns programme control'}));return true;}
-    if (req.method === 'GET' && url.pathname === '/harness') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ mode: harnessMode, sceneUrl: harnessSceneUrl })); return true; }
+    if (req.method === 'GET' && url.pathname === '/harness') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ mode: harnessMode, sceneUrl: harnessSceneUrl, sceneGeneration: harnessSceneGeneration })); return true; }
     if (req.method === 'GET' && url.pathname === '/tracks') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ now: stage.now(), speech: stage.timeline.snapshot().map(({ key: _key, ...p }) => p), visual: crew.track.snapshot() })); return true;

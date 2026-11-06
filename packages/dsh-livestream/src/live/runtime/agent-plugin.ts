@@ -78,7 +78,13 @@ export function applyRoleAgent(ctx: any, role: AgentRole) {
                 }else payload={...args};
               }
               payload._callId = String(exec?.callId ?? '');
-              return JSON.stringify(await team.invoke(exec?.agent?.session?.id, role, tool, payload));
+              const result = await team.invoke(exec?.agent?.session?.id, role, tool, payload);
+              // Playback completion or a new viewer wakes the speaker again.
+              // Close the accepted speech turn without asking the model to wait.
+              if (role === 'performer' && ['offerSpeech','acknowledgeInput'].includes(tool)
+                && result && typeof result === 'object' && 'ok' in result && result.ok === true)
+                exec.concludeTurn();
+              return JSON.stringify(result);
             },
           } as any),
         ),

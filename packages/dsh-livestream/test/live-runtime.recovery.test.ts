@@ -247,6 +247,8 @@ it('can acknowledge first, preserve the unfinished answer, and complete it in la
  await end('answer-1');
  expect(r.brief('performer').pendingReplies.some((x:any)=>x.eventId==='viewer-1')).toBe(true);
  await offer('answer-end','灯的位置先这样定，等画面出来再看。','finish');await vi.waitFor(()=>expect(r.kernel.view().speech['answer-end'].state).toBe('playing'));await end('answer-end');
+ r.kernel.archiveSettled();
+ expect(await offer('duplicate-completion','不应为已经实际答完的问题再写一个结尾。','finish')).toMatchObject({ok:false,reject:'ILLEGAL_TRANSITION'});
  expect(r.brief('performer').responses.find((x:any)=>x.eventId==='viewer-1')).toMatchObject({acknowledged:true,verbalComplete:true});
  await r.stop();runtime=new ProductionRuntime({repoRoot:folder!,dataDir:join(folder!,'data'),port:0,secret:()=>undefined});
  expect(runtime.brief('performer').responses.find((x:any)=>x.eventId==='viewer-1')).toMatchObject({acknowledged:true,verbalComplete:true});
@@ -392,10 +394,15 @@ it('keeps another viewers queued completion when a new first contact gets priori
  const r=await openRuntime(),peer=browser();await peer.prepared;const epoch=r.kernel.epoch(),target={kind:'show' as const,id:r.kernel.view().project.id};
  for(const id of['older','newer'])r.kernel.submit({commandId:id,idempotencyKey:id,actorId:'live:input',directionEpoch:epoch,target,expectedRevision:r.kernel.revision(target),payload:{type:'ingestAudience',eventId:id,audienceId:id,text:'窗边的灯怎么放？',kind:'proposal',priority:'urgent'}});
  await r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId:'programme',text:'说说刚才那封信，纸边还湿着。'});await vi.waitFor(()=>expect(r.kernel.view().speech.programme.state).toBe('playing'));
+ await r.invoke('performer','acknowledgeInput',{directionEpoch:epoch,partId:'older-ack',inputId:'older',text:'先保留你提出的灯位。'});
+ const releaseNew=r.reserveAcknowledgement('newer');
+ expect(r.brief('performer').nextReply?.eventId).toBe('newer');
+ releaseNew();expect(r.brief('performer').nextReply?.eventId).toBe('older');
  await r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId:'older-finish',responseTo:'older',responseStage:'finish',text:'我倾向灯放左侧，光斜着照到桌面。'});
  expect(r.brief('performer').responses.find(p=>p.eventId==='older')?.verbalComplete).toBe(false);
  expect(r.brief('performer').nextReply?.eventId).not.toBe('older');
  await r.invoke('performer','acknowledgeInput',{directionEpoch:epoch,partId:'newer-ack',inputId:'newer',text:'你提的暖灯，我看到了。'});
+ expect(r.brief('performer').nextReply?.eventId).toBe('newer');
  expect(r.kernel.view().speech['older-finish'].state).toBe('offered');
 });
 it('rejects incomplete editorial cards before they poison every role brief',async()=>{

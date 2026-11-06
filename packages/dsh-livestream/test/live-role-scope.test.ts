@@ -29,5 +29,11 @@ it('keeps preset-owned live tools callable on the real agent scope while hiding 
  expect(team!.snapshot().every(r=>r.ready)).toBe(true);
  const result=await root.tools.execute({agent:production,callId:ToolCallId('scoped-build'),name:'workspaceBuildPreview',arguments:{payload:{directionEpoch:1,taskId:'base',taskVersion:1,source:'export default {}'}},signal:new AbortController().signal});
  expect(result.isError,JSON.stringify(result.content)).toBe(false);expect(calls.at(-1)).toMatchObject({role:'production',tool:'workspaceBuildPreview',args:{taskId:'base',_callId:'scoped-build'}});
+ const performer=agents.get('live-v2-performer');
+ const speech=await root.tools.execute({agent:performer,callId:ToolCallId('scoped-speech'),name:'offerSpeech',arguments:{directionEpoch:1,text:'先把一个完整意群交给播放队列。'},signal:new AbortController().signal});
+ expect(speech.isError).toBe(false);expect(speech.concludesTurn).toBe(true);
+ vi.spyOn(team!.runtime,'invoke').mockResolvedValueOnce({ok:false,reject:'QUEUE_FULL'});
+ const rejected=await root.tools.execute({agent:performer,callId:ToolCallId('scoped-rejected'),name:'offerSpeech',arguments:{directionEpoch:1,text:'队列拒绝时允许在本轮修正。'},signal:new AbortController().signal});
+ expect(rejected.concludesTurn).toBeUndefined();
  }finally{bindTeam(undefined);await team?.stop();for(const s of scopes.reverse())await s.dispose();}
 });

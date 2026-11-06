@@ -19,6 +19,7 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
     presentation:()=>({layout:stage.state.scene,programmeFrame:programmeBox(stage.state),coordinateSystem:'1920x1080 target layout'}),
   });
   const team = new DshLiveTeam(ctx, runtime, PACKAGE_ROOT);
+  const sceneGeneration = crypto.randomUUID();
   const budget = new ModelBudget(modelLimits(process.env), reason => {
     team.pauseForBudget(reason);
     runtime.recordTiming('model-budget-exhausted', { reason });
@@ -56,9 +57,13 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
   ctx.effect(() => {
     stage.connect(({ show: record }) => {
       void (async () => {
+        // Do not mount an iframe against a port that is still hydrating its WAL
+        // and media. A refused iframe never reaches its websocket reconnect code.
+        await starting;
         const result = await stage.call<any>('harness.mode', {
           mode: 'v2',
           sceneUrl: runtime.gateway.origin,
+          sceneGeneration,
         });
         if (result.protocol !== 1)
           throw Error('Restart console with the current v2 build before starting agents');
@@ -99,6 +104,7 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
       () => ctx.logger?.warn?.('live-v2: input replay overflow; inspect source feed'),
     );
     const timer = setInterval(() => {
+      if (!ready || !transportReady) return;
       team.poll();
       void reader
         .poll()

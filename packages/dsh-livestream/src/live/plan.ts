@@ -679,7 +679,10 @@ function planOffer(command: CommandEnvelope, payload: Extract<ShowCommand, { typ
     if(!input)return fail('UNKNOWN_TARGET','回答关联的观众输入不存在');
     if(input.directionEpoch!==ctx.state.project.currentEpoch)return fail('STALE_DIRECTION','回答关联的观众输入已过期');
     if(!['ack','answer','finish'].includes(payload.responseStage??''))return fail('ILLEGAL_TRANSITION','必须明确接住、展开或口头回答结束阶段');
-    if(payload.responseStage==='ack'&&Object.values(ctx.state.speech).some(part=>part.responseTo===input.eventId&&((part.responseStage==='ack'&&!['cancelled','failed','aborted','rejected'].includes(part.state))||['starting','playing','ended'].includes(part.state))))return fail('ILLEGAL_TRANSITION','这条互动已有接住语句；继续展开，不重复接住');
+    const replies=Object.values({...ctx.state.speechArchive,...ctx.state.speech}).filter(part=>part.responseTo===input.eventId);
+    if(replies.some(part=>part.responseStage==='finish'&&part.state==='ended'))return fail('ILLEGAL_TRANSITION','这条互动的完整回答已实际播完；普通节目或自然接回不要再绑定这个输入');
+    if(payload.responseStage!=='ack'&&replies.some(part=>part.responseStage==='finish'&&!['cancelled','failed','aborted','rejected'].includes(part.state)&&part.partId!==payload.replacePending?.partId))return fail('ILLEGAL_TRANSITION','这条互动已有待播或在播的完整回答；等实际回执，或用replacePending明确替换未播稿');
+    if(payload.responseStage==='ack'&&replies.some(part=>(part.responseStage==='ack'&&!['cancelled','failed','aborted','rejected'].includes(part.state))||['starting','playing','ended'].includes(part.state)))return fail('ILLEGAL_TRANSITION','这条互动已有接住语句；继续展开，不重复接住');
   }
   let replaced:KernelFact[]=[];
   if(payload.replacePending){
@@ -974,7 +977,7 @@ function planPrepareScene(command: CommandEnvelope, payload: Extract<ShowCommand
   if (stale) return stale;
   if (ctx.state.scenes[payload.instanceId]) return fail('REVISION_CONFLICT', '场景实例已存在');
   const existing = ctx.state.timeline.segments.find((item) => item.segmentId === payload.segmentId);
-  if (existing?.status === 'committed') return fail('TOO_LATE', '片段已提交');
+  if (existing?.status === 'committed') return fail('TOO_LATE', '片段已提交；请为新场景新建片段，不复用已提交的segmentId');
   if (existing?.status === 'invalidated') return fail('ILLEGAL_TRANSITION', '已失效的片段不能改回');
   const verified = asset.verification === 'passed';
   const supports = verified && asset.capabilities.supportsInPlaceInputUpdate;

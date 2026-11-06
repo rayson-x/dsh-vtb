@@ -39,6 +39,7 @@ interface Resident {
   context?: {bytes:number;changed:boolean;dropped?:number};
   model?:{provider:string;model:string;reasoningEffort:string};
   visualUpdatePending?: boolean;
+  performerUpdates?: string[];
   availableTools?:string[];
   releaseTools?:()=>void;
 }
@@ -76,7 +77,7 @@ export class DshLiveTeam {
     readonly runtime: RoleRuntime,
     private readonly cwd: string,
   ) {
-    this.quick=new QuickAcknowledgements({context:id=>this.runtime.quickAcknowledgementContext?.(id),reserve:id=>this.runtime.reserveAcknowledgement?.(id)??(()=>{}),generate:(context,signal)=>this.generateQuick(context,signal),offer:(id,text,epoch)=>this.runtime.offerQuickAcknowledgement?.(id,text,epoch)??Promise.resolve({ok:false}),fallback:id=>{if(!this.stopped&&!this.residents.get('performer')?.paused){this.runtime.recordTiming?.('quick-ack-fallback',{inputId:id});this.wake('performer','独立首响未成功；若已有短答排好就让它先接上，不重新生成相同回答；没有现成内容时再按pendingReplies常规短接。',true);}}});
+    this.quick=new QuickAcknowledgements({context:id=>this.runtime.quickAcknowledgementContext?.(id),reserve:id=>this.runtime.reserveAcknowledgement?.(id)??(()=>{}),generate:(context,signal)=>this.generateQuick(context,signal),offer:(id,text,epoch)=>this.runtime.offerQuickAcknowledgement?.(id,text,epoch)??Promise.resolve({ok:false}),fallback:id=>{if(!this.stopped&&!this.residents.get('performer')?.paused){this.runtime.recordTiming?.('quick-ack-fallback',{inputId:id});this.wake('performer','独立首响未成功；若已有短答排好就让它先接上，不重新生成相同回答；没有现成内容时再按pendingReplies常规短接。',false);}}});
   }
   acknowledgeAudience(id:string){
     const performer=this.residents.get('performer');
@@ -213,13 +214,20 @@ export class DshLiveTeam {
   wake(role: AgentRole, text: string, urgent = false,origin:'runtime'|'audience'='runtime') {
     const preempt=urgent&&(origin!=='audience'||role==='performer');
     const r = this.residents.get(role);
-    if (!r || r.disposed || r.paused || this.stopped || this.budgetReason) return;
-    if (!r.ready) {
+    if (!r || r.disposed || this.stopped || this.budgetReason) return;
+    if (!r.ready || r.paused) {
       r.queue.push({ text, urgent:preempt });
       if (r.queue.length > 64) r.queue.shift();
       return;
     }
     if(role==='director'&&!preempt&&(r.phase!=='idle'||r.agent.status!=='idle')){r.visualUpdatePending=true;return;}
+    if(role==='performer'&&!preempt&&(r.phase!=='idle'||r.agent.status!=='idle')){
+      const updates=r.performerUpdates??=[];
+      if(!updates.includes(text))updates.push(text);
+      if(updates.length>32)updates.shift();
+      if(r.timer){clearTimeout(r.timer);r.timer=undefined;}
+      return;
+    }
     if (r.timer) {
       clearTimeout(r.timer);
       r.timer = undefined;
@@ -288,6 +296,7 @@ export class DshLiveTeam {
         continue;
       r.phase = 'idle';
       if(r.role==='director'&&r.visualUpdatePending){r.visualUpdatePending=false;this.wake('director','主播或候选有合并更新，读取最新画面调度快照，撤回的未来内容不得执行；自主决定是否需要改画面。');continue;}
+      if(r.role==='performer'&&r.performerUpdates?.length){const updates=r.performerUpdates.splice(0);this.wake('performer','现场合并通知：可能已有更新或失效，只按当前工程快照行动，不重复旧回答。\n'+updates.join('\n'));continue;}
       const interval = INTERVAL[r.role];
       if (!interval) continue; // Director and maker wake from actual work, never idle polling.
       r.timer = setTimeout(() => {
@@ -320,7 +329,7 @@ export class DshLiveTeam {
         r.timer = undefined;
       }
       r.agent.cancel({ kind: 'user', reason: 'role-pause' }, { keepInbox: true });
-    } else {r.retryAt=0;r.failures=0;r.lastError=undefined;this.roleErrors.delete(role);this.wake(role, '岗位恢复，先读最新简报。');}
+    } else {r.retryAt=0;r.failures=0;r.lastError=undefined;this.roleErrors.delete(role);const pending=r.queue.splice(0);this.wake(role, '岗位恢复，先读最新简报；暂停期间的通知可能已过期，只按当前epoch与实际状态处理。\n'+pending.map(m=>m.text).join('\n'));}
   }
   snapshot() {
     return [...this.residents.values()].map((r) => ({

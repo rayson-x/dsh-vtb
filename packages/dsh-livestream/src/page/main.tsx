@@ -13,6 +13,7 @@ import { useProgrammeRecording } from './recording';
 
 function App() {
   const [sceneUrl, setSceneUrl] = useState<string>();
+  const [sceneGeneration, setSceneGeneration] = useState<string>();
   const frame=useRef<HTMLIFrameElement>(null);
   useProgrammeRecording(frame, sceneUrl);
   const [voice,setVoice]=useState<{subtitle:SubtitleData;playing:boolean}|null>(null);
@@ -30,7 +31,8 @@ function App() {
       if(data.kind==='pause')setVoice(previous=>previous?{...previous,playing:false}:null);
     };
     window.addEventListener('message',receive);return()=>{window.removeEventListener('message',receive);setPlaying(undefined);};
-  },[sceneUrl]);
+  },[sceneUrl,sceneGeneration]);
+  useEffect(()=>{setVoice(null);actualMediaTime.current=0;setPlaying(undefined);},[sceneGeneration]);
   useEffect(() => {
     const controller = new AbortController();
     const check = async () => {
@@ -40,6 +42,7 @@ function App() {
         const data = await response.json();
         const url = data.sceneUrl ? new URL(data.sceneUrl) : undefined;
         setSceneUrl(data.mode === 'v2' && url?.protocol === 'http:' && url.hostname === '127.0.0.1' ? url.origin : undefined);
+        setSceneGeneration(typeof data.sceneGeneration==='string'?data.sceneGeneration:undefined);
       } catch { /* A disconnected stage keeps its last image. */ }
     };
     void check(); const timer = setInterval(() => void check(), 2000);
@@ -55,7 +58,7 @@ function App() {
   return (
     <>
       <Stage state={presented} now={now}
-        programme={sceneUrl ? <iframe ref={frame} title="节目场景" referrerPolicy="origin" src={sceneUrl} allow="autoplay" style={{ width: '100%', height: '100%', border: 0, display: 'block', background: 'transparent' }} /> : undefined} />
+        programme={sceneUrl ? <iframe key={sceneGeneration} ref={frame} title="节目场景" referrerPolicy="origin" src={sceneUrl} allow="autoplay" style={{ width: '100%', height: '100%', border: 0, display: 'block', background: 'transparent' }} /> : undefined} />
       {/* 浏览器拦着不让出声：提示点一下（点了就消失）。OBS 浏览器源、带自动播放参数的窗口不会出现 */}
       {blocked && <div className="audio-blocked" onPointerDown={()=>{void audioContext().resume();frame.current?.contentWindow?.postMessage({type:'aivtb-audio-unlock'},sceneUrl??location.origin);}}>🔇 点一下页面开声音</div>}
     </>

@@ -98,6 +98,10 @@ it('pauses editorial without cancelling the performer or production worker', asy
   expect(agents.get('live-v2-editorial')!.calls).toEqual(['cancel']);
   expect(agents.get('live-v2-performer')!.calls).toEqual(['followup']);
   expect(agents.get('live-v2-production')!.calls).toEqual([]);
+  team.wake('editorial','为已登记的next-direction预备下一场内容；当前方向继续。');
+  expect(agents.get('live-v2-editorial')!.calls).toEqual(['cancel']);
+  await team.setOnline('editorial',true);
+  expect(JSON.stringify(agents.get('live-v2-editorial')!.messages.at(-1))).toContain('next-direction');
 });
 
 it('delivers an urgent performer wake with current engineering facts so a reply needs no extra read round', async () => {
@@ -174,6 +178,25 @@ it('coalesces ordinary visual updates while the director works and delivers the 
 it('does not report a live team ready when the performer has no callable role tools',async()=>{
  const {team,agents}=setup(async id=>{if(id==='live-v2-performer')vi.spyOn(agents.get(id)!.ctx.tools,'schemas').mockReturnValue([]);});
  await expect(team.start()).rejects.toThrow(/performer/);expect(team.snapshot()).toEqual([]);
+});
+it('coalesces busy performer notifications into one fresh snapshot while urgent input still preempts',async()=>{
+ const {team,agents}=setup();await team.start();const actor=agents.get('live-v2-performer')!;
+ const brief=vi.spyOn(team.runtime,'brief').mockReturnValue({nextReply:{inputId:'stale'}});
+ actor.calls=[];actor.status='running';team.observeStream(actor,{type:'start',attemptId:'busy'});
+ for(let i=0;i<8;i++)team.wake('performer','口播回执或素材更新');
+ expect(actor.calls).toEqual([]);
+ brief.mockReturnValue({nextReply:{inputId:'fresh'}});actor.status='idle';team.observeStream(actor,{type:'end',attemptId:'busy'});team.poll();
+ expect(actor.calls).toEqual(['followup']);expect(JSON.stringify(actor.messages.at(-1))).toContain('fresh');expect(JSON.stringify(actor.messages.at(-1))).not.toContain('stale');
+ actor.calls=[];actor.status='running';team.observeStream(actor,{type:'start',attemptId:'next'});team.wake('performer','观众优先互动',true,'audience');
+ expect(actor.calls).toEqual(['cancel','steer']);
+});
+it('keeps an in-progress main answer when the independent acknowledgement times out',async()=>{
+ vi.useFakeTimers();
+ const {team,agents}=setup(undefined,undefined,{llm:{async*stream(){await new Promise(()=>{});}},runtime:{quickAcknowledgementContext:id=>({epoch:1,inputId:id,text:'旧杯子的主人是谁？',topic:'书房',heard:'',instructions:[]})}});
+ await team.start();const actor=agents.get('live-v2-performer')!;actor.calls=[];actor.status='running';team.observeStream(actor,{type:'start',attemptId:'main-answer'});
+ expect(team.acknowledgeAudience('viewer')).toBe(true);await vi.advanceTimersByTimeAsync(4100);
+ expect(actor.calls).toEqual([]);
+ actor.status='idle';team.observeStream(actor,{type:'end',attemptId:'main-answer'});team.poll();expect(actor.calls).toEqual(['followup']);
 });
 it('keeps idle maker and director asleep, lets scheduled speech play, and cannot resume past a shared budget stop',async()=>{
  vi.useFakeTimers();let playing=true;

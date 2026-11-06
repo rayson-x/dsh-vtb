@@ -62,5 +62,10 @@ export function productionPriority(value: unknown): number {
   return ({high:80,normal:50,low:20} as Record<string,number>)[String(value)]??0;
 }
 export function unmetProductionDependencies(task:ProductionTask,tasks:Record<string,ProductionTask>):string[]{
-  return task.dependsOn.filter(id=>!tasks[id]||tasks[id].cancelled||tasks[id].status!=='ready'||tasks[id].directionEpoch!==task.directionEpoch);
+  // A declared dependency is published material, not permission to air its old
+  // scene. Closing a direction archives ready tasks but retains their artifacts.
+  return task.dependsOn.filter(id=>{
+    const dependency=tasks[id];
+    return !dependency||dependency.cancelled||!['ready','archived'].includes(dependency.status)||dependency.assetVersionIds.length===0;
+  });
 }

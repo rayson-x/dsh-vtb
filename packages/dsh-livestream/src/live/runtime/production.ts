@@ -216,7 +216,7 @@ export class ProductionRuntime implements RoleRuntime {
   }
   private responseBrief(){
     const state=this.kernel.view(),byInput=new Map<string,typeof state.speech[string][]>();
-    for(const part of Object.values(state.speech))if(part.responseTo){const parts=byInput.get(part.responseTo)??[];parts.push(part);byInput.set(part.responseTo,parts);}
+    for(const part of Object.values({...state.speechArchive,...state.speech}))if(part.responseTo){const parts=byInput.get(part.responseTo)??[];parts.push(part);byInput.set(part.responseTo,parts);}
     const responses=state.audience.filter(input=>input.directionEpoch===this.kernel.epoch()&&(input.priority==='urgent'||byInput.has(input.eventId))).map(input=>{
       const parts=byInput.get(input.eventId)??[],effective=parts.filter(part=>!['cancelled','rejected','aborted','failed'].includes(part.state));
       const acknowledged=effective.some(part=>part.state==='ended'),verbalComplete=effective.some(part=>part.responseStage==='finish'&&part.state==='ended'),completionInFlight=effective.some(part=>part.responseStage==='finish'&&part.state!=='ended');
@@ -226,7 +226,8 @@ export class ProductionRuntime implements RoleRuntime {
         parts:parts.slice(-4).map(part=>({partId:part.partId,stage:part.responseStage,state:part.state,text:part.text.slice(0,160)})),
         proposalIds:proposals.slice(-4).map(p=>p.id),visualStatus:proposals.length?proposals.every(p=>p.status==='presented')?'presented':proposals.every(p=>p.status==='cancelled')?'cancelled':'pending':'not-requested'};
     });
-    return {nextReply:responses.find(r=>!r.verbalComplete&&!r.needsAck&&!r.completionInFlight)??null,responses:responses.slice(-12),pendingReplies:[...responses.filter(r=>r.needsAck).slice(-4),...responses.filter(r=>!r.needsAck&&!r.verbalComplete).slice(0,4)]};
+    const latest = [...responses].reverse();
+    return {nextReply:latest.find(r=>!r.verbalComplete&&!r.completionInFlight&&(!r.needsAck||this.acknowledgementReservations.has(r.eventId)))??null,responses:responses.slice(-12),pendingReplies:[...latest.filter(r=>r.needsAck).slice(0,4),...latest.filter(r=>!r.needsAck&&!r.verbalComplete).slice(0,4)]};
   }
   brief(role:'performer'):Extract<ReturnType<ProductionRuntime['makeBrief']>,{role:'performer'}>;
   brief(role:Exclude<AgentRole,'performer'>):Exclude<ReturnType<ProductionRuntime['makeBrief']>,{role:'performer'}>;
@@ -315,7 +316,7 @@ export class ProductionRuntime implements RoleRuntime {
         workspaceBuildPreview:
           '{directionEpoch,taskId,taskVersion,source? OR template:layered-stage|gsap|remotion OR effectPath?,props?,width?,height?,durationInFrames?}；2D物件/图文可先用layered-stage组件组合，searchSdk path=aivtb/layered-stage读能力，props.layers独立调节',
         publishCandidate: '{directionEpoch,taskId,assetVersionId,expectedRevision,contentGuide?:{title,summary,beats:string[],sources:string[],visualNotes:string[]}}；内容指南不是固定台词，候选发布不送播',
-        prepareScene: '{directionEpoch,instanceId,assetVersionId,segmentId,label}；assetVersionId必须是已发布候选的精确版本ID，不是组件路径或taskId。当前没有场景时layered-stage也先prepareScene，等ready再take；已有同组件在播才合并输入。',
+        prepareScene: '{directionEpoch,assetVersionId,instanceId?,segmentId?,label?}；通常只填素材版本ID，省略ID由运行时分配新实例/新片段并返回，不复用committed或invalidated片段。layered-stage也先prepareScene，等ready再take；已有同组件在播才合并输入。',
         take: '{directionEpoch,instanceId,expectedRevision}',
         updateInputs: '{directionEpoch,instanceId,inputsRevision,inputs,expectedRevision,proposalIds?}',
         bindCue:
@@ -403,7 +404,7 @@ export class ProductionRuntime implements RoleRuntime {
       args.partId ??= `speech-${commandId}`;
       if (typeof args.text !== 'string' || !args.text.trim()) throw Error('Speech text required');
     }
-    if(tool==='prepareScene'){const c=this.candidates.get(String(args.assetVersionId));args={...args,initialInputs:c?this.sceneProps(c):undefined};}
+    if(tool==='prepareScene'){const c=this.candidates.get(String(args.assetVersionId));args={...args,instanceId:args.instanceId??`scene-${commandId}`,segmentId:args.segmentId??`segment-${commandId}`,label:args.label??this.kernel.view().assets[String(args.assetVersionId)]?.contentGuide?.title??'Scene',initialInputs:c?this.sceneProps(c):undefined};}
     const target = this.target(tool, args);
     const create = [
       'offerSpeech',
@@ -465,7 +466,7 @@ export class ProductionRuntime implements RoleRuntime {
     const result = this.submit(role, target, payload, { commandId, directionEpoch, expectedRevision });
     if (!result.ok) return result;
     if (this.dispatched.has(result.acceptSequence))
-      return {ok:true,acceptSequence:result.acceptSequence,reused:true,epoch:this.kernel.epoch(),target,revision:this.kernel.revision(target)};
+      return {ok:true,acceptSequence:result.acceptSequence,reused:true,epoch:this.kernel.epoch(),target,revision:this.kernel.revision(target),...(tool==='prepareScene'?{instanceId:args.instanceId,segmentId:args.segmentId}:{})};
     this.dispatched.add(result.acceptSequence);
     // One command owner dispatches effects; fixture Desks are never part of this path.
     if (tool === 'offerSpeech') {
@@ -553,7 +554,7 @@ export class ProductionRuntime implements RoleRuntime {
       this.disposedRetiredScenes(observation?.observedAtShowTime);
     } else if (tool === 'updateInputs')
       await this.applyPatch(args.instanceId, commandId, args.inputsRevision, args.inputs);
-    return {ok:true,acceptSequence:result.acceptSequence,epoch:this.kernel.epoch(),target,revision:this.kernel.revision(target)};
+    return {ok:true,acceptSequence:result.acceptSequence,epoch:this.kernel.epoch(),target,revision:this.kernel.revision(target),...(tool==='prepareScene'?{instanceId:args.instanceId,segmentId:args.segmentId}:{})};
   }
   private target(tool: string, args: Record<string, any>): CommandTarget {
     if(tool==='setProposalStatus')return {kind:'audienceProposal',id:String(args.proposalId??'')};
