@@ -1,9 +1,13 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { isLiveModelLaunch, loadLiveModelRoute } from './live-model-route.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
-const child = spawn(process.execPath, [fileURLToPath(new URL('../node_modules/@deepseek-ai/dsh/lib/bin.js', import.meta.url)), ...process.argv.slice(2)], {
+const args = process.argv.slice(2);
+const route = isLiveModelLaunch(args) ? loadLiveModelRoute(root) : undefined;
+if (route) args.push('--patch', route.patchFile);
+const child = spawn(process.execPath, [fileURLToPath(new URL('../node_modules/@deepseek-ai/dsh/lib/bin.js', import.meta.url)), ...args], {
   cwd: root,
-  env: { ...process.env, DSH_HOME: fileURLToPath(new URL('../.dsh/', import.meta.url)) },
+  env: { ...(route?.env ?? process.env), DSH_HOME: fileURLToPath(new URL('../.dsh/', import.meta.url)) },
   stdio: 'inherit',
 });
 child.on('error', error => { console.error(error.message); process.exitCode = 1; });
