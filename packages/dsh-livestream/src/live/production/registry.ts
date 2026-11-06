@@ -55,3 +55,12 @@ export function closeTaskForEpoch(task: ProductionTask): ProductionTask {
     revision: task.revision + 1,
   };
 }
+
+/** Legacy WAL may contain named priorities; new commands store numeric ranks. */
+export function productionPriority(value: unknown): number {
+  if(typeof value==='number'&&Number.isFinite(value))return value;
+  return ({high:80,normal:50,low:20} as Record<string,number>)[String(value)]??0;
+}
+export function unmetProductionDependencies(task:ProductionTask,tasks:Record<string,ProductionTask>):string[]{
+  return task.dependsOn.filter(id=>!tasks[id]||tasks[id].cancelled||tasks[id].status!=='ready'||tasks[id].directionEpoch!==task.directionEpoch);
+}

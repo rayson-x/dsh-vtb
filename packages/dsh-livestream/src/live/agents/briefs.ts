@@ -52,6 +52,10 @@ export function projectRoleBriefs(state: EngineeringState): RoleBriefs {
   };
 }
 
+export function projectProductionBrief(state:EngineeringState,taskId:string){
+  return projectProductionReadModel(toSnapshot(state),taskId);
+}
+
 /**
  * 投影入口。events / playback / generationCancels 故意留空：
  * 低延迟简报不读它们。权威仍在内核事件库。

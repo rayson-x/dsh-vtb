@@ -3,6 +3,8 @@
  * 不调用播放器。live patch 一律拒绝，避免把未接线的输入更新记成已应用。
  */
 
+import{layeredStageProblem}from'../../../scene-package/src/layer-controls';
+import{mergeSceneInputs}from'../../../scene-host/src/inputs';
 import type { ProposalStatus, Role } from './domain/codes';
 import type { CommandEnvelope, ShowCommand } from './domain/commands';
 import type {
@@ -126,7 +128,7 @@ export function planCommand(command: CommandEnvelope, ctx: PlanContext): Plan {
       if(payload.type==='receiptScenePatchFailed')return succeed('execution.receipt',[{op:'scene',scene:{...scene,revision:scene.revision+1,pendingInputs:undefined,supportsInPlaceInputUpdate:false,requiresStandbyRebuild:true}}]);
       if(pending.inputsRevision!==payload.inputsRevision||JSON.stringify(pending.inputs)!==JSON.stringify(payload.inputs))return fail('REVISION_CONFLICT','Patch receipt does not match reserved inputs');
       if (scene.codeVersion !== payload.codeVersion || payload.inputsRevision <= scene.inputsRevision) return fail('REVISION_CONFLICT', 'Stale patch receipt');
-      const facts:KernelFact[]=[{op:'scene',scene:{...scene,revision:scene.revision+1,inputsRevision:payload.inputsRevision,pendingInputs:undefined,inputs:structuredClone(payload.inputs)}}];
+      const facts:KernelFact[]=[{op:'scene',scene:{...scene,revision:scene.revision+1,inputsRevision:payload.inputsRevision,pendingInputs:undefined,inputs:mergeSceneInputs(scene.inputs??{},payload.inputs)}}];
       const evidenceId=`pb-patch-${scene.instanceId}-${payload.inputsRevision}`;
       facts.push({op:'playback',event:{id:evidenceId,kind:scene.surface==='program'?'painted':'applied',showTime:payload.observedAtShowTime??ctx.now,directionEpoch:scene.directionEpoch,sceneInstanceId:scene.instanceId,assetVersionId:scene.assetVersionId,inputsRevision:payload.inputsRevision,operation:'patch',frame:payload.frame}});
       for(const proposal of Object.values(ctx.state.proposals))if(proposal.directionEpoch===ctx.state.project.currentEpoch&&proposal.status==='creating'&&proposal.presentation?.sceneInstanceId===scene.instanceId&&proposal.presentation.inputsRevision===payload.inputsRevision&&proposal.presentation.operationId===payload.operationId)facts.push({op:'proposal',proposal:{...proposal,status:'ready',revision:proposal.revision+1}});
@@ -268,8 +270,9 @@ function planProposalStatus(
 ): Plan {
   const proposal = ctx.state.proposals[payload.proposalId];
   if (!proposal) return fail('UNKNOWN_TARGET', '没有这则观众提议');
-  const locked = targetIs(command, 'audienceProposal', proposal.id);
+  const locked = requireEpoch(ctx.state,command)??targetIs(command, 'audienceProposal', proposal.id);
   if (locked) return locked;
+  if(proposal.directionEpoch!==ctx.state.project.currentEpoch)return fail('STALE_DIRECTION','不能修改旧方向提议');
   if (payload.status === 'presented' && ctx.role !== 'runtime') {
     return fail('NOT_AUTHORIZED', 'presented 只能由 Runtime 在播出回执之后写入');
   }
@@ -324,6 +327,8 @@ function planRequestProduction(
   const stale = requireEpoch(ctx.state, command) ?? targetIs(command, 'productionTask', payload.task.id);
   if (stale) return stale;
   if (ctx.state.tasks[payload.task.id]) return fail('REVISION_CONFLICT', '任务编号已存在');
+  if(typeof payload.task.priority!=='number'||!Number.isFinite(payload.task.priority))return fail('ILLEGAL_TRANSITION','制作priority须为有限数字，high=80 normal=50 low=20');
+  if(!Array.isArray(payload.task.dependsOn)||payload.task.dependsOn.some(id=>typeof id!=='string'||id===payload.task.id||!ctx.state.tasks[id]))return fail('UNKNOWN_TARGET','制作依赖须为已经登记的其他任务');
   const intended=payload.task.intendedDirectionId?ctx.state.directions[payload.task.intendedDirectionId]:undefined;
   if(payload.task.intendedDirectionId&&(!intended||!['preparing','active'].includes(intended.status)))return fail('UNKNOWN_TARGET','Production target direction is unavailable');
   const task = openTask(payload.task, ctx.state.project.currentEpoch,!intended||intended.id===ctx.state.project.currentDirectionId);
@@ -362,6 +367,8 @@ function planPublish(command: CommandEnvelope, payload: Extract<ShowCommand, { t
   const locked = targetIs(command, 'productionTask', task.id);
   if (locked) return locked;
   if (ctx.state.assets[payload.asset.id]) return fail('IMMUTABLE_VERSION', '产物版本不可变，新内容要用新编号');
+  if(payload.asset.componentId!==undefined&&(typeof payload.asset.componentId!=='string'||payload.asset.componentId.length>160))return fail('ILLEGAL_TRANSITION','Invalid component ID');
+  if(payload.asset.controlGuide!==undefined&&(typeof payload.asset.controlGuide!=='string'||payload.asset.controlGuide.length>6000))return fail('ILLEGAL_TRANSITION','Invalid component control guide');
   const guide=payload.asset.contentGuide;
   if(guide!==undefined){
     const text=(v:unknown,max:number)=>typeof v==='string'&&v.trim().length>0&&[...v].length<=max;
@@ -973,6 +980,7 @@ function planPrepareScene(command: CommandEnvelope, payload: Extract<ShowCommand
     supportsInPlaceInputUpdate: supports,
     requiresStandbyRebuild: !supports || asset.capabilities.requiresStandbyRebuild,
   });
+  scene.inputs=structuredClone(payload.initialInputs??{});scene.inputsAreCanonical=payload.initialInputs!==undefined;scene.inputPatchSemantics='deep-merge';
   const segment = {
     segmentId: payload.segmentId,
     directionEpoch: existing?.directionEpoch ?? ctx.state.project.currentEpoch,
@@ -1072,6 +1080,7 @@ function planUpdateInputs(command: CommandEnvelope, payload: Extract<ShowCommand
   if (locked) return locked;
   if (scene.directionEpoch !== ctx.state.project.currentEpoch) return fail('STALE_DIRECTION', '不能更新旧方向场景');
   if(ctx.role==='runtime'){const cue=payload.cueId?ctx.state.cues[payload.cueId]:undefined;if(!cue||cue.status!=='dispatched'||cue.sceneInstanceId!==scene.instanceId||JSON.stringify(cue.payload)!==JSON.stringify(payload.inputs))return fail('NOT_AUTHORIZED','Runtime patch requires a committed matching cue');}
+  if(ctx.state.assets[scene.assetVersionId]?.componentId==='aivtb-layered-stage-v1'){const problem=layeredStageProblem(mergeSceneInputs(scene.inputs??{},payload.inputs),payload.inputs);if(problem)return fail('ILLEGAL_TRANSITION',problem);}
   if(scene.pendingInputs)return fail('REVISION_CONFLICT','Another patch operation is pending');
   if (!scene.supportsInPlaceInputUpdate) return fail('UNSUPPORTED_LIVE_PATCH', 'Scene requires standby rebuild');
   if (!Number.isSafeInteger(payload.inputsRevision) || payload.inputsRevision <= scene.inputsRevision) return fail('REVISION_CONFLICT', 'Stale input revision');

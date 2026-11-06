@@ -1,4 +1,5 @@
 /** Project a bounded scene-surface replay from actual renderer acknowledgements in the WAL. */
+import{resolveSceneInputs}from'../packages/scene-host/src/inputs.ts';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 export function projectRecording(events, candidates, { from, until, fps = 30, certifiedHashes = [] }) {
@@ -17,7 +18,7 @@ export function projectRecording(events, candidates, { from, until, fps = 30, ce
         )?.scene;
         if (scene) {
           const list = patches.get(scene.instanceId) ?? [];
-          list.push({ showTime: fact.event.showTime, inputs: scene.inputs });
+          list.push({ showTime: fact.event.showTime, inputs: scene.inputs,...(scene.inputsAreCanonical?{snapshot:true}:{}) });
           patches.set(scene.instanceId, list);
         }
       }
@@ -60,9 +61,8 @@ export function projectRecording(events, candidates, { from, until, fps = 30, ce
       });
     }
     if (!frameMap.length) throw Error('No actual playback frame mapping for ' + scene.instanceId);
-    const history = patches.get(scene.instanceId) ?? [],
-      props = { ...c.props };
-    for (const p of history.filter((p) => p.showTime <= start)) Object.assign(props, p.inputs);
+    const history = patches.get(scene.instanceId) ?? [],semantics=scene.inputPatchSemantics??'shallow-merge',
+      props=resolveSceneInputs(c.props,history.filter(p=>p.showTime<=start),semantics);
     scenes.push({
       id: scene.instanceId,
       startFrame,
@@ -76,7 +76,7 @@ export function projectRecording(events, candidates, { from, until, fps = 30, ce
         width: c.width,
         height: c.height,
         durationInFrames: c.durationInFrames,
-        window: { seconds: c.durationInFrames / c.fps, frames: c.durationInFrames, fps: c.fps },
+        window: { ...props.window,seconds: c.durationInFrames / c.fps, frames: c.durationInFrames, fps: c.fps },
       },
       fps: c.fps,
       width: c.width,
@@ -87,8 +87,9 @@ export function projectRecording(events, candidates, { from, until, fps = 30, ce
         .filter((p) => p.showTime > start && p.showTime < end)
         .map((p) => ({
           atFrame: Math.max(0, Math.ceil(((p.showTime - presentStart) * fps) / 1000)),
-          inputs: p.inputs,
+          inputs: p.inputs,...(p.snapshot?{snapshot:true}:{}),
         })),
+      inputPatchSemantics:semantics,
       deterministicSeek: true,
     });
   }

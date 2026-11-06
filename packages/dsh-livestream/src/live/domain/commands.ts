@@ -123,6 +123,7 @@ export type ShowCommand =
   | { type: 'cancelCue'; cueId: string }
   | {
       type: 'prepareScene';
+      initialInputs?:Record<string,unknown>;
       instanceId: string;
       assetVersionId: string;
       segmentId: string;

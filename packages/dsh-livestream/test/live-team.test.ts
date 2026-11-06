@@ -1,11 +1,14 @@
 /** DSH adapter simulation: registry and agents are ports; no model requests or stage playback. */
 import { afterEach, expect, it, vi } from 'vitest';
+import{TOOL_PERMISSIONS}from'../src/live/domain/permissions';
+import type{AgentRole}from'../src/live/domain/codes';
 import { DshLiveTeam, type DshAgentPort,type RoleRuntime } from '../src/live/runtime/dsh-team';
 class Agent implements DshAgentPort {
   status = 'idle';
   calls: string[] = [];
   messages: any[] = [];
-  constructor(readonly session: { id: string }) {}
+  ctx:{tools:{schemas:()=>{name:string}[];restrict:(filter:{allow:string[]})=>()=>void}};
+  constructor(readonly session:{id:string},role:AgentRole='performer'){let names:string[]=[...TOOL_PERMISSIONS[role],'working_directory'];this.ctx={tools:{schemas:()=>names.map(name=>({name})),restrict:filter=>{const prior=names;names=names.filter(n=>filter.allow.includes(n));return()=>{names=prior;};}}};}
   followup(message: unknown) {
     this.calls.push('followup');
     this.messages.push(message);
@@ -32,7 +35,7 @@ function setup(select: (id: string) => Promise<void> = async () => {},selection=
     agents: {
       async create(options: any) {
         optionsByRole.set(options.meta.agentPreset,options.agentOptions);
-        const agent = new Agent({ id: options.sessionId });
+        const agent = new Agent({ id: options.sessionId },options.meta.agentPreset.replace('live-v2-','') as AgentRole);
         agents.set(options.meta.agentPreset, agent);
         return { agent };
       },
@@ -164,4 +167,8 @@ it('coalesces ordinary visual updates while the director works and delivers the 
  expect(director.calls).toEqual([]);
  brief.mockReturnValue({epoch:2,speechOutlook:{upcoming:[{partId:'new'}]}});director.status='idle';team.observeStream(director,{type:'end',attemptId:'visual-busy'});team.poll();
  expect(director.calls).toEqual(['followup']);expect(JSON.stringify(director.messages.at(-1))).toContain('new');expect(JSON.stringify(director.messages.at(-1))).not.toContain('old');
+});
+it('does not report a live team ready when the performer has no callable role tools',async()=>{
+ const {team,agents}=setup(async id=>{if(id==='live-v2-performer')vi.spyOn(agents.get(id)!.ctx.tools,'schemas').mockReturnValue([]);});
+ await expect(team.start()).rejects.toThrow(/performer/);expect(team.snapshot()).toEqual([]);
 });

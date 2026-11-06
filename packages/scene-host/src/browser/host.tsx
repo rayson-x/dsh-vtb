@@ -1,3 +1,4 @@
+import{mergeSceneInputs}from'../inputs';
 import { AUDIO_POLICY_SCRIPT } from './audio-policy';
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -250,7 +251,7 @@ export class BrowserSceneHost {
         input.inputsRevision <= row.inputsRevision
       )
         throw Error('Stale inputs/version');
-      const props = { ...row.pkg.props, ...input.inputs };
+      const props = mergeSceneInputs(row.pkg.props,input.inputs);
       if (row.player && row.react) {
         const scene = (await import(row.pkg.moduleUrl)).default as NativeScene;
         flushSync(() =>
@@ -308,7 +309,7 @@ export class BrowserSceneHost {
           player.addEventListener('runtimedataapplied', applied);
           player.addEventListener('runtimedataerror', failed);
           try {
-            player.setRuntimeData(channel, input.inputs);
+            player.setRuntimeData(channel, props);
           } catch (error) {
             cleanup();
             reject(error);

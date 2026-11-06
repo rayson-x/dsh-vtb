@@ -131,6 +131,8 @@ export interface ContentGuide {
 /** 不可变代码 / 资源版本。票数变化不是换版。 */
 export interface AssetVersion {
   contentGuide?: ContentGuide;
+  controlGuide?: string;
+  componentId?:string;
   id: string;
   revision: number;
   hash: string;
@@ -279,6 +281,8 @@ export interface SceneInstance {
   inputsRevision: number;
   pendingInputs?: { operationId: string; inputsRevision: number; inputs: Record<string, unknown>; proposalIds: string[] };
   inputs: Record<string, unknown>;
+  inputsAreCanonical?:boolean;
+  inputPatchSemantics?:'deep-merge';
   surface: SceneSurface;
   lifecycle: SceneLifecycle;
   readiness: StandbyReadiness;

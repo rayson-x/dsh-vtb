@@ -113,7 +113,7 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
         const current = new Set(stage.state.danmaku.map((d) => d.id));
         for (const id of seen) if (!current.has(id)) seen.delete(id);
       }
-    }, 500);
+    }, 200);
     timer.unref?.();
     return () => {
       clearInterval(timer);
@@ -190,7 +190,7 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
           return send(200, { ok: true, roles: team.snapshot() });
         }
         if (url.pathname === '/live/start') {
-          if (body.direction) {
+          if (body.direction&&String(body.direction)!==runtime.kernel.view().directions[runtime.kernel.view().project.currentDirectionId]?.commitment) {
             await runtime.switchDirection(String(body.direction));
             show.direction = String(body.direction);
           }
@@ -201,6 +201,14 @@ export function applyV2Root(ctx: any, config: { brainPort?: number } = {}) {
         if (url.pathname === '/live/say') {
           const message = String(body.text ?? '').trim();
           if (!message) throw Error('Message required');
+          if(body.prepareOnly===true){
+            const directionId=String(body.directionId??('prepared-'+crypto.randomUUID()));
+            const commitment=String(body.direction??message);
+            const result=await runtime.invoke('editorial','prepareDirection',{directionEpoch:runtime.kernel.epoch(),directionId,commitment,coreQuestion:commitment});
+            if(!(result as {ok:boolean}).ok)return send(409,result);
+            team.wake('editorial',`主人只要求预备下一方向，当前节目继续、不送播：directionId=${directionId}，内容=${commitment}。为该intendedDirectionId准备素材与最小可用场景，由制作席提前发布。`);
+            return send(200,{ok:true,preparedOnly:true,directionId,message:'下一方向已登记预备，当前节目不切换'});
+          }
           const explicitDirection = message.match(/^(立即)?切换方向[：:]\s*([\s\S]+)$/);
           const nextDirection = body.direction || explicitDirection?.[2];
           if (nextDirection) {

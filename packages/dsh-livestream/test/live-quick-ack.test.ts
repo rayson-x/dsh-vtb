@@ -4,6 +4,9 @@ afterEach(()=>vi.useRealTimers());
 it('takes the first complete relevant clause, without speaking a partial word or just echoing the question',()=>{
  expect(firstAcknowledgementClause('暖灯可以有。后面还在生成','窗外加暖灯吗？')).toBe('暖灯可以有。');
  expect(firstAcknowledgementClause('小灯，这封没署名的信，','信是谁写的？')).toBeUndefined();
+ expect(firstAcknowledgementClause('暖灯先记下，后面还在生成','窗外加一盏暖灯吗？')).toBe('暖灯先记下。');
+ expect(firstAcknowledgementClause('这个提议我同意，','窗外加一盏暖灯吗？')).toBeUndefined();
+ expect(firstAcknowledgementClause('暖灯我想放在，','窗外加一盏暖灯吗？')).toBeUndefined();
  expect(firstAcknowledgementClause('暖灯可','窗外加暖灯吗？')).toBeUndefined();
  expect(firstAcknowledgementClause('是谁写的，','是谁写的？')).toBeUndefined();
  expect(firstAcknowledgementClause('这个问题很有意思，','这封信谁写的？')).toBeUndefined();

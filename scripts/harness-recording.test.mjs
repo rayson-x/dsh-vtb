@@ -136,3 +136,14 @@ test('includes the final partial frame instead of appending an accidental black 
   assert.equal(recording.frameCount, 61);
   assert.equal(recording.scenes[0].endFrameExclusive, 61);
 });
+test('preserves independent live controls and canonical null/rebuild state in Film projection',()=>{
+ const c={...candidates[0],props:{layers:{lamp:{kind:'lamp',x:100},cup:{kind:'cup',x:500}}}};
+ const s={...scene,inputPatchSemantics:'deep-merge'};
+ const patch=(inputs,time,snapshot=false)=>({payload:{facts:[{op:'scene',scene:{...s,inputs,inputsAreCanonical:snapshot}},{op:'playback',event:{operation:'patch',sceneInstanceId:'a',showTime:time}}]}});
+ const base={payload:{facts:[{op:'scene',scene:s}]}};
+ const projected=projectRecording([base,patch({layers:{lamp:{brightness:.3}}},10400)],[c],{from:10500,until:12000,certifiedHashes:['hash']});
+ assert.deepEqual(projected.scenes[0].props.layers,{lamp:{kind:'lamp',x:100,brightness:.3},cup:{kind:'cup',x:500}});
+ const canonical={layers:{lamp:{brightness:.2},cup:{kind:'cup',x:500}}};
+ const rebuilt=projectRecording([base,patch({layers:{lamp:null}},10200),patch(canonical,10400,true)],[c],{from:10500,until:12000,certifiedHashes:['hash']});
+ assert.deepEqual(rebuilt.scenes[0].props.layers,canonical.layers);
+});

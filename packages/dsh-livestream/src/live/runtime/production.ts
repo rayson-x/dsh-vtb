@@ -4,11 +4,13 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import{layeredStageProblem}from'../../../../scene-package/src/layer-controls';
 import { EngineeringKernel } from '../kernel';
 import { ManualProgrammeClock } from '../playback/manual-clock';
 import { FileEventLog } from './file-log';
 import { BrowserGateway } from './browser-gateway';
-import { projectRoleBriefs } from '../agents/briefs';
+import { productionPriority,unmetProductionDependencies } from '../production/registry';
+import { projectRoleBriefs,projectProductionBrief } from '../agents/briefs';
 import { TOOL_PERMISSIONS } from '../domain/permissions';
 import type { AgentRole } from '../domain/codes';
 import type { ActorRecord } from '../domain/entities';
@@ -42,6 +44,7 @@ async function storeJson(path: string, value: unknown) {
 const internal = ['runtime', 'master', 'directionController', 'input'] as const;
 const roleNames: AgentRole[] = ['performer', 'director', 'editorial', 'production'];
 interface Candidate {
+  controlGuide?:string;
   component?: { path: string; id: string; version?: string; source?: unknown };
   id: string;
   taskId: string;
@@ -201,11 +204,11 @@ export class ProductionRuntime implements RoleRuntime {
     const pending=[...new Set([...(this.speaking&&!started?[this.speaking]:[]),...this.speechQueue])];
     return {epoch:this.kernel.epoch(),current:this.speaking&&started?describe(this.speaking,true):null,upcoming:pending.slice(0,5).flatMap(id=>{const p=describe(id);return p?[p]:[];}),note:'upcoming是可撤换的待讲内容，不是已听内容；按partId和Unicode字位置规划，真实发声进度控制执行，主播不等待画面审批。'};
   }
-  private contentShelf(){
+  private contentShelf(controls=false){
     const state=this.kernel.view(),current=this.kernel.epoch();
     return {
       editorial:Object.values(state.editorial).filter(p=>p.directionEpoch===current).slice(-3).map(p=>({id:p.id,segmentIntent:p.segmentIntent.slice(0,400),viewingValue:p.viewingValue.slice(0,200),participation:p.participation.slice(0,200),handoff:p.handoff.slice(0,200),minimumMaterials:p.minimumMaterials.slice(0,4).map(m=>m.slice(0,400))})),
-      ready:Object.values(state.tasks).filter(t=>t.directionEpoch===current&&t.liveEligible&&!t.cancelled&&t.status==='ready').slice(-3).flatMap(t=>t.assetVersionIds.slice(-1).flatMap(id=>{const a=state.assets[id];if(!a)return [];const g=a.contentGuide;return [{taskId:t.id,assetVersionId:id,codeVersion:a.codeVersion,goal:t.goal.slice(0,300),contentGuide:g?{title:g.title,summary:g.summary.slice(0,300),beats:g.beats.slice(0,3).map(x=>x.slice(0,200)),sources:g.sources.slice(0,2),visualNotes:g.visualNotes.slice(0,3).map(x=>x.slice(0,200))}:undefined,guideExcerpt:!!g&&(g.summary.length>300||g.beats.length>3||g.beats.some(x=>x.length>200)||g.sources.length>2||g.visualNotes.length>3||g.visualNotes.some(x=>x.length>200))}];})),
+      ready:Object.values(state.tasks).filter(t=>t.directionEpoch===current&&t.liveEligible&&!t.cancelled&&t.status==='ready').slice(-3).flatMap(t=>t.assetVersionIds.slice(-1).flatMap(id=>{const a=state.assets[id];if(!a)return [];const g=a.contentGuide;return [{...(controls&&a.controlGuide?{controlGuide:a.controlGuide}:{}),taskId:t.id,assetVersionId:id,codeVersion:a.codeVersion,goal:t.goal.slice(0,300),contentGuide:g?{title:g.title,summary:g.summary.slice(0,300),beats:g.beats.slice(0,3).map(x=>x.slice(0,200)),sources:g.sources.slice(0,2),visualNotes:g.visualNotes.slice(0,3).map(x=>x.slice(0,200))}:undefined,guideExcerpt:!!g&&(g.summary.length>300||g.beats.length>3||g.beats.some(x=>x.length>200)||g.sources.length>2||g.visualNotes.length>3||g.visualNotes.some(x=>x.length>200))}];})),
       note:'后台建议与可用素材，不是固定台词、事实认证或送播指令；主播结合互动自由讲述，导演独立选画面。完整指南用readLiveBrief({assetVersionId})。',
     };
   }
@@ -214,14 +217,14 @@ export class ProductionRuntime implements RoleRuntime {
     for(const part of Object.values(state.speech))if(part.responseTo){const parts=byInput.get(part.responseTo)??[];parts.push(part);byInput.set(part.responseTo,parts);}
     const responses=state.audience.filter(input=>input.directionEpoch===this.kernel.epoch()&&(input.priority==='urgent'||byInput.has(input.eventId))).map(input=>{
       const parts=byInput.get(input.eventId)??[],effective=parts.filter(part=>!['cancelled','rejected','aborted','failed'].includes(part.state));
-      const acknowledged=effective.some(part=>part.state==='ended'),verbalComplete=effective.some(part=>part.responseStage==='finish'&&part.state==='ended');
+      const acknowledged=effective.some(part=>part.state==='ended'),verbalComplete=effective.some(part=>part.responseStage==='finish'&&part.state==='ended'),completionInFlight=effective.some(part=>part.responseStage==='finish'&&part.state!=='ended');
       const proposals=Object.values(state.proposals).filter(p=>p.eventIds.includes(input.eventId));
-      return {eventId:input.eventId,inputId:input.replyRef??input.eventId,summary:input.text.slice(0,160),acknowledged,verbalComplete,needsAck:effective.length===0,
-        nextStep:verbalComplete?'done':effective.length===0?'ack':effective.every(part=>part.responseStage==='ack')?'answer':'continue',
+      return {eventId:input.eventId,inputId:input.replyRef??input.eventId,summary:input.text.slice(0,160),acknowledged,verbalComplete,completionInFlight,needsAck:effective.length===0,
+        nextStep:verbalComplete?'done':completionInFlight?'await-playback':effective.length===0?'ack':effective.every(part=>part.responseStage==='ack')?'answer':'continue',
         parts:parts.slice(-4).map(part=>({partId:part.partId,stage:part.responseStage,state:part.state,text:part.text.slice(0,160)})),
         proposalIds:proposals.slice(-4).map(p=>p.id),visualStatus:proposals.length?proposals.every(p=>p.status==='presented')?'presented':proposals.every(p=>p.status==='cancelled')?'cancelled':'pending':'not-requested'};
     });
-    return {responses:responses.slice(-12),pendingReplies:[...responses.filter(r=>r.needsAck).slice(-4),...responses.filter(r=>!r.needsAck&&!r.verbalComplete).slice(-4)]};
+    return {nextReply:responses.find(r=>!r.verbalComplete&&!r.needsAck&&!r.completionInFlight)??null,responses:responses.slice(-12),pendingReplies:[...responses.filter(r=>r.needsAck).slice(-4),...responses.filter(r=>!r.needsAck&&!r.verbalComplete).slice(0,4)]};
   }
   brief(role:'performer'):Extract<ReturnType<ProductionRuntime['makeBrief']>,{role:'performer'}>;
   brief(role:Exclude<AgentRole,'performer'>):Exclude<ReturnType<ProductionRuntime['makeBrief']>,{role:'performer'}>;
@@ -232,6 +235,7 @@ export class ProductionRuntime implements RoleRuntime {
     const tail = <T>(items:T[],cap:number) => items.slice(-cap);
     const map = <T>(items:T[],key:(item:T)=>string) => Object.fromEntries(items.map(item=>[key(item),item]));
     const current = state.project.currentEpoch;
+    const runnable=Object.values(state.tasks).filter(t=>t.status==='open'&&!t.cancelled&&t.directionEpoch===current&&(t.liveEligible||(t.intendedDirectionId&&state.directions[t.intendedDirectionId]?.status==='preparing'))&&!unmetProductionDependencies(t,state.tasks).length).sort((a,b)=>Number(b.liveEligible)-Number(a.liveEligible)||productionPriority(b.priority)-productionPriority(a.priority)||a.id.localeCompare(b.id));
     const view = { ...state,
       audience: tail(state.audience,12),
       directions: Object.fromEntries(Object.entries(state.directions).map(([id,d])=>[id,{...d,commitment:d.commitment.slice(0,2000),coreQuestion:d.coreQuestion.slice(0,1000),outcomes:d.outcomes.slice(-8).map(x=>x.slice(0,400)),contentPool:d.contentPool.slice(-8).map(x=>({...x,summary:x.summary.slice(0,400)}))}])),
@@ -256,7 +260,7 @@ export class ProductionRuntime implements RoleRuntime {
     }
     return {
       epoch: this.kernel.epoch(),
-      ...(role==='director'?{speechOutlook:this.speechOutlook(),visualTimeline:{totalFutureCues:Object.values(state.cues).filter(c=>c.directionEpoch===current&&c.status==='future').length,cues:Object.values(state.cues).filter(c=>c.directionEpoch===current&&c.status==='future').slice(-24).map(({payload,...c})=>({...c,payloadPreview:JSON.stringify(payload).slice(0,1000),payloadExcerpt:JSON.stringify(payload).length>1000}))}}:{}),
+      ...(role==='director'?{contentShelf:this.contentShelf(true),speechOutlook:this.speechOutlook(),visualTimeline:{totalFutureCues:Object.values(state.cues).filter(c=>c.directionEpoch===current&&c.status==='future').length,cues:Object.values(state.cues).filter(c=>c.directionEpoch===current&&c.status==='future').slice(-24).map(({payload,...c})=>({...c,payloadPreview:JSON.stringify(payload).slice(0,1000),payloadExcerpt:JSON.stringify(payload).length>1000}))}}:{}),
       presentation: this.options.presentation?.(),
       role,
       continuations:role==='director'?Object.values(state.continuations).filter(n=>n.directionEpoch===current&&['pending','resuming'].includes(n.status)).slice(-6).map(({id,sourcePartId,sceneInstanceId,status})=>({id,sourcePartId,sceneInstanceId,status})):undefined,
@@ -269,7 +273,7 @@ export class ProductionRuntime implements RoleRuntime {
       },
       masterNotes: this.masterNotes.slice(-16).map(n=>({...n,text:n.text.slice(0,700),excerpt:n.text.length>700})),
       masterNoteCount: this.masterNotes.length,
-      brief: role==='production' ? briefs.production.slice(0,1).map(v=>({...v,task:v.task?{...v.task,goal:v.task.goal.slice(0,4000),goalExcerpt:v.task.goal.length>4000}:null})) : briefs[role],
+      brief: role==='production' ? runnable.slice(0,1).map(t=>projectProductionBrief(state,t.id)).map(v=>({...v,task:v.task?{...v.task,goal:v.task.goal.slice(0,4000),goalExcerpt:v.task.goal.length>4000}:null})) : briefs[role],
       revisions: {
         show: {id:state.project.id,revision:state.project.revision,currentEpoch:current,currentDirectionId:state.project.currentDirectionId,channel:state.project.channel},
         directions: Object.fromEntries(Object.entries(view.directions).filter(([id,d])=>id===state.project.currentDirectionId||d.status==='preparing').slice(-4).map(([id,d])=>[id,{id,revision:d.revision,epoch:d.epoch,status:d.status,commitment:d.commitment,coreQuestion:d.coreQuestion}])),
@@ -293,28 +297,34 @@ export class ProductionRuntime implements RoleRuntime {
         .map((e) => ({ eventId: e.eventId, type: e.type, showTime: e.showTime })),
       commandFormat:
         'Brief text fields are excerpts. Use readTask({taskId,offset}) or readProgramme({instanceId}) for targeted detail; masterOffset pages durable master instructions. Always directionEpoch. New records get target/revision/id from runtime; updates require expectedRevision from revisions.',
-      toolContracts: {
+      toolContracts: Object.fromEntries(Object.entries({
+        readTask:'{taskId?,offset?}；不指定taskId时只派可执行任务',
+        readProgramme:'{partId?,instanceId?,assetVersionId?,layerIds?:string[],cueId?,offset?}；不指定目标时读最新简报',
+        searchSdk:'{path?,offset?}；示例aivtb/remotion、aivtb/hyperframes、aivtb/d3、aivtb/three，源码通过workspaceBuildPreview提交，不猜本地目录',
+        searchEffects:'{query,includeSource?}；返回真实可复用effectPath',
+        reportProgress:'{directionEpoch,taskId,note,expectedRevision}',
         offerSpeech: '{directionEpoch,text,partId?,replacePending?:{partId,expectedRevision}}',
         requestProduction:
           '{directionEpoch,task:{id,goal,priority,inputs:[],dependsOn:[],intendedDirectionId?},proposalId?}',
+        reviewAudienceProposal:'{directionEpoch,proposalId,expectedRevision,status:accepted|deferred|cancelled}；纯口头问题无画面需求可cancelled，真实视觉需求必须跟进，不得伪造presented',
         publishEditorialProposal:
           '{directionEpoch,proposal:{id,segmentIntent,viewingValue,participation,handoff,minimumMaterials:[],alternatives:[]}}',
         prepareDirection: '{directionEpoch,directionId,commitment,coreQuestion}',
         workspaceBuildPreview:
-          '{directionEpoch,taskId,taskVersion,source? OR template? OR effectPath?,props?,width?,height?,durationInFrames?}',
+          '{directionEpoch,taskId,taskVersion,source? OR template:layered-stage|gsap|remotion OR effectPath?,props?,width?,height?,durationInFrames?}；2D物件/图文可先用layered-stage组件组合，searchSdk path=aivtb/layered-stage读能力，props.layers独立调节',
         publishCandidate: '{directionEpoch,taskId,assetVersionId,expectedRevision,contentGuide?:{title,summary,beats:string[],sources:string[],visualNotes:string[]}}；内容指南不是固定台词，候选发布不送播',
         prepareScene: '{directionEpoch,instanceId,assetVersionId,segmentId,label}',
         take: '{directionEpoch,instanceId,expectedRevision}',
         updateInputs: '{directionEpoch,instanceId,inputsRevision,inputs,expectedRevision,proposalIds?}',
         bindCue:
-          '{directionEpoch,cue:{cueId,sceneInstanceId,anchor:{kind:speech,partId,charIndex}|{kind:showTime,at},payload:{params:{key:value}}}}',
+          '{directionEpoch,cue:{cueId,sceneInstanceId,anchor:{kind:speech,partId,charIndex}|{kind:showTime,at},payload:场景输入补丁对象}}；按controlGuide/currentInputs取结构，layered-stage用layers不套params',
         editCue: '{directionEpoch,cueId,payload,expectedRevision}；仅改未来参数',
         cancelCue: '{directionEpoch,cueId,expectedRevision}；仅撤回未来Cue，改锚点时撤回后用新ID重新bindCue，不撤场不撤话',
         holdScene: '{directionEpoch,instanceId,expectedRevision}',
         resumeScene: '{directionEpoch,instanceId,expectedRevision}',
         editFutureTimeline: '{directionEpoch,segmentId,label,sceneInstanceId?,expectedRevision}',
         sendPerformerCue: '{directionEpoch,cueId,text,expectedRevision}',
-      },
+      }).filter(([name])=>(TOOL_PERMISSIONS[role] as readonly string[]).includes(name))),
     };
   }
   private submit(
@@ -336,26 +346,30 @@ export class ProductionRuntime implements RoleRuntime {
   }
   async invoke(role: AgentRole, tool: string, args: Record<string, any>,source?:'quick-ack'): Promise<unknown> {
     if (!(TOOL_PERMISSIONS[role] as readonly string[]).includes(tool)) throw Error('Role tool denied');
+    if(tool==='reviewAudienceProposal')tool='setProposalStatus';
     if(tool==='acknowledgeInput'){
       tool='offerSpeech';args={...args,responseTo:args.inputId,responseStage:args.complete===true?'finish':'ack',isAcknowledgement:true};delete args.inputId;delete args.complete;
     }
     if(tool==='offerSpeech'&&args.resumesContinuationIds?.length&&!args.responseTo){const notes=args.resumesContinuationIds.map((id:string)=>this.kernel.view().continuations[id]),targets=[...new Set(notes.map((n:any)=>n?.sourceResponseTo))];if(targets.length===1&&targets[0])args={...args,responseTo:targets[0],responseStage:args.responseStage??'answer'};}
     if(tool==='offerSpeech'&&args.responseTo){const inputs=this.kernel.view().audience,input=inputs.find(i=>i.eventId===args.responseTo)??inputs.find(i=>i.replyRef===args.responseTo);if(input)args={...args,responseTo:input.eventId};}
     if(tool==='offerSpeech'&&(args.isAcknowledgement||args.responseStage==='ack')&&args.responseTo&&this.acknowledgementReservations.has(args.responseTo)&&source!=='quick-ack')return {ok:false,reject:'ACK_PENDING',message:'专用首响正在生成；后续answer/finish可先交入未播队列，不重复首响。'};
-    if((tool==='readLiveBrief'||tool==='readProgramme')&&args.assetVersionId){const id=String(args.assetVersionId),s=this.kernel.view(),task=Object.values(s.tasks).find(t=>t.assetVersionIds.includes(id)&&t.directionEpoch===this.kernel.epoch()&&t.liveEligible&&!t.cancelled&&t.status==='ready');return task?{assetVersionId:id,codeVersion:s.assets[id]?.codeVersion,contentGuide:s.assets[id]?.contentGuide}:null;}
+    if((tool==='readLiveBrief'||tool==='readProgramme')&&args.assetVersionId){const id=String(args.assetVersionId),s=this.kernel.view(),task=Object.values(s.tasks).find(t=>t.assetVersionIds.includes(id)&&t.directionEpoch===this.kernel.epoch()&&t.liveEligible&&!t.cancelled&&t.status==='ready');if(!task)return null;const c=this.candidates.get(id);let props=c?.props;
+      const layers=props?.layers;if(role==='director'&&Array.isArray(args.layerIds)&&layers&&typeof layers==='object'&&!Array.isArray(layers))props={layers:Object.fromEntries(args.layerIds.filter((k:unknown):k is string=>typeof k==='string'&&Object.hasOwn(layers,k)).map((k:string)=>[k,(layers as Record<string,unknown>)[k]]))};
+      const fits=!!props&&Buffer.byteLength(JSON.stringify(props),'utf8')<=24000;
+      return{assetVersionId:id,codeVersion:s.assets[id]?.codeVersion,componentId:s.assets[id]?.componentId,contentGuide:s.assets[id]?.contentGuide,controlGuide:s.assets[id]?.controlGuide,...(role==='director'?{props:fits?structuredClone(props):undefined,propsSource:'compiled-initial',propsExcerpt:!fits||Array.isArray(args.layerIds),layerIds:layers&&typeof layers==='object'?Object.keys(layers).slice(0,40):[],hint:'同componentId的layered-stage候选可选新增层合并到当前inputs.layers，保留其余在播参数；大输入用layerIds筛选。其他Scene只作整场备场/take。'}:{})};}
     if(tool==='readProgramme'&&args.cueId){const c=this.kernel.view().cues[String(args.cueId)];return c?.directionEpoch===this.kernel.epoch()?c:null;}
     if(tool==='readProgramme'&&args.partId){const p=this.kernel.view().speech[String(args.partId)];if(!p||p.directionEpoch!==this.kernel.epoch())return null;const offset=Number.isSafeInteger(args.offset)&&args.offset>=0?args.offset:0,chars=[...p.text];return {partId:p.partId,revision:p.revision,state:p.state,spokenChars:p.spokenChars,offset,text:chars.slice(offset,offset+1000).join(''),nextOffset:offset+1000<chars.length?offset+1000:null};}
     if(tool==='readLiveBrief'&&args.continuationId){const note=this.kernel.view().continuations[String(args.continuationId)],offset=Math.max(0,Number(args.offset)||0);return note?{...note,unreadText:note.unreadText.slice(offset,offset+2000),nextOffset:offset+2000<note.unreadText.length?offset+2000:null}:null;}
     const hasResponse=!!args.responseTo&&Object.values(this.kernel.view().speech).some(part=>part.responseTo===args.responseTo&&!['failed','aborted','cancelled','rejected'].includes(part.state));
     const firstResponse=tool==='offerSpeech'&&!!args.responseTo&&(args.responseStage==='ack'||(args.responseStage==='finish'&&!hasResponse));
     if(firstResponse&&!args.replacePending){
-      const state=this.kernel.view(),id=this.speechQueue.find(id=>state.speech[id]?.responseStage!=='ack'&&!state.speech[id]?.isAcknowledgement&&state.speech[id]?.responseTo!==args.responseTo);
+      const state=this.kernel.view(),id=this.speechQueue.find(id=>!state.speech[id]?.responseTo&&state.speech[id]?.responseStage!=='ack'&&!state.speech[id]?.isAcknowledgement);
       if(id)args.replacePending={partId:id,expectedRevision:state.speech[id].revision};
     }
     if (tool.startsWith('read') && args.masterOffset!==undefined) {const offset=Math.max(0,Number(args.masterOffset)||0);return {epoch:this.kernel.epoch(),masterNotes:this.masterNotes.slice(offset,offset+4),nextOffset:offset+4<this.masterNotes.length?offset+4:null};}
     if(tool.startsWith('read')&&args.directionId){const d=this.kernel.view().directions[String(args.directionId)];const offset=Math.max(0,Number(args.offset)||0);return d?{id:d.id,revision:d.revision,epoch:d.epoch,commitment:d.commitment.slice(offset,offset+8000),coreQuestion:d.coreQuestion.slice(0,2000),nextOffset:offset+8000<d.commitment.length?offset+8000:null}:null;}
     if(tool==='readTask'&&args.taskId){const task=this.kernel.view().tasks[String(args.taskId)];const offset=Math.max(0,Number(args.offset)||0);return {epoch:this.kernel.epoch(),task:task?{...task,goal:task.goal.slice(offset,offset+8000)}:null,nextOffset:task&&offset+8000<task.goal.length?offset+8000:null};}
-    if(tool==='readProgramme'&&args.instanceId){const scene=this.kernel.view().scenes[String(args.instanceId)];if(!scene)return null;const {playbackSamples,...detail}=scene;return {epoch:this.kernel.epoch(),scene:detail,sampleCount:playbackSamples?.length??0};}
+    if(tool==='readProgramme'&&args.instanceId){const scene=this.kernel.view().scenes[String(args.instanceId)];if(!scene)return null;const {playbackSamples,...detail}=scene;return {epoch:this.kernel.epoch(),scene:detail,currentInputs:scene.inputs,inputsAreCanonical:scene.inputsAreCanonical===true,controlGuide:this.kernel.view().assets[scene.assetVersionId]?.controlGuide,sampleCount:playbackSamples?.length??0};}
     if (tool.startsWith('read')) return this.brief(role);
     if (tool === 'inspectCandidate')
       return {
@@ -366,7 +380,7 @@ export class ProductionRuntime implements RoleRuntime {
       };
     if (tool === 'searchSdk') {
       const sdk = await this.loadSdk();
-      const examples:Record<string,string>={'aivtb/remotion':'remotion.tsx','aivtb/hyperframes':'hyperframes.ts','aivtb/d3':'d3.ts','aivtb/three':'three.ts'};
+      const examples:Record<string,string>={'aivtb/remotion':'remotion.tsx','aivtb/hyperframes':'hyperframes.ts','aivtb/d3':'d3.ts','aivtb/three':'three.ts','aivtb/layered-stage':'layered-stage.md'};
       const path=String(args.path??'INDEX.md');
       const guide=examples[path]?await readFile(join(this.options.repoRoot,'examples/scenes',examples[path]),'utf8'):await sdk.readGuide(path);const offset=Math.max(0,Number(args.offset)||0);const end=offset+16000;return {guide:guide.slice(offset,end),offset,nextOffset:end<guide.length?end:null,pin:sdk.provenance.commit,integrationExamples:Object.keys(examples)};
     }
@@ -378,6 +392,7 @@ export class ProductionRuntime implements RoleRuntime {
         reject: 'SPEECH_QUEUE_FULL',
         message: '未播语音缓冲已满（最多约10秒/4句）；等待消费，或明确替换未开口旧句，不继续锁未来口播。',
       };
+    if(tool==='requestProduction'&&args.task){const p=args.task.priority;args={...args,task:{...args.task,priority:typeof p==='string'&&['high','normal','low'].includes(p)?productionPriority(p):p}};}
     if (tool === 'workspaceBuildPreview') return this.build(args);
     if (!Number.isSafeInteger(args.directionEpoch))
       throw Error('Write requires directionEpoch from latest brief');
@@ -386,6 +401,7 @@ export class ProductionRuntime implements RoleRuntime {
       args.partId ??= `speech-${commandId}`;
       if (typeof args.text !== 'string' || !args.text.trim()) throw Error('Speech text required');
     }
+    if(tool==='prepareScene'){const c=this.candidates.get(String(args.assetVersionId));args={...args,initialInputs:c?this.sceneProps(c):undefined};}
     const target = this.target(tool, args);
     const create = [
       'offerSpeech',
@@ -424,6 +440,8 @@ export class ProductionRuntime implements RoleRuntime {
         taskId: candidate.taskId,
         asset: {
           ...(args.contentGuide!==undefined?{contentGuide:args.contentGuide}:{}),
+          ...(candidate.controlGuide?{controlGuide:candidate.controlGuide}:{}),
+          ...(candidate.component?.id?{componentId:candidate.component.id}:{}),
           id: candidate.id,
           hash: candidate.hash,
           codeVersion: candidate.hash,
@@ -530,6 +548,7 @@ export class ProductionRuntime implements RoleRuntime {
     return {ok:true,acceptSequence:result.acceptSequence,epoch:this.kernel.epoch(),target,revision:this.kernel.revision(target)};
   }
   private target(tool: string, args: Record<string, any>): CommandTarget {
+    if(tool==='setProposalStatus')return {kind:'audienceProposal',id:String(args.proposalId??'')};
     if(tool==='discardContinuation')return {kind:'continuation',id:String(args.continuationId??'')};
     if (['offerSpeech', 'yieldSpeech'].includes(tool))
       return { kind: 'speechPart', id: String(args.partId ?? '') };
@@ -597,6 +616,7 @@ export class ProductionRuntime implements RoleRuntime {
       this.speaking = snapshot.audio.partId;
     if (!this.synthController) void this.pumpSpeech().catch((e) => this.error(e));
   }
+  private sceneProps(c:Candidate){return {...c.props,fps:c.fps,width:c.width,height:c.height,durationInFrames:c.durationInFrames,window:{start:0,seconds:c.durationInFrames/c.fps,frames:c.durationInFrames,fps:c.fps}};}
   private async prepare(id: string) {
     const scene = this.kernel.view().scenes[id];
     const candidate = this.candidates.get(scene.assetVersionId);
@@ -607,14 +627,7 @@ export class ProductionRuntime implements RoleRuntime {
       codeVersion: scene.codeVersion,
       directionEpoch: scene.directionEpoch,
       moduleUrl: this.gateway.publishBundle(candidate.hash, candidate.file),
-      props: {
-        ...candidate.props,
-        fps: candidate.fps,
-        width: candidate.width,
-        height: candidate.height,
-        durationInFrames: candidate.durationInFrames,
-        window: { start: 0, seconds: candidate.durationInFrames / candidate.fps },
-      },
+      props:this.sceneProps(candidate),
     });
     if (
       this.kernel.epoch() !== scene.directionEpoch ||
@@ -650,6 +663,7 @@ export class ProductionRuntime implements RoleRuntime {
       task.cancelled
     )
       throw Error('Stale task');
+    const dependencies=unmetProductionDependencies(task,this.kernel.view().tasks);if(dependencies.length)throw Error('Production dependencies are not ready: '+dependencies.join(', '));
     if (
       !args.template && !args.effectPath &&
       (typeof args.source !== 'string' || !args.source.trim() || args.source.length > 100000)
@@ -657,11 +671,12 @@ export class ProductionRuntime implements RoleRuntime {
       throw Error('Provide Scene source (up to 100000 characters), template gsap/remotion, or effectPath from searchEffects');
     if (args.effectPath && (args.source || args.template))
       throw Error('Choose effectPath, source or template; do not mix component reuse with source overrides');
-    if (args.template && !['gsap', 'remotion'].includes(args.template))
+    if (args.template && !['gsap', 'remotion','layered-stage'].includes(args.template))
       throw Error('Unknown native SDK template');
+    if(args.template==='layered-stage'){if(args.source)throw Error('Use layered-stage props or custom source, not both');const problem=layeredStageProblem(args.props??{});if(problem)throw Error(problem);}
     const width = args.width ?? 1920,
       height = args.height ?? 1080,
-      frames = args.durationInFrames ?? 1800;
+      frames = args.durationInFrames ?? (args.template==='layered-stage'?108000:1800);
     if (
       ![width, height, frames].every((n) => Number.isSafeInteger(n) && n > 0) ||
       width > 3840 ||
@@ -679,7 +694,8 @@ export class ProductionRuntime implements RoleRuntime {
       const reused = args.effectPath ? await sdk.reuseEffect(args.effectPath) : undefined;
       await mkdir(folder, { recursive: true });
       if (reused) await writeFile(join(folder, 'index.tsx'), reused.source);
-      if (args.template) {
+      if(args.template==='layered-stage')await writeFile(join(folder,'index.tsx'),await readFile(join(this.options.repoRoot,'examples/scenes/layered-stage.tsx'),'utf8'));
+      else if (args.template) {
         const files = sdk.scaffold(`scene-${id}`, args.template);
         for (const [name, bytes] of files)
           await writeFile(join(folder, name === 'index.ts' ? 'index.tsx' : name), bytes);
@@ -716,6 +732,7 @@ export class ProductionRuntime implements RoleRuntime {
       const hash = createHash('sha256').update(code).digest('hex');
       const c: Candidate = {
         ...(reused ? { component: reused.component } : {}),
+        ...(args.template==='layered-stage'?{component:{id:'aivtb-layered-stage-v1',path:'examples/scenes/layered-stage.tsx',version:'1'},controlGuide:await readFile(join(this.options.repoRoot,'examples/scenes/layered-stage.md'),'utf8')}:{}),
         id,
         taskId: task.id,
         taskVersion: completedTask.version,
@@ -727,7 +744,7 @@ export class ProductionRuntime implements RoleRuntime {
         fps: 30,
         width: args.width ?? 1920,
         height: args.height ?? 1080,
-        durationInFrames: args.durationInFrames ?? 1800,
+        durationInFrames: frames,
       };
       await mkdir(join(this.options.dataDir, 'candidates'), { recursive: true });
       await storeJson(join(this.options.dataDir, 'candidates', `${id}.json`), c);
@@ -951,6 +968,7 @@ export class ProductionRuntime implements RoleRuntime {
     const state = this.kernel.view();
     const evidence = state.playback.find((e) => e.id === evidenceId);
     if (!evidence || evidence.kind !== 'painted' || evidence.orphan) return;
+    const newlyPresented:string[]=[];
     for (const proposal of Object.values(state.proposals)) {
       if (proposal.status !== 'ready' || proposal.directionEpoch !== this.kernel.epoch()) continue;
       const linked = proposal.taskIds.some(
@@ -972,9 +990,10 @@ export class ProductionRuntime implements RoleRuntime {
             evidencePlaybackId: evidenceId,
           },
         );
-        if(result.ok)for(const eventId of proposal.eventIds)this.recordTiming('proposal-presented',{proposalId:proposal.id,responseTo:eventId,playbackEventId:evidenceId});
+        if(result.ok){newlyPresented.push(proposal.intent.slice(0,100));for(const eventId of proposal.eventIds)this.recordTiming('proposal-presented',{proposalId:proposal.id,responseTo:eventId,playbackEventId:evidenceId});}
       }
     }
+    if(newlyPresented.length)this.onWake?.('performer','以下观众画面要求已取得关联的实际绘制回执：'+newlyPresented.slice(0,4).join('；')+'。可结合画面继续或停留，不必为了状态另说一遍完成通知。');
   }
   private async receipt(event: Record<string, any>) {
     if(event?.type==='error'&&typeof event.instanceId==='string'){this.sceneErrors.set(event.instanceId,{epoch:Number(event.epoch),message:String(event.error).slice(0,300)});if(this.sceneErrors.size>16)this.sceneErrors.delete(this.sceneErrors.keys().next().value!);this.onWake?.('director',`场景 ${event.instanceId} 实际运行报错；读取sceneErrors并选择替代或重做，不要把失败视作已播效果。`,true);return;}
@@ -1261,6 +1280,8 @@ export class ProductionRuntime implements RoleRuntime {
           codeVersion: scene.codeVersion,
           inputsRevision,
           inputs,
+          ...(Number.isSafeInteger(observation?.frame)?{frame:observation.frame}:{}),
+          ...(Number.isFinite(observation?.observedAtShowTime)?{observedAtShowTime:observation.observedAtShowTime}:{}),
         },
       );
       if (!received.ok) throw Error(received.message);

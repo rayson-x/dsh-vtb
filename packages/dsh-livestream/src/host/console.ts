@@ -260,7 +260,7 @@ function roomStatus() {
 }
 
 // 上次配过的直播间：开控制台就接上
-for (const p of ROOM_PLATFORMS) if (rooms[p]) connectRoom(p, rooms[p]!);
+if(process.env.AIVTB_NO_ROOM_FEEDS!=='1')for (const p of ROOM_PLATFORMS) if (rooms[p]) connectRoom(p, rooms[p]!);
 
 /** 专用舞台窗口用的 Chrome 资料目录：跟日常浏览器分开，靠它认出窗口开没开 */
 const WINDOW_PROFILE = join(homedir(), '.aivtb-stage-chrome');

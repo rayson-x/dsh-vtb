@@ -75,7 +75,7 @@ it('recovers an unpublished prepared candidate from the adopted task without rew
         intendedDirectionId: 'next',
         hash: createHash('sha256').update(code).digest('hex'),
         file,
-        props: {},
+        props: {layers:{cup:{kind:'cup',x:500}}},
         fps: 30,
         width: 1920,
         height: 1080,
@@ -120,11 +120,14 @@ it('recovers an unpublished prepared candidate from the adopted task without rew
       assetVersionId: 'candidate',
     });
     expect(published.ok).toBe(true);
+    expect(await runtime.invoke('director','readProgramme',{assetVersionId:'candidate'})).toMatchObject({assetVersionId:'candidate',props:{layers:{cup:{kind:'cup',x:500}}},propsExcerpt:false});
     expect((runtime.brief('performer') as any).contentShelf.ready[0]).toMatchObject({assetVersionId:'candidate',contentGuide});
     expect(wakes).toEqual(expect.arrayContaining(['performer','director']));
     expect(runtime.kernel.view().project.channel.mode).toBe('neutral');
     await runtime.stop();runtime=new ProductionRuntime({repoRoot:folder,dataDir:folder,port:0,secret:()=>undefined});await runtime.start();
     expect((runtime.brief('performer') as any).contentShelf.ready[0].contentGuide).toEqual(contentGuide);
+    const inspected:any=await runtime.invoke('director','readProgramme',{assetVersionId:'candidate'});inspected.props.layers.cup.x=999;
+    const reread:any=await runtime.invoke('director','readProgramme',{assetVersionId:'candidate'});expect(reread.props.layers.cup.x).toBe(500);
     expect(JSON.parse(await readFile(manifest, 'utf8')).epoch).toBe(born);
   } finally {
     await runtime?.stop();

@@ -67,7 +67,7 @@ describe('域契约形状', () => {
 
   it('工具权限表对齐计划 §3.5', () => {
     expect([...TOOL_PERMISSIONS.editorial]).toEqual([
-      'readShow', 'readAudienceSummary', 'publishEditorialProposal', 'requestProduction', 'prepareDirection',
+      'readShow', 'readAudienceSummary', 'reviewAudienceProposal', 'publishEditorialProposal', 'requestProduction', 'prepareDirection',
     ]);
     expect([...TOOL_PERMISSIONS.director]).toEqual([
       'readProgramme', 'inspectCandidate', 'prepareScene', 'editFutureTimeline', 'updateInputs', 'take', 'sendPerformerCue', 'bindCue', 'editCue', 'cancelCue', 'holdScene', 'resumeScene', 'retireScene', 'disposeScene',

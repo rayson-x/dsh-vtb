@@ -10,6 +10,7 @@ export const TOOL_PERMISSIONS = {
   editorial: [
     'readShow',
     'readAudienceSummary',
+    'reviewAudienceProposal',
     'publishEditorialProposal',
     'requestProduction',
     'prepareDirection',

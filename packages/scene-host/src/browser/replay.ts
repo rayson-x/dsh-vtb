@@ -1,4 +1,5 @@
 /** Project adapter at the native Film HTML-program extension point. No live socket or AudioBus. */
+import{resolveSceneInputs}from'../inputs';
 import { IsolatedSceneHost } from './isolation';
 interface ReplayScene {
   startFrame: number;
@@ -11,7 +12,8 @@ interface ReplayScene {
   width: number;
   height: number;
   durationInFrames: number;
-  patches?: { atFrame: number; inputs: Record<string, unknown> }[];
+  patches?: { atFrame: number; inputs: Record<string, unknown>;snapshot?:boolean }[];
+  inputPatchSemantics?:'deep-merge'|'shallow-merge';
   frameMap?: { from: number; until: number; localFrom: number; rate: number }[];
   deterministicSeek: boolean;
 }
@@ -31,11 +33,7 @@ function watch(promise: Promise<unknown>) {
       lastFrame = -1,
       chain = Promise.resolve();
     const render = async (frame: number) => {
-      const props = Object.assign(
-        {},
-        data.props,
-        ...(data.patches ?? []).filter((p) => p.atFrame <= frame).map((p) => p.inputs),
-      );
+      const props=resolveSceneInputs(data.props,(data.patches??[]).filter(p=>p.atFrame<=frame),data.inputPatchSemantics??'shallow-merge');
       const signature = JSON.stringify(props);
       // Rebuild when input history changes or seeking backwards: stateful patches must not leak across seeks.
       if (!prepared || signature !== lastInputs || frame < lastFrame) {

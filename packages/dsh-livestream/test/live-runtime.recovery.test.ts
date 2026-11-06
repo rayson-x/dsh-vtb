@@ -376,3 +376,23 @@ it('lets the visual director revise and withdraw future cues without controlling
  expect(r.kernel.view().cues['visual-exit'].status).toBe('invalidated');expect(Object.keys(r.kernel.view().speech)).toHaveLength(0);
  expect(await r.invoke('director','editCue',{directionEpoch:epoch,cueId:'visual-exit',expectedRevision:r.kernel.view().cues['visual-exit'].revision,payload:{params:{visible:true}}})).toMatchObject({ok:false});
 });
+
+it('selects runnable production before alphabetic dependants and normalizes named priorities',async()=>{
+ const r=await openRuntime(),epoch=r.kernel.epoch();
+ await r.invoke('editorial','requestProduction',{directionEpoch:epoch,task:{id:'z-base',goal:'先制作可复用底场',priority:'high',inputs:[],dependsOn:[]}});
+ await r.invoke('editorial','requestProduction',{directionEpoch:epoch,task:{id:'a-fish',goal:'依赖底场的鱼群',priority:'normal',inputs:[],dependsOn:['z-base']}});
+ expect(r.kernel.view().tasks['z-base'].priority).toBe(80);
+ const contracts=r.brief('production').toolContracts;expect(contracts).not.toHaveProperty('requestProduction');expect(contracts).toHaveProperty('workspaceBuildPreview');
+ const brief=r.brief('production').brief;expect(Array.isArray(brief)?brief[0]?.task?.id:null).toBe('z-base');
+ await expect(r.invoke('production','workspaceBuildPreview',{directionEpoch:epoch,taskId:'a-fish',taskVersion:1,source:'export default {}'})).rejects.toThrow(/dependenc/i);
+});
+it('keeps another viewers queued completion when a new first contact gets priority',async()=>{
+ const r=await openRuntime(),peer=browser();await peer.prepared;const epoch=r.kernel.epoch(),target={kind:'show' as const,id:r.kernel.view().project.id};
+ for(const id of['older','newer'])r.kernel.submit({commandId:id,idempotencyKey:id,actorId:'live:input',directionEpoch:epoch,target,expectedRevision:r.kernel.revision(target),payload:{type:'ingestAudience',eventId:id,audienceId:id,text:'窗边的灯怎么放？',kind:'proposal',priority:'urgent'}});
+ await r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId:'programme',text:'说说刚才那封信，纸边还湿着。'});await vi.waitFor(()=>expect(r.kernel.view().speech.programme.state).toBe('playing'));
+ await r.invoke('performer','offerSpeech',{directionEpoch:epoch,partId:'older-finish',responseTo:'older',responseStage:'finish',text:'我倾向灯放左侧，光斜着照到桌面。'});
+ expect(r.brief('performer').responses.find(p=>p.eventId==='older')?.verbalComplete).toBe(false);
+ expect(r.brief('performer').nextReply?.eventId).not.toBe('older');
+ await r.invoke('performer','acknowledgeInput',{directionEpoch:epoch,partId:'newer-ack',inputId:'newer',text:'你提的暖灯，我看到了。'});
+ expect(r.kernel.view().speech['older-finish'].state).toBe('offered');
+});

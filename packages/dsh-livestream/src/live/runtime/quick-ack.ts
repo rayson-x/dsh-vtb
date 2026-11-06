@@ -11,11 +11,18 @@ function usefulAcknowledgement(text:string,input:string){
   if([...plain].length<4||input.replace(/[\s，,。！？!?；;？：“”"'「」]/g,'').includes(plain))return false;
   return !/^(好的|收到|我看看|我想想|这(个问题|个|问题)(很|真)?(好|不错|有意思))$/.test(plain)&&!/问题(问得)?(真|很)?好[啊呀呢]*$/.test(plain);
 }
-/** Commit an actually generated complete thought, not an unfinished token prefix. */
+/** Sentence punctuation is safe; early commas additionally require a grounded affirmative predicate. */
 export function firstAcknowledgementClause(output:string,input:string){
-  for(const match of output.matchAll(/[。！？!?；;]/g)){
-    const clause=output.slice(0,match.index!+1).trim(),plain=clause.replace(/[\s，,。！？!?；;]/g,'');
+  const source=input.replace(/^[^:：]{1,24}[:：]/,'').split(/[?？。!！]/,1)[0].replace(/[\s，,：:]/g,'');
+  const ignored=new Set(['可以','一下','一点','这个','那个','我们','你们','刚才','我想','是否','好吗','怎么','什么','你的','回应','节奏','继续','主意','不错']);
+  const points=[...source],words=points.slice(1).map((c,i)=>points[i]+c).filter(w=>!ignored.has(w));
+  for(const match of output.matchAll(/[，,：:。！？!?；;]/g)){
+    const clause=output.slice(0,match.index!+1).trim(),plain=clause.replace(/[\s，,。！？!?；;：:]/g,'');
     if([...plain].length<5||[...clause].length>28||!usefulAcknowledgement(clause,input))continue;
+    if(/[，,：:]/.test(match[0])){
+      if([...clause].length>18||!/(可以|合适|同意|记下|记着|留在|留给|放在|放到|摆在|摆到|好主意|不错)/.test(plain)||/[的得地把被给在到和与但而或就先再却也还]$/.test(plain)||!words.some(w=>plain.includes(w)))continue;
+      return clause.slice(0,-1)+'。';
+    }
     return clause;
   }
 }

@@ -54,3 +54,11 @@ test(
     }
   },
 );
+test('the bundled layered stage compiles against the real pinned Remotion Scene API', {skip:!process.env.AIVTB_SDK_REPO},async()=>{
+ const folder=await mkdtemp(join(tmpdir(),'live-layered-stage-'));
+ try{
+  const{readFile}=await import('node:fs/promises');const sdk=await sdkTools({cacheRoot:resolve('.deps/sdk')});
+  await writeFile(join(folder,'index.tsx'),await readFile(resolve('examples/scenes/layered-stage.tsx'),'utf8'));
+  assert.ok((await sdk.buildLive(folder)).code.length>0);
+ }finally{await rm(folder,{recursive:true,force:true});}
+});
