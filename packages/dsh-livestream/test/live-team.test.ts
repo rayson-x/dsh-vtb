@@ -54,6 +54,7 @@ function setup(select: (id: string) => Promise<void> = async () => {},selection=
 it('uses the DeepSeek non-thinking route for the live speaker while keeping background role reasoning',async()=>{
  const {team,optionsByRole}=setup(undefined,{provider:'deepseek',model:'deepseek-v4-flash'});await team.start();
  expect(optionsByRole.get('live-v2-performer').reasoningEffort).toBe('off');
+ expect(optionsByRole.get('live-v2-director').reasoningEffort).toBe('off');
  expect(optionsByRole.get('live-v2-production').reasoningEffort).toBe('low');
 });
 it('starts a one-shot acknowledgement while the main speaker is busy, without a tool round trip',async()=>{
@@ -164,9 +165,11 @@ it('coalesces ordinary visual updates while the director works and delivers the 
  const {team,agents}=setup();await team.start();const director=agents.get('live-v2-director')!;director.calls=[];director.status='running';team.observeStream(director,{type:'start',attemptId:'visual-busy'});
  const brief=vi.spyOn(team.runtime,'brief');brief.mockReturnValue({epoch:2,speechOutlook:{upcoming:[{partId:'old'}]}});
  for(let i=0;i<8;i++)team.wake('director','主播待讲内容更新');
+ team.wake('director','观众的优先互动，只更新画面情报',true,'audience');
  expect(director.calls).toEqual([]);
  brief.mockReturnValue({epoch:2,speechOutlook:{upcoming:[{partId:'new'}]}});director.status='idle';team.observeStream(director,{type:'end',attemptId:'visual-busy'});team.poll();
  expect(director.calls).toEqual(['followup']);expect(JSON.stringify(director.messages.at(-1))).toContain('new');expect(JSON.stringify(director.messages.at(-1))).not.toContain('old');
+ director.calls=[];director.status='running';team.observeStream(director,{type:'start',attemptId:'control'});team.wake('director','主人明确切换',true);expect(director.calls).toEqual(['cancel','steer']);
 });
 it('does not report a live team ready when the performer has no callable role tools',async()=>{
  const {team,agents}=setup(async id=>{if(id==='live-v2-performer')vi.spyOn(agents.get(id)!.ctx.tools,'schemas').mockReturnValue([]);});
