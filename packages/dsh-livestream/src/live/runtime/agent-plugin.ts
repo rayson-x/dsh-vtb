@@ -63,7 +63,7 @@ export function applyRoleAgent(ctx: any, role: AgentRole) {
                   if(Object.keys(args).some(k=>k!=='payload'))throw Error('Do not mix payload with top-level arguments');
                   const parsed=typeof args.payload==='string'?JSON.parse(args.payload):args.payload;
                   if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw Error('payload must be an object');
-                  payload=parsed;
+                  payload={...parsed};
                 }else payload={...args};
               }
               payload._callId = String(exec?.callId ?? '');
