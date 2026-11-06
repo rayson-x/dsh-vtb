@@ -412,6 +412,7 @@ export class DomainFixture {
       case 'cancelSpeechInterrupt':
       case 'receiptSpeechInterrupted':
       case 'discardContinuation':
+      case 'cancelCue':
       case 'noteLiveCapabilities':
       case 'receiptScenePatchFailed':
       case 'receiptScenePatch':

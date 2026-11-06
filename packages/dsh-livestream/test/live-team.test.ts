@@ -156,3 +156,12 @@ it('exposes request failures and backs off until the operator resumes only that 
  team.poll();await vi.advanceTimersByTimeAsync(1000);expect(actor.calls).toEqual([]);
  await team.setOnline('performer',true);expect(actor.calls).toContain('followup');expect(team.errors()).not.toHaveProperty('performer');
 });
+
+it('coalesces ordinary visual updates while the director works and delivers the latest speech outlook on idle',async()=>{
+ const {team,agents}=setup();await team.start();const director=agents.get('live-v2-director')!;director.calls=[];director.status='running';team.observeStream(director,{type:'start',attemptId:'visual-busy'});
+ const brief=vi.spyOn(team.runtime,'brief');brief.mockReturnValue({epoch:2,speechOutlook:{upcoming:[{partId:'old'}]}});
+ for(let i=0;i<8;i++)team.wake('director','主播待讲内容更新');
+ expect(director.calls).toEqual([]);
+ brief.mockReturnValue({epoch:2,speechOutlook:{upcoming:[{partId:'new'}]}});director.status='idle';team.observeStream(director,{type:'end',attemptId:'visual-busy'});team.poll();
+ expect(director.calls).toEqual(['followup']);expect(JSON.stringify(director.messages.at(-1))).toContain('new');expect(JSON.stringify(director.messages.at(-1))).not.toContain('old');
+});

@@ -354,3 +354,25 @@ it('restores durable master instructions independently of model session history'
  runtime=new ProductionRuntime({repoRoot:folder!,dataDir:join(folder!,'data'),port:0,secret:()=>undefined});await runtime.start();
  expect(runtime.brief('performer').masterNotes[0].text).toContain('不要粉色');
 });
+
+it('notifies the independent visual director before speech is playable, then revises its outlook on replacement',async()=>{
+ const r=await openRuntime();const wakes:any[]=[];r.onWake=(role,text)=>{wakes.push({role,text});};
+ vi.mocked(fetch).mockImplementation(async()=>new Promise(()=>{}));
+ await r.invoke('performer','offerSpeech',{directionEpoch:r.kernel.epoch(),partId:'first-plan',text:'先看看窗边那盏暖灯。'});
+ expect(wakes.some(w=>w.role==='director')).toBe(true);
+ let outlook:any=(r.brief('director') as any).speechOutlook;
+ expect(outlook.current).toBeNull();expect(outlook.upcoming[0]).toMatchObject({partId:'first-plan',text:'先看看窗边那盏暖灯。',spokenChars:0});
+ await r.invoke('performer','offerSpeech',{directionEpoch:r.kernel.epoch(),partId:'new-plan',text:'先聊聊观众的问题。',replacePending:{partId:'first-plan',expectedRevision:r.kernel.view().speech['first-plan'].revision}});
+ outlook=(r.brief('director') as any).speechOutlook;expect(outlook.upcoming.map((p:any)=>p.partId)).toEqual(['new-plan']);
+ expect(wakes.filter(w=>w.role==='director')).toHaveLength(2);expect(r.kernel.view().project.channel.mode).toBe('neutral');
+});
+
+it('lets the visual director revise and withdraw future cues without controlling the speaker',async()=>{
+ const r=await openRuntime(),epoch=r.kernel.epoch();
+ await r.invoke('director','bindCue',{directionEpoch:epoch,cue:{cueId:'visual-exit',anchor:{kind:'showTime',at:60000},payload:{params:{visible:false}}}});
+ const cue:any=(r.brief('director') as any).visualTimeline.cues.find((c:any)=>c.cueId==='visual-exit');expect(cue.revision).toBe(1);
+ expect(await r.invoke('director','editCue',{directionEpoch:epoch,cueId:'visual-exit',expectedRevision:cue.revision,payload:{params:{visible:true}}})).toMatchObject({ok:true});
+ expect(await r.invoke('director','cancelCue',{directionEpoch:epoch,cueId:'visual-exit',expectedRevision:r.kernel.view().cues['visual-exit'].revision})).toMatchObject({ok:true});
+ expect(r.kernel.view().cues['visual-exit'].status).toBe('invalidated');expect(Object.keys(r.kernel.view().speech)).toHaveLength(0);
+ expect(await r.invoke('director','editCue',{directionEpoch:epoch,cueId:'visual-exit',expectedRevision:r.kernel.view().cues['visual-exit'].revision,payload:{params:{visible:true}}})).toMatchObject({ok:false});
+});

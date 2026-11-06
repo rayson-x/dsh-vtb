@@ -190,6 +190,25 @@ export class ProductionRuntime implements RoleRuntime {
       .sort((a,b)=>(a.playback?.startedAtShowTime??0)-(b.playback?.startedAtShowTime??0)).slice(-6)
       .map(p=>({partId:p.partId,responseTo:p.responseTo,state:p.state,text:[...p.text].slice(0,p.state==='ended'?[...p.text].length:p.spokenChars).slice(-100).join('')})).filter(p=>p.text);
   }
+  private speechOutlook(){
+    const state=this.kernel.view();
+    const describe=(id:string,actual=false)=>{
+      const p=state.speech[id];if(!p||(!actual&&p.directionEpoch!==this.kernel.epoch())||!['offered','accepted','queued','starting','playing'].includes(p.state))return null;
+      const chars=[...p.text];
+      return {partId:id,directionEpoch:p.directionEpoch,revision:p.revision,state:p.state,text:chars.slice(0,1000).join(''),textExcerpt:chars.length>1000,totalChars:chars.length,spokenChars:p.spokenChars,responseTo:p.responseTo,isAcknowledgement:p.isAcknowledgement===true,alignment:{mode:p.alignment.mode,starts:p.alignment.mode==='real'?p.alignment.starts?.slice(0,1000):undefined}};
+    };
+    const active=this.speaking?state.speech[this.speaking]:undefined,started=active&&['starting','playing'].includes(active.state);
+    const pending=[...new Set([...(this.speaking&&!started?[this.speaking]:[]),...this.speechQueue])];
+    return {epoch:this.kernel.epoch(),current:this.speaking&&started?describe(this.speaking,true):null,upcoming:pending.slice(0,5).flatMap(id=>{const p=describe(id);return p?[p]:[];}),note:'upcoming是可撤换的待讲内容，不是已听内容；按partId和Unicode字位置规划，真实发声进度控制执行，主播不等待画面审批。'};
+  }
+  private contentShelf(){
+    const state=this.kernel.view(),current=this.kernel.epoch();
+    return {
+      editorial:Object.values(state.editorial).filter(p=>p.directionEpoch===current).slice(-3).map(p=>({id:p.id,segmentIntent:p.segmentIntent.slice(0,400),viewingValue:p.viewingValue.slice(0,200),participation:p.participation.slice(0,200),handoff:p.handoff.slice(0,200),minimumMaterials:p.minimumMaterials.slice(0,4).map(m=>m.slice(0,400))})),
+      ready:Object.values(state.tasks).filter(t=>t.directionEpoch===current&&t.liveEligible&&!t.cancelled&&t.status==='ready').slice(-3).flatMap(t=>t.assetVersionIds.slice(-1).flatMap(id=>{const a=state.assets[id];if(!a)return [];const g=a.contentGuide;return [{taskId:t.id,assetVersionId:id,codeVersion:a.codeVersion,goal:t.goal.slice(0,300),contentGuide:g?{title:g.title,summary:g.summary.slice(0,300),beats:g.beats.slice(0,3).map(x=>x.slice(0,200)),sources:g.sources.slice(0,2),visualNotes:g.visualNotes.slice(0,3).map(x=>x.slice(0,200))}:undefined,guideExcerpt:!!g&&(g.summary.length>300||g.beats.length>3||g.beats.some(x=>x.length>200)||g.sources.length>2||g.visualNotes.length>3||g.visualNotes.some(x=>x.length>200))}];})),
+      note:'后台建议与可用素材，不是固定台词、事实认证或送播指令；主播结合互动自由讲述，导演独立选画面。完整指南用readLiveBrief({assetVersionId})。',
+    };
+  }
   private responseBrief(){
     const state=this.kernel.view(),byInput=new Map<string,typeof state.speech[string][]>();
     for(const part of Object.values(state.speech))if(part.responseTo){const parts=byInput.get(part.responseTo)??[];parts.push(part);byInput.set(part.responseTo,parts);}
@@ -227,7 +246,7 @@ export class ProductionRuntime implements RoleRuntime {
     if(role==='performer'){
       const speech=Object.fromEntries(Object.entries(state.speech).filter(([,part])=>['offered','accepted','queued','starting','playing'].includes(part.state)));
       const continuations=Object.values(state.continuations).filter(note=>note.directionEpoch===current&&['pending','resuming'].includes(note.status)).sort((a,b)=>a.sourceOfferedAt-b.sourceOfferedAt).slice(0,6).map(note=>({...note,topic:note.topic.slice(0,300),unreadText:note.unreadText.slice(0,1000),unreadExcerpt:note.unreadText.length>1000,priorNotes:(note.parentContinuationIds??[]).slice(-2).flatMap(id=>{const old=state.continuations[id];return old?[{id,lastHeardExcerpt:old.lastHeardExcerpt,unreadText:old.unreadText.slice(0,400),unreadExcerpt:old.unreadText.length>400}]:[];})}));
-      return {epoch:current,role,playbackConnected:this.gateway.connected(),brief:briefs.performer,...this.responseBrief(),continuations,recentHeard:this.recentHeard(),
+      return {epoch:current,role,playbackConnected:this.gateway.connected(),brief:briefs.performer,...this.responseBrief(),continuations,recentHeard:this.recentHeard(),contentShelf:this.contentShelf(),
         visualEvidence:{programSceneInstanceId:state.project.channel.programSceneInstanceId,presented:Object.values(state.proposals).filter(p=>p.status==='presented'&&p.fulfillment).slice(-6).map(p=>({proposalId:p.id,eventIds:p.eventIds,fulfillment:p.fulfillment}))},
         firstResponseTasks:[...this.acknowledgementReservations.keys()].map(id=>({inputId:state.audience.find(i=>i.eventId===id)?.replyRef??id,state:'generating'})),
         voiceQueue:{currentPartId:this.speaking,upcoming:[...this.speechQueue],estimatedUpcomingMs:this.queuedSpeechMs(),maxUpcomingParts:4,urgentReserve:1,estimateOnly:true},
@@ -237,6 +256,7 @@ export class ProductionRuntime implements RoleRuntime {
     }
     return {
       epoch: this.kernel.epoch(),
+      ...(role==='director'?{speechOutlook:this.speechOutlook(),visualTimeline:{totalFutureCues:Object.values(state.cues).filter(c=>c.directionEpoch===current&&c.status==='future').length,cues:Object.values(state.cues).filter(c=>c.directionEpoch===current&&c.status==='future').slice(-24).map(({payload,...c})=>({...c,payloadPreview:JSON.stringify(payload).slice(0,1000),payloadExcerpt:JSON.stringify(payload).length>1000}))}}:{}),
       presentation: this.options.presentation?.(),
       role,
       continuations:role==='director'?Object.values(state.continuations).filter(n=>n.directionEpoch===current&&['pending','resuming'].includes(n.status)).slice(-6).map(({id,sourcePartId,sceneInstanceId,status})=>({id,sourcePartId,sceneInstanceId,status})):undefined,
@@ -282,12 +302,14 @@ export class ProductionRuntime implements RoleRuntime {
         prepareDirection: '{directionEpoch,directionId,commitment,coreQuestion}',
         workspaceBuildPreview:
           '{directionEpoch,taskId,taskVersion,source? OR template? OR effectPath?,props?,width?,height?,durationInFrames?}',
-        publishCandidate: '{directionEpoch,taskId,assetVersionId,expectedRevision}',
+        publishCandidate: '{directionEpoch,taskId,assetVersionId,expectedRevision,contentGuide?:{title,summary,beats:string[],sources:string[],visualNotes:string[]}}；内容指南不是固定台词，候选发布不送播',
         prepareScene: '{directionEpoch,instanceId,assetVersionId,segmentId,label}',
         take: '{directionEpoch,instanceId,expectedRevision}',
         updateInputs: '{directionEpoch,instanceId,inputsRevision,inputs,expectedRevision,proposalIds?}',
         bindCue:
           '{directionEpoch,cue:{cueId,sceneInstanceId,anchor:{kind:speech,partId,charIndex}|{kind:showTime,at},payload:{params:{key:value}}}}',
+        editCue: '{directionEpoch,cueId,payload,expectedRevision}；仅改未来参数',
+        cancelCue: '{directionEpoch,cueId,expectedRevision}；仅撤回未来Cue，改锚点时撤回后用新ID重新bindCue，不撤场不撤话',
         holdScene: '{directionEpoch,instanceId,expectedRevision}',
         resumeScene: '{directionEpoch,instanceId,expectedRevision}',
         editFutureTimeline: '{directionEpoch,segmentId,label,sceneInstanceId?,expectedRevision}',
@@ -320,6 +342,9 @@ export class ProductionRuntime implements RoleRuntime {
     if(tool==='offerSpeech'&&args.resumesContinuationIds?.length&&!args.responseTo){const notes=args.resumesContinuationIds.map((id:string)=>this.kernel.view().continuations[id]),targets=[...new Set(notes.map((n:any)=>n?.sourceResponseTo))];if(targets.length===1&&targets[0])args={...args,responseTo:targets[0],responseStage:args.responseStage??'answer'};}
     if(tool==='offerSpeech'&&args.responseTo){const inputs=this.kernel.view().audience,input=inputs.find(i=>i.eventId===args.responseTo)??inputs.find(i=>i.replyRef===args.responseTo);if(input)args={...args,responseTo:input.eventId};}
     if(tool==='offerSpeech'&&(args.isAcknowledgement||args.responseStage==='ack')&&args.responseTo&&this.acknowledgementReservations.has(args.responseTo)&&source!=='quick-ack')return {ok:false,reject:'ACK_PENDING',message:'专用首响正在生成；后续answer/finish可先交入未播队列，不重复首响。'};
+    if((tool==='readLiveBrief'||tool==='readProgramme')&&args.assetVersionId){const id=String(args.assetVersionId),s=this.kernel.view(),task=Object.values(s.tasks).find(t=>t.assetVersionIds.includes(id)&&t.directionEpoch===this.kernel.epoch()&&t.liveEligible&&!t.cancelled&&t.status==='ready');return task?{assetVersionId:id,codeVersion:s.assets[id]?.codeVersion,contentGuide:s.assets[id]?.contentGuide}:null;}
+    if(tool==='readProgramme'&&args.cueId){const c=this.kernel.view().cues[String(args.cueId)];return c?.directionEpoch===this.kernel.epoch()?c:null;}
+    if(tool==='readProgramme'&&args.partId){const p=this.kernel.view().speech[String(args.partId)];if(!p||p.directionEpoch!==this.kernel.epoch())return null;const offset=Number.isSafeInteger(args.offset)&&args.offset>=0?args.offset:0,chars=[...p.text];return {partId:p.partId,revision:p.revision,state:p.state,spokenChars:p.spokenChars,offset,text:chars.slice(offset,offset+1000).join(''),nextOffset:offset+1000<chars.length?offset+1000:null};}
     if(tool==='readLiveBrief'&&args.continuationId){const note=this.kernel.view().continuations[String(args.continuationId)],offset=Math.max(0,Number(args.offset)||0);return note?{...note,unreadText:note.unreadText.slice(offset,offset+2000),nextOffset:offset+2000<note.unreadText.length?offset+2000:null}:null;}
     const hasResponse=!!args.responseTo&&Object.values(this.kernel.view().speech).some(part=>part.responseTo===args.responseTo&&!['failed','aborted','cancelled','rejected'].includes(part.state));
     const firstResponse=tool==='offerSpeech'&&!!args.responseTo&&(args.responseStage==='ack'||(args.responseStage==='finish'&&!hasResponse));
@@ -398,6 +423,7 @@ export class ProductionRuntime implements RoleRuntime {
         type: 'publishCandidate',
         taskId: candidate.taskId,
         asset: {
+          ...(args.contentGuide!==undefined?{contentGuide:args.contentGuide}:{}),
           id: candidate.id,
           hash: candidate.hash,
           codeVersion: candidate.hash,
@@ -434,16 +460,21 @@ export class ProductionRuntime implements RoleRuntime {
       else if(args.replacePending)this.speechQueue.unshift(args.partId);else this.speechQueue.push(args.partId);
       if(!args.responseTo||!this.acknowledgementReservations.has(args.responseTo)||args.isAcknowledgement)this.prepareSpeech(args.partId,firstResponse||!!args.replacePending);
       void this.pumpSpeech().catch((e) => this.error(e));
+      this.onWake?.('director',`主播待讲内容已更新：${args.partId}。按speechOutlook提前自主编排画面；不审批口播，不因每段新话清空旧画面。`);
     } else if (tool === 'yieldSpeech') {
       const index = this.speechQueue.indexOf(args.partId);
       if (index >= 0) this.speechQueue.splice(index, 1);
       this.syntheses.get(args.partId)?.controller.abort();
       this.syntheses.delete(args.partId);
       this.cancelInterruptFor(args.partId);
-    } else if (tool === 'requestProduction')
+      this.onWake?.('director','主播撤回未播内容；检查受影响的未来画面，保留仍合适的在播内容。');
+    } else if (tool === 'publishEditorialProposal') this.onWake?.('performer','后台有新的内容建议，contentShelf可读；结合互动自主组织表达，不等画面制作完成。');
+    else if (tool === 'requestProduction')
       this.onWake?.('production', '有新的制作任务。读取任务与版本，后台制作不得阻塞现场。');
-    else if (tool === 'publishCandidate')
-      this.onWake?.('director', '新候选已编译。先检查与备场，由你选择何时使用；ready不是上播。');
+    else if (tool === 'publishCandidate'&&this.kernel.view().tasks[args.taskId]?.liveEligible){
+      this.onWake?.('performer','后台内容和场景候选已发布，读取contentShelf自行选择讲法；不照读固定稿，不宣称画面已显示。');
+      this.onWake?.('director', '新候选已编译。结合主播待讲内容检查、备场并自主选择何时使用；ready不是上播。');
+    }
     else if (tool === 'sendPerformerCue') this.onWake?.('performer', `导播内部cue：${args.text}`);
     else if (['holdScene', 'resumeScene', 'retireScene', 'disposeScene'].includes(tool)) {
       const observation = await this.gateway.execute(
@@ -507,6 +538,7 @@ export class ProductionRuntime implements RoleRuntime {
     if (tool === 'publishEditorialProposal')
       return { kind: 'editorialProposal', id: String(args.proposal?.id ?? '') };
     if (tool === 'bindCue') return { kind: 'cue', id: String(args.cue?.cueId ?? '') };
+    if (tool === 'editCue'||tool==='cancelCue') return {kind:'cue',id:String(args.cueId??'')};
     if (tool === 'prepareDirection') return { kind: 'direction', id: String(args.directionId ?? '') };
     if (
       [
@@ -1004,6 +1036,7 @@ export class ProductionRuntime implements RoleRuntime {
         ...(clip.starts ? { starts: clip.starts } : {}),
         spokenChars: 0,
       });
+      this.onWake?.('director',`主播 ${part.partId} 已实际开口；按真实进度执行画面，不按预计字速追赶。`);
       if(part.responseStage==='ack')this.onWake?.('performer','接住语句已实际开口。可趁此继续生成后续一小段或推进后台，不必等完整答案；不要把接住当作任务完成。');
       this.interruptForReadyReply();
     }else if (event.kind === 'timeupdate' && part.state === 'playing' && clip.starts){
@@ -1039,6 +1072,7 @@ export class ProductionRuntime implements RoleRuntime {
       this.streamFailures.delete(part.partId);
       if(this.speaking===part.partId)this.speaking = undefined;
       void this.pumpSpeech();
+      this.onWake?.('director',`主播 ${part.partId} 播放${event.kind}。按最新speechOutlook调整未来画面；不要自动撤掉仍适用的在播场景。`);
       this.onWake?.('performer', event.kind==='interrupted'?'原话题已实际停止，进度和未读部分保存在continuations。先根据pendingReplies接住或展开互动；新音频失败要重试。合适时以新台词自然接回，不重播旧音频。':'上一段真实播放已结束；读取pendingReplies与continuations，自行判断继续回答、自然接回原话题或停留。');
     }
   }

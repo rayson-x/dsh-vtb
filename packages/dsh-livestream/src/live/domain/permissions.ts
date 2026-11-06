@@ -23,6 +23,8 @@ export const TOOL_PERMISSIONS = {
     'take',
     'sendPerformerCue',
     'bindCue',
+    'editCue',
+    'cancelCue',
     'holdScene',
     'resumeScene',
     'retireScene',
@@ -195,6 +197,7 @@ export function toolFor(command: ShowCommand): DomainTool {
     case 'editFutureTimeline':
     case 'bindCue':
     case 'editCue':
+    case 'cancelCue':
       return 'editFutureTimeline';
     case 'dispatchCue':
       return 'scheduleSpeech';

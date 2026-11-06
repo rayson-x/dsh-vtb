@@ -169,6 +169,13 @@ export function planCommand(command: CommandEnvelope, ctx: PlanContext): Plan {
       return planBindCue(command, payload, ctx);
     case 'dispatchCue':
       return planDispatch(command, payload, ctx);
+    case 'cancelCue': {
+      const cue=ctx.state.cues[payload.cueId];if(!cue)return fail('UNKNOWN_TARGET','没有这个cue');
+      const stale=requireEpoch(ctx.state,command)??targetIs(command,'cue',cue.cueId);if(stale)return stale;
+      if(cue.directionEpoch!==ctx.state.project.currentEpoch)return fail('STALE_DIRECTION','不能撤改旧方向cue');
+      if(cue.status!=='future')return fail('TOO_LATE','只能撤回尚未派发的cue');
+      return succeed('show.command',[{op:'cue',cue:{...cue,status:'invalidated',revision:cue.revision+1}}]);
+    }
     case 'editCue':
       return planEditCue(command, payload, ctx);
     case 'prepareScene':
@@ -355,6 +362,12 @@ function planPublish(command: CommandEnvelope, payload: Extract<ShowCommand, { t
   const locked = targetIs(command, 'productionTask', task.id);
   if (locked) return locked;
   if (ctx.state.assets[payload.asset.id]) return fail('IMMUTABLE_VERSION', '产物版本不可变，新内容要用新编号');
+  const guide=payload.asset.contentGuide;
+  if(guide!==undefined){
+    const text=(v:unknown,max:number)=>typeof v==='string'&&v.trim().length>0&&[...v].length<=max;
+    const list=(v:unknown,maxItems:number,maxText:number)=>Array.isArray(v)&&v.length<=maxItems&&v.every(x=>text(x,maxText));
+    if(!guide||Object.keys(guide).some(k=>!['title','summary','beats','sources','visualNotes'].includes(k))||!text(guide.title,100)||!text(guide.summary,1000)||!list(guide.beats,12,600)||!list(guide.sources,8,500)||!list(guide.visualNotes,8,500))return fail('ILLEGAL_TRANSITION','内容指南须包含有界title/summary/beats/sources/visualNotes；不提交固定口播');
+  }
   const published = publishOntoTask(task, payload.asset, ctx.state.project.currentEpoch);
   const facts: KernelFact[] = [
     { op: 'asset', asset: published.asset },
@@ -933,8 +946,9 @@ function planDispatch(command: CommandEnvelope, payload: Extract<ShowCommand, { 
 function planEditCue(command: CommandEnvelope, payload: Extract<ShowCommand, { type: 'editCue' }>, ctx: PlanContext): Plan {
   const cue = ctx.state.cues[payload.cueId];
   if (!cue) return fail('UNKNOWN_TARGET', '没有这个 cue');
-  const locked = targetIs(command, 'cue', cue.cueId);
+  const locked = requireEpoch(ctx.state,command)??targetIs(command, 'cue', cue.cueId);
   if (locked) return locked;
+  if(cue.directionEpoch!==ctx.state.project.currentEpoch)return fail('STALE_DIRECTION','不能改写旧方向cue');
   if (cue.status === 'dispatched' || cue.status === 'executed') return fail('TOO_LATE', 'cue 已派发，不能改');
   if (cue.status !== 'future') return fail('ILLEGAL_TRANSITION', '只有未执行的 cue 可以改');
   return succeed('show.command', [{ op: 'cue', cue: { ...cue, payload: payload.payload, revision: cue.revision + 1 } }]);

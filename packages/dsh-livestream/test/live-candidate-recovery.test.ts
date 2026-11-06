@@ -108,13 +108,23 @@ it('recovers an unpublished prepared candidate from the adopted task without rew
         liveEligible: true,
       }),
     ]);
+    const wakes:string[]=[];runtime.onWake=role=>{wakes.push(role);};
+    const contentGuide={title:'窗边来信',summary:'借来信讨论等待',beats:['信封上的水痕','邀请观众猜寄信人'],sources:[],visualNotes:['窗边灯光可保留，线索逐项出现']};
+    const invalid:any=await runtime.invoke('production','publishCandidate',{directionEpoch:runtime.kernel.epoch(),taskId:'future',assetVersionId:'candidate',contentGuide:{...contentGuide,beats:['x'.repeat(601)]}});
+    expect(invalid.ok).toBe(false);expect(runtime.kernel.view().assets.candidate).toBeUndefined();
     const published: any = await runtime.invoke('production', 'publishCandidate', {
       commandId: 'publish-restored',
+      contentGuide,
       directionEpoch: runtime.kernel.epoch(),
       taskId: 'future',
       assetVersionId: 'candidate',
     });
     expect(published.ok).toBe(true);
+    expect((runtime.brief('performer') as any).contentShelf.ready[0]).toMatchObject({assetVersionId:'candidate',contentGuide});
+    expect(wakes).toEqual(expect.arrayContaining(['performer','director']));
+    expect(runtime.kernel.view().project.channel.mode).toBe('neutral');
+    await runtime.stop();runtime=new ProductionRuntime({repoRoot:folder,dataDir:folder,port:0,secret:()=>undefined});await runtime.start();
+    expect((runtime.brief('performer') as any).contentShelf.ready[0].contentGuide).toEqual(contentGuide);
     expect(JSON.parse(await readFile(manifest, 'utf8')).epoch).toBe(born);
   } finally {
     await runtime?.stop();

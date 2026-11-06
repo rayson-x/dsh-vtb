@@ -120,6 +120,7 @@ export type ShowCommand =
   | { type: 'bindCue'; cue: Omit<CueBinding, 'revision' | 'status' | 'committedSequence' | 'directionEpoch'> & { anchor: CueAnchor } }
   | { type: 'dispatchCue'; cueId: string }
   | { type: 'editCue'; cueId: string; payload: Record<string, unknown> }
+  | { type: 'cancelCue'; cueId: string }
   | {
       type: 'prepareScene';
       instanceId: string;

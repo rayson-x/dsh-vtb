@@ -119,8 +119,18 @@ export interface SceneCapabilities {
   realtime: 'unverified' | 'frame-driven' | 'player';
 }
 
+/** 给主播自由组织表达的素材指南，不是固定口播或送播命令。 */
+export interface ContentGuide {
+  title: string;
+  summary: string;
+  beats: string[];
+  sources: string[];
+  visualNotes: string[];
+}
+
 /** 不可变代码 / 资源版本。票数变化不是换版。 */
 export interface AssetVersion {
+  contentGuide?: ContentGuide;
   id: string;
   revision: number;
   hash: string;

@@ -70,7 +70,7 @@ describe('域契约形状', () => {
       'readShow', 'readAudienceSummary', 'publishEditorialProposal', 'requestProduction', 'prepareDirection',
     ]);
     expect([...TOOL_PERMISSIONS.director]).toEqual([
-      'readProgramme', 'inspectCandidate', 'prepareScene', 'editFutureTimeline', 'updateInputs', 'take', 'sendPerformerCue', 'bindCue', 'holdScene', 'resumeScene', 'retireScene', 'disposeScene',
+      'readProgramme', 'inspectCandidate', 'prepareScene', 'editFutureTimeline', 'updateInputs', 'take', 'sendPerformerCue', 'bindCue', 'editCue', 'cancelCue', 'holdScene', 'resumeScene', 'retireScene', 'disposeScene',
     ]);
     expect([...TOOL_PERMISSIONS.performer]).toEqual([
       'readLiveBrief', 'acknowledgeInput', 'discardContinuation', 'offerSpeech', 'yieldSpeech', 'requestInteraction', 'requestProduction',
